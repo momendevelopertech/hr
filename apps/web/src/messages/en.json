@@ -1,0 +1,44 @@
+{
+    "app": {
+        "name": "SPHINX HR",
+        "tagline": "Enterprise HR Management System"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "calendar": "Calendar",
+        "requests": "Requests",
+        "notifications": "Notifications",
+        "reports": "Reports",
+        "profile": "Profile",
+        "logout": "Logout"
+    },
+    "auth": {
+        "welcome": "Welcome back",
+        "email": "Email",
+        "password": "Password",
+        "login": "Sign in",
+        "changePassword": "Change your password",
+        "reset": "Forgot password?"
+    },
+    "dashboard": {
+        "title": "Overview",
+        "leaveBalance": "Leave Balance",
+        "permissionUsed": "Permission Hours Used",
+        "permissionRemaining": "Remaining Permission Hours",
+        "pendingApprovals": "Pending Approvals",
+        "recentRequests": "Recent Requests"
+    },
+    "calendar": {
+        "title": "Team Calendar",
+        "createRequest": "Create Request",
+        "month": "Month",
+        "week": "Week",
+        "day": "Day"
+    },
+    "requests": {
+        "new": "New Request",
+        "leave": "Leave Request",
+        "permission": "Permission Request",
+        "form": "Form Submission"
+    }
+}

@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    color-scheme: light;
+    --bg-1: #f2ede4;
+    --bg-2: #dfe8e6;
+    --bg-3: #f7f1e8;
+    --text-1: #0b1b2b;
+    --text-2: #324255;
+    --accent-1: #2f6b5f;
+    --accent-2: #d86f45;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: radial-gradient(1100px 700px at 10% -10%, #ffffff 0%, var(--bg-1) 45%, var(--bg-2) 100%);
+    color: var(--text-1);
+    min-height: 100vh;
+}
+
+.font-base {
+    font-family: var(--font-manrope), 'Segoe UI', sans-serif;
+}
+
+.font-ar {
+    font-family: var(--font-cairo), 'Segoe UI', sans-serif;
+}
+
+.bg-atmosphere {
+    background:
+        radial-gradient(900px 500px at 80% 10%, rgba(47, 107, 95, 0.08), transparent 70%),
+        radial-gradient(700px 400px at 10% 70%, rgba(216, 111, 69, 0.08), transparent 70%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(240, 231, 216, 0.6));
+}
+
+.card {
+    @apply rounded-xl bg-white/80 backdrop-blur border border-white/50 shadow-glass;
+}
+
+.btn {
+    @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition;
+}
+
+.btn-primary {
+    @apply btn bg-cactus text-white hover:brightness-110;
+}
+
+.btn-secondary {
+    @apply btn bg-ink text-sand hover:brightness-110;
+}
+
+.btn-outline {
+    @apply btn border border-ink/20 text-ink hover:bg-ink/5;
+}
+
+.pill {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
+}

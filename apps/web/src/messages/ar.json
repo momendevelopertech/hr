@@ -1,0 +1,44 @@
+{
+    "app": {
+        "name": "SPHINX HR",
+        "tagline": "نظام إدارة الموارد البشرية"
+    },
+    "nav": {
+        "dashboard": "لوحة التحكم",
+        "calendar": "التقويم",
+        "requests": "الطلبات",
+        "notifications": "الإشعارات",
+        "reports": "التقارير",
+        "profile": "الملف الشخصي",
+        "logout": "تسجيل الخروج"
+    },
+    "auth": {
+        "welcome": "مرحباً بعودتك",
+        "email": "البريد الإلكتروني",
+        "password": "كلمة المرور",
+        "login": "تسجيل الدخول",
+        "changePassword": "تغيير كلمة المرور",
+        "reset": "نسيت كلمة المرور؟"
+    },
+    "dashboard": {
+        "title": "نظرة عامة",
+        "leaveBalance": "رصيد الإجازات",
+        "permissionUsed": "ساعات الإذن المستخدمة",
+        "permissionRemaining": "ساعات الإذن المتبقية",
+        "pendingApprovals": "طلبات بانتظار الموافقة",
+        "recentRequests": "أحدث الطلبات"
+    },
+    "calendar": {
+        "title": "تقويم الفريق",
+        "createRequest": "إنشاء طلب",
+        "month": "شهر",
+        "week": "أسبوع",
+        "day": "يوم"
+    },
+    "requests": {
+        "new": "طلب جديد",
+        "leave": "طلب إجازة",
+        "permission": "طلب إذن",
+        "form": "نماذج"
+    }
+}

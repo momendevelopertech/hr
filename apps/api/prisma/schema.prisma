@@ -1,0 +1,328 @@
+// SPHINX HR System — Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  HR_ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum RequestStatus {
+  DRAFT
+  PENDING
+  MANAGER_APPROVED
+  HR_APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveType {
+  ANNUAL
+  EMERGENCY
+  MISSION
+}
+
+enum PermissionType {
+  LATE_ARRIVAL
+  EARLY_LEAVE
+}
+
+enum NotificationType {
+  LEAVE_REQUEST
+  LEAVE_APPROVED
+  LEAVE_REJECTED
+  PERMISSION_REQUEST
+  PERMISSION_APPROVED
+  PERMISSION_REJECTED
+  FORM_SUBMISSION
+  FORM_APPROVED
+  FORM_REJECTED
+  ANNOUNCEMENT
+  PASSWORD_RESET
+  ACCOUNT_CREATED
+}
+
+enum FormFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DATE
+  TIME
+  SELECT
+  CHECKBOX
+  FILE
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  LOGIN_FAILED
+  ACCOUNT_LOCKED
+  PASSWORD_CHANGED
+  PASSWORD_RESET
+  EMPLOYEE_CREATED
+  EMPLOYEE_UPDATED
+  EMPLOYEE_DELETED
+  LEAVE_REQUESTED
+  LEAVE_APPROVED
+  LEAVE_REJECTED
+  LEAVE_CANCELLED
+  PERMISSION_REQUESTED
+  PERMISSION_APPROVED
+  PERMISSION_REJECTED
+  PERMISSION_CANCELLED
+  FORM_CREATED
+  FORM_SUBMITTED
+  FORM_APPROVED
+  FORM_REJECTED
+  REQUEST_EDITED
+  REQUEST_DELETED
+  DEPARTMENT_CREATED
+  DEPARTMENT_UPDATED
+}
+
+// ─── MODELS ──────────────────────────────────────────────────────────────────
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  nameAr      String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employees   User[]
+  forms       DynamicForm[]
+}
+
+model User {
+  id               String    @id @default(cuid())
+  employeeNumber   String    @unique
+  fullName         String
+  fullNameAr       String?
+  email            String    @unique
+  phone            String?
+  passwordHash     String
+  role             Role      @default(EMPLOYEE)
+  departmentId     String?
+  jobTitle         String?
+  jobTitleAr       String?
+  fingerprintId    String?
+  isActive         Boolean   @default(true)
+  mustChangePass   Boolean   @default(true)
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  profileImage     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  department        Department?       @relation(fields: [departmentId], references: [id])
+  refreshTokens     RefreshToken[]
+  leaveBalances     LeaveBalance[]
+  leaveRequests     LeaveRequest[]
+  permissionRequests PermissionRequest[]
+  permissionCycles  PermissionCycle[]
+  formSubmissions   FormSubmission[]
+  notificationsReceived Notification[] @relation("NotificationReceiver")
+  notificationsSent     Notification[] @relation("NotificationSender")
+  auditLogs             AuditLog[]
+  managedRequests       LeaveRequest[]  @relation("ManagerApproved")
+  managedPermissions    PermissionRequest[] @relation("ManagerApprovedPerm")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isRevoked Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── LEAVE SYSTEM ────────────────────────────────────────────────────────────
+
+model LeaveBalance {
+  id             String    @id @default(cuid())
+  userId         String
+  year           Int
+  leaveType      LeaveType
+  totalDays      Float     @default(21)
+  usedDays       Float     @default(0)
+  remainingDays  Float     @default(21)
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, leaveType])
+}
+
+model LeaveRequest {
+  id              String        @id @default(cuid())
+  userId          String
+  leaveType       LeaveType
+  startDate       DateTime
+  endDate         DateTime
+  totalDays       Float
+  reason          String?
+  status          RequestStatus @default(PENDING)
+  managerComment  String?
+  hrComment       String?
+  approvedByMgrId String?
+  approvedByHrId  String?
+  approvedByMgrAt DateTime?
+  approvedByHrAt  DateTime?
+  attachmentUrl   String?
+  pdfUrl          String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user        User  @relation(fields: [userId], references: [id])
+  approvedByMgr User? @relation("ManagerApproved", fields: [approvedByMgrId], references: [id])
+}
+
+// ─── PERMISSION SYSTEM ───────────────────────────────────────────────────────
+
+model PermissionCycle {
+  id            String   @id @default(cuid())
+  userId        String
+  cycleStart    DateTime
+  cycleEnd      DateTime
+  totalHours    Float    @default(4)
+  usedHours     Float    @default(0)
+  remainingHours Float   @default(4)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user        User              @relation(fields: [userId], references: [id])
+  permissions PermissionRequest[]
+
+  @@unique([userId, cycleStart])
+}
+
+model PermissionRequest {
+  id              String         @id @default(cuid())
+  userId          String
+  cycleId         String
+  permissionType  PermissionType
+  requestDate     DateTime
+  arrivalTime     String?
+  leaveTime       String?
+  hoursUsed       Float
+  reason          String?
+  status          RequestStatus  @default(PENDING)
+  managerComment  String?
+  hrComment       String?
+  approvedByMgrId String?
+  approvedByHrId  String?
+  approvedByMgrAt DateTime?
+  approvedByHrAt  DateTime?
+  pdfUrl          String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user        User            @relation(fields: [userId], references: [id])
+  cycle       PermissionCycle @relation(fields: [cycleId], references: [id])
+  approvedByMgr User?         @relation("ManagerApprovedPerm", fields: [approvedByMgrId], references: [id])
+}
+
+// ─── DYNAMIC FORM BUILDER ────────────────────────────────────────────────────
+
+model DynamicForm {
+  id               String  @id @default(cuid())
+  name             String
+  nameAr           String
+  description      String?
+  descriptionAr    String?
+  departmentId     String?
+  isActive         Boolean @default(true)
+  requiresManager  Boolean @default(true)
+  requiresHr       Boolean @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  department  Department?   @relation(fields: [departmentId], references: [id])
+  fields      FormField[]
+  submissions FormSubmission[]
+}
+
+model FormField {
+  id          String        @id @default(cuid())
+  formId      String
+  label       String
+  labelAr     String
+  fieldType   FormFieldType
+  isRequired  Boolean       @default(false)
+  placeholder String?
+  options     Json?         // For select fields: ["option1", "option2"]
+  order       Int           @default(0)
+  createdAt   DateTime      @default(now())
+
+  form   DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+}
+
+model FormSubmission {
+  id          String        @id @default(cuid())
+  formId      String
+  userId      String
+  data        Json          // Key-value pairs of field responses
+  status      RequestStatus @default(PENDING)
+  managerComment String?
+  hrComment   String?
+  approvedByMgrId String?
+  approvedByHrId  String?
+  approvedByMgrAt DateTime?
+  approvedByHrAt  DateTime?
+  pdfUrl      String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  form DynamicForm @relation(fields: [formId], references: [id])
+  user User        @relation(fields: [userId], references: [id])
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+
+model Notification {
+  id         String           @id @default(cuid())
+  receiverId String
+  senderId   String?
+  type       NotificationType
+  title      String
+  titleAr    String
+  body       String
+  bodyAr     String
+  isRead     Boolean          @default(false)
+  metadata   Json?
+  createdAt  DateTime         @default(now())
+
+  receiver User  @relation("NotificationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender   User? @relation("NotificationSender", fields: [senderId], references: [id])
+}
+
+// ─── AUDIT LOGS ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  userId     String?
+  action     AuditAction
+  entity     String?
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}

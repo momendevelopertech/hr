@@ -1,0 +1,22 @@
+{
+    "name": "SPHINX HR",
+    "short_name": "SPHINX HR",
+    "description": "Enterprise HR Management System",
+    "start_url": "/en",
+    "display": "standalone",
+    "background_color": "#f2ede4",
+    "theme_color": "#1f3a52",
+    "icons": [
+        {
+            "src": "/icons/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "/icons/icon-maskable.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
+        }
+    ]
+}

@@ -1,0 +1,48 @@
+import { Injectable } from '@nestjs/common';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+@Injectable()
+export class CloudinaryService {
+    async upload(fileBuffer: Buffer, folder: string, fileName: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+                {
+                    folder,
+                    public_id: fileName,
+                    resource_type: 'auto',
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result.secure_url);
+                },
+            ).end(fileBuffer);
+        });
+    }
+
+    async generateSignedUploadUrl(folder: string) {
+        const timestamp = Math.round(Date.now() / 1000);
+        const signature = cloudinary.utils.api_sign_request(
+            { timestamp, folder },
+            process.env.CLOUDINARY_API_SECRET,
+        );
+
+        return {
+            signature,
+            timestamp,
+            cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+            apiKey: process.env.CLOUDINARY_API_KEY,
+            folder,
+        };
+    }
+
+    async deleteByUrl(url: string) {
+        const publicId = url.split('/').slice(-2).join('/').replace(/\.[^.]+$/, '');
+        return cloudinary.uploader.destroy(publicId);
+    }
+}

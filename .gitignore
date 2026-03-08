@@ -1,0 +1,35 @@
+# Node
+node_modules/
+dist/
+.next/
+build/
+.turbo/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma
+/apps/api/prisma/migrations/
+
+# Keys
+*.pem
+private.key
+public.key
+
+# IDE
+.vscode/
+.idea/
+
+# Test
+coverage/

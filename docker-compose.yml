@@ -1,0 +1,80 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: sphinx-postgres
+    environment:
+      POSTGRES_USER: sphinx
+      POSTGRES_PASSWORD: sphinxpass
+      POSTGRES_DB: sphinxhr
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sphinx']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sphinx-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: sphinx-api
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - WHAPI_TOKEN=${WHAPI_TOKEN}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USER=${MAIL_USER}
+      - MAIL_PASS=${MAIL_PASS}
+      - FRONTEND_URL=${FRONTEND_URL}
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: sphinx-web
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL}
+    ports:
+      - '3000:3000'
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
