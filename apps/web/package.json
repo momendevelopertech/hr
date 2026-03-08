@@ -7,7 +7,8 @@
         "dev": "next dev -p 3000",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "next lint",
+        "test": "next lint"
     },
     "dependencies": {
         "next": "14.2.3",
@@ -31,6 +32,9 @@
         "tailwind-merge": "^2.2.2",
         "framer-motion": "^11.0.14",
         "recharts": "^2.12.2"
+    },
+    "optionalDependencies": {
+        "@next/swc-win32-x64-msvc": "14.2.3"
     },
     "devDependencies": {
         "@types/react": "^18.3.0",

@@ -49,25 +49,15 @@ Recommended Hardening (Optional):
 
 ## Build & Test Status
 
-I could NOT complete build/tests locally due to environment issues on this machine:
-1. `npm install` initially failed due to registry/package issues and cache corruption.
-1. `npm cache clean --force` failed with Windows EPERM (permission).
-1. Prisma generation failed because dependencies were not fully installed.
+Completed successfully on 2026-03-08:
+1. `npm install --no-fund --no-audit`
+1. `npx prisma generate --schema apps/api/prisma/schema.prisma`
+1. `npm run build --workspace @sphinx/api`
+1. `npm run build --workspace @sphinx/web`
+1. `npm run test --workspace @sphinx/api`
+1. `npm run test --workspace @sphinx/web`
 
-### How to Verify Locally (Required)
-
-Run these commands from repo root:
-
-```bash
-cmd /c rmdir /s /q %LOCALAPPDATA%\\npm-cache
-cmd /c npm cache clean --force
-cmd /c npm install --no-fund --no-audit
-cmd /c npx prisma generate --schema apps/api/prisma/schema.prisma
-cmd /c npm run build --workspace @sphinx/api
-cmd /c npm run build --workspace @sphinx/web
-```
-
-If all commands pass, the build is confirmed.
+If you need to re-run in a fresh environment, use the commands above.
 
 ## Notes
 

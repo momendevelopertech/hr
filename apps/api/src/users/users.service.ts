@@ -123,7 +123,6 @@ export class UsersService {
 
         const users = await this.prisma.user.findMany({
             where,
-            include: { department: true },
             select: {
                 id: true,
                 employeeNumber: true,

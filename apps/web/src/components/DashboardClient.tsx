@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { getSocket } from '@/lib/socket';
@@ -47,7 +47,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const [notifications, setNotifications] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-    const fetchAll = async () => {
+    const fetchAll = useCallback(async () => {
         const [me, leaveBalances, leaveReqs, permissionReqs, formSubs, cycle, unread] = await Promise.all([
             api.get('/auth/me'),
             api.get('/leaves/balances'),
@@ -64,12 +64,12 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         setForms(formSubs.data);
         setPermissionCycle(cycle.data);
         setNotifications(unread.data);
-    };
+    }, [setUser]);
 
     useEffect(() => {
         if (!ready) return;
         fetchAll();
-    }, [ready]);
+    }, [ready, fetchAll]);
 
     useEffect(() => {
         if (!user) return;
@@ -79,7 +79,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         return () => {
             socket.off('notification');
         };
-    }, [user?.id]);
+    }, [user?.id, fetchAll, user]);
 
     const stats = useMemo(() => {
         const annual = balances.find((b) => b.leaveType === 'ANNUAL');
@@ -94,7 +94,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             { label: 'pendingApprovals', value: `${pending}` },
             { label: 'recentRequests', value: `${recent}` },
         ];
-    }, [balances, leaves, permissions, forms]);
+    }, [balances, leaves, permissions, forms, permissionCycle?.remainingHours, permissionCycle?.usedHours]);
 
     const events = useMemo(() => {
         const leaveEvents = leaves.map((leave) => ({

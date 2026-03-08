@@ -30,7 +30,7 @@ export function useRequireAuth(locale: string) {
         return () => {
             active = false;
         };
-    }, []);
+    }, [locale, router, setLoading, setUser]);
 
     return { user, ready };
 }

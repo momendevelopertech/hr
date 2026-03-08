@@ -19,6 +19,9 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Local cache
+.npm-cache/
+
 # Prisma
 /apps/api/prisma/migrations/
 
@@ -33,3 +36,7 @@ public.key
 
 # Test
 coverage/
+
+# PWA build artifacts
+/apps/web/public/sw.js
+/apps/web/public/workbox-*.js
