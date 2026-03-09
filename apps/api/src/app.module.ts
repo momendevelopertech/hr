@@ -16,6 +16,7 @@ import { AuditModule } from './audit/audit.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { EventsGateway } from './events/events.gateway';
 import { RedisModule } from './redis/redis.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
     imports: [
@@ -38,6 +39,7 @@ import { RedisModule } from './redis/redis.module';
         AuditModule,
         CloudinaryModule,
         RedisModule,
+        ChatModule,
     ],
     providers: [EventsGateway],
 })

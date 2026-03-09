@@ -14,6 +14,7 @@ export default function NavLinks({ locale }: { locale: string }) {
     const links = [
         { href: `/${locale}`, label: t('dashboard') },
         { href: `/${locale}/requests`, label: t('requests') },
+        { href: `/${locale}/chat`, label: t('chat') },
         ...(canAdminPages
             ? [
                 { href: `/${locale}/employees`, label: t('employees') },

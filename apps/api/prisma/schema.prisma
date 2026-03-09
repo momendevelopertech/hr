@@ -148,11 +148,29 @@ model User {
   auditLogs             AuditLog[]
   managedRequests       LeaveRequest[]  @relation("ManagerApproved")
   managedPermissions    PermissionRequest[] @relation("ManagerApprovedPerm")
+  sentMessages          Message[] @relation("MessageSender")
+  receivedMessages      Message[] @relation("MessageReceiver")
 
   @@index([fullName])
   @@index([phone])
   @@index([departmentId, isActive])
   @@index([createdAt])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  senderId    String
+  receiverId  String
+  messageText String
+  createdAt   DateTime @default(now())
+  readStatus  Boolean  @default(false)
+
+  sender   User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, receiverId, createdAt])
+  @@index([receiverId, readStatus])
+  @@map("messages")
 }
 
 model RefreshToken {
