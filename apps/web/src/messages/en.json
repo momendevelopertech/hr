@@ -13,7 +13,8 @@
     "notifications": "Notifications",
     "reports": "Reports",
     "profile": "Profile",
-    "logout": "Logout"
+    "logout": "Logout",
+    "chat": "Chat"
   },
   "auth": {
     "welcome": "Welcome back",
