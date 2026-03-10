@@ -7,6 +7,7 @@ export const getSocket = () => {
     if (!socket) {
         socket = io(getPublicSocketUrl(), {
             withCredentials: true,
+            // Force websocket transport to avoid polling session-id errors on serverless edge deployments.
             transports: ['websocket'],
         });
     }

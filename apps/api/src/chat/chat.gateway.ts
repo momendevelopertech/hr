@@ -17,7 +17,7 @@ type ReadPayload = { readerId: string; senderId: string };
 
 @WebSocketGateway({
     cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: true,
         credentials: true,
     },
 })
