@@ -115,7 +115,6 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     const createEmployee = async () => {
         const res = await api.post('/users', {
             employeeNumber: form.employeeNumber,
-            fingerprintId: form.employeeNumber,
             fullName: form.fullName,
             fullNameAr: form.fullNameAr,
             email: form.email,
@@ -124,7 +123,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             departmentId: form.departmentId,
             jobTitle: form.jobTitle,
             jobTitleAr: form.jobTitleAr,
-            fingerprintId: form.fingerprintId,
+            fingerprintId: form.fingerprintId || form.employeeNumber,
             role: form.role || 'EMPLOYEE',
             password: form.password || 'SPHINX@2026',
         });
