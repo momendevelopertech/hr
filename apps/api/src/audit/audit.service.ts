@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuditAction } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+
+type AuditAction = Prisma.AuditLogCreateInput['action'];
 
 interface AuditLogInput {
     userId?: string;
