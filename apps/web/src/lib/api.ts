@@ -17,8 +17,24 @@ export const setCsrfToken = (token: string) => {
     csrfToken = token;
 };
 
+const getApiBaseUrl = () => {
+    const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+    if (!envUrl) {
+        return 'http://localhost:3001/api';
+    }
+
+    // Support values like "hr-api-six.vercel.app/api" (without protocol)
+    // to avoid locale-prefixed relative requests in Next.js routes.
+    if (/^https?:\/\//i.test(envUrl)) {
+        return envUrl;
+    }
+
+    return `https://${envUrl.replace(/^\/+/, '')}`;
+};
+
 const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+    baseURL: getApiBaseUrl(),
     withCredentials: true,
     timeout: 15000,
 });
