@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
+import { socketCorsOrigin } from '../shared/cors-origin';
 
 @WebSocketGateway({
     cors: {

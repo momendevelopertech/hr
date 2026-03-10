@@ -8,6 +8,7 @@ import {
     WebSocketServer,
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
+import { socketCorsOrigin } from '../shared/cors-origin';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 
