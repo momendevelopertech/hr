@@ -10,6 +10,7 @@ import {
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
+import { corsOriginDelegate } from '../shared/cors.util';
 
 type JoinPayload = { employeeId: string };
 type SendPayload = { senderId: string; receiverId: string; messageText: string };
@@ -17,7 +18,7 @@ type ReadPayload = { readerId: string; senderId: string };
 
 @WebSocketGateway({
     cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: corsOriginDelegate,
         credentials: true,
     },
 })
