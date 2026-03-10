@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import BrandLogo from '@/components/BrandLogo';
 import { Eye, EyeOff } from 'lucide-react';
+import { AppApiError } from '@/lib/api';
 
 export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } }) {
     const t = useTranslations('auth');
@@ -17,15 +18,36 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
     const [rememberMe, setRememberMe] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<{ identifier?: string; password?: string; form?: string }>({});
+
+    const validate = () => {
+        const nextErrors: { identifier?: string; password?: string } = {};
+        if (!identifier.trim()) {
+            nextErrors.identifier = params.locale === 'ar' ? 'يرجى إدخال البريد الإلكتروني أو اسم المستخدم' : 'Please enter your email or username';
+        }
+        if (!password.trim()) {
+            nextErrors.password = params.locale === 'ar' ? 'يرجى إدخال كلمة المرور' : 'Please enter your password';
+        } else if (password.trim().length < 6) {
+            nextErrors.password = params.locale === 'ar' ? 'كلمة المرور قصيرة جدًا' : 'Password must be at least 6 characters';
+        }
+
+        setErrors(nextErrors);
+        return Object.keys(nextErrors).length === 0;
+    };
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (loading || !validate()) return;
         setLoading(true);
+        setErrors({});
         try {
             await api.get('/auth/csrf');
-            const res = await api.post('/auth/login', { identifier, password, rememberMe });
+            const res = await api.post('/auth/login', { identifier: identifier.trim(), password, rememberMe });
             setUser(res.data.user);
             router.push(`/${params.locale}`);
+        } catch (error) {
+            const err = error as AppApiError;
+            setErrors({ form: err.message });
         } finally {
             setLoading(false);
         }
@@ -50,7 +72,9 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                             value={identifier}
                             onChange={(e) => setIdentifier(e.target.value)}
                             required
+                            aria-invalid={!!errors.identifier}
                         />
+                        {errors.identifier && <p className="mt-1 text-xs text-red-600">{errors.identifier}</p>}
                     </label>
                     <label className="text-sm">
                         {t('password')}
@@ -61,6 +85,7 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
+                                aria-invalid={!!errors.password}
                             />
                             <button
                                 type="button"
@@ -71,6 +96,7 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         </div>
+                        {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
                     </label>
                     <label className="flex items-center gap-2 text-sm">
                         <input
@@ -81,8 +107,9 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                         {t('rememberMe')}
                     </label>
                     <button className="btn-primary w-full" type="submit" disabled={loading}>
-                        {loading ? '...' : t('login')}
+                        {loading ? (params.locale === 'ar' ? 'جارٍ تسجيل الدخول...' : 'Signing in...') : t('login')}
                     </button>
+                    {errors.form && <p className="text-sm text-red-600">{errors.form}</p>}
                 </form>
             </div>
         </div>
