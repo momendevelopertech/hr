@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { useTranslations } from 'next-intl';
 
-type RequestType = 'leave' | 'absence' | 'permission' | 'mission';
+type RequestType = 'leave' | 'absence' | 'permission' | 'mission' | 'note';
 
 type Props = {
     open: boolean;
@@ -57,7 +58,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     (Number(formData.durationHours) || 0) * 60 + (Number(formData.durationMinutes) || 0),
                 );
                 if (durationMinutes <= 0) {
-                    alert(locale === 'ar' ? 'يرجى إدخال مدة الإذن' : 'Please enter a permission duration.');
+                    toast.error(tm('permissionDurationError'));
                     setLoading(false);
                     return;
                 }
@@ -85,10 +86,24 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                 });
             }
 
+            if (type === 'note') {
+                await api.post('/notes', {
+                    date: dateValue,
+                    title: formData.noteTitle || '',
+                    body: formData.noteBody || '',
+                });
+            }
+
             onSubmitted();
             onClose();
             setType(null);
             setFormData({});
+
+            if (type === 'note') {
+                toast.success(tm('noteSaved'));
+            } else {
+                toast.success(tm('pendingToast'));
+            }
         } finally {
             setLoading(false);
         }
@@ -118,6 +133,9 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     </button>
                     <button className={`btn-outline ${type === 'mission' ? 'bg-ink/10' : ''}`} onClick={() => setType('mission')}>
                         {tm('missionRequest')}
+                    </button>
+                    <button className={`btn-outline ${type === 'note' ? 'bg-ink/10' : ''}`} onClick={() => setType('note')}>
+                        {tm('noteRequest')}
                     </button>
                 </div>
 
@@ -295,6 +313,30 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                     rows={3}
                                     className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
                                     onChange={(e) => update('missionPurpose', e.target.value)}
+                                />
+                            </label>
+                        </>
+                    )}
+
+                    {type === 'note' && (
+                        <>
+                            <label className="text-sm">
+                                {tm('noteTitle')}
+                                <input
+                                    className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                    placeholder={tm('noteTitlePlaceholder')}
+                                    value={formData.noteTitle || ''}
+                                    onChange={(e) => update('noteTitle', e.target.value)}
+                                />
+                            </label>
+                            <label className="text-sm">
+                                {tm('noteBody')}
+                                <textarea
+                                    rows={4}
+                                    className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                    placeholder={tm('noteBodyPlaceholder')}
+                                    value={formData.noteBody || ''}
+                                    onChange={(e) => update('noteBody', e.target.value)}
                                 />
                             </label>
                         </>

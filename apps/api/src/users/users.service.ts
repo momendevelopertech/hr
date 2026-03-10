@@ -66,7 +66,7 @@ export class UsersService {
                 departmentId: data.departmentId,
                 jobTitle: data.jobTitle,
                 jobTitleAr: data.jobTitleAr,
-                fingerprintId: data.fingerprintId,
+                fingerprintId: data.fingerprintId || data.employeeNumber,
                 mustChangePass: true,
             },
             include: { department: true },

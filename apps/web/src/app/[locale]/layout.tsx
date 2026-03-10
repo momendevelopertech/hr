@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
+import { Toaster } from 'react-hot-toast';
 import { defaultLocale, locales } from '@/i18n/routing';
 import { Noto_Kufi_Arabic, Sora } from 'next/font/google';
 
@@ -50,6 +51,7 @@ export default async function LocaleLayout({
             <body className={`bg-atmosphere text-ink ${locale === 'ar' ? 'font-ar' : 'font-base'}`}>
                 <NextIntlClientProvider messages={messages}>
                     {children}
+                    <Toaster position={locale === 'ar' ? 'top-left' : 'top-right'} />
                 </NextIntlClientProvider>
             </body>
         </html>

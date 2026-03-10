@@ -115,6 +115,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     const createEmployee = async () => {
         const res = await api.post('/users', {
             employeeNumber: form.employeeNumber,
+            fingerprintId: form.employeeNumber,
             fullName: form.fullName,
             fullNameAr: form.fullNameAr,
             email: form.email,
@@ -329,9 +330,9 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                             <button className="btn-outline" onClick={() => setCreateOpen(false)}>×</button>
                         </div>
                         <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('employeeNumber')} onChange={(e) => setForm((p: any) => ({ ...p, employeeNumber: e.target.value }))} />
-                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('fullName')} onChange={(e) => setForm((p: any) => ({ ...p, fullName: e.target.value }))} />
-                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('fullNameAr')} onChange={(e) => setForm((p: any) => ({ ...p, fullNameAr: e.target.value }))} />
+                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('employeeNumberFingerprint')} onChange={(e) => setForm((p: any) => ({ ...p, employeeNumber: e.target.value }))} />
+                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('fullNameEn')} onChange={(e) => setForm((p: any) => ({ ...p, fullName: e.target.value }))} />
+                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('fullNameArLabel')} onChange={(e) => setForm((p: any) => ({ ...p, fullNameAr: e.target.value }))} />
                             <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('email')} onChange={(e) => setForm((p: any) => ({ ...p, email: e.target.value }))} />
                             <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('phone')} onChange={(e) => setForm((p: any) => ({ ...p, phone: e.target.value }))} />
                             <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" onChange={(e) => setForm((p: any) => ({ ...p, governorate: e.target.value }))}>
@@ -354,7 +355,6 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                 <option value="BRANCH_SECRETARY">{t('roles.branchSecretary')}</option>
                                 <option value="SUPPORT">{t('roles.support')}</option>
                             </select>
-                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('fingerprintId')} onChange={(e) => setForm((p: any) => ({ ...p, fingerprintId: e.target.value }))} />
                             <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('defaultPassword')} onChange={(e) => setForm((p: any) => ({ ...p, password: e.target.value }))} />
                         </div>
                         <div className="mt-4 flex justify-end gap-2">
@@ -375,13 +375,13 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                         <div className="mt-4 grid gap-3 md:grid-cols-2">
                             <input
                                 className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                placeholder={t('fullName')}
+                                placeholder={t('fullNameEn')}
                                 value={editForm.fullName || ''}
                                 onChange={(e) => setEditForm((p: any) => ({ ...p, fullName: e.target.value }))}
                             />
                             <input
                                 className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                placeholder={t('fullNameAr')}
+                                placeholder={t('fullNameArLabel')}
                                 value={editForm.fullNameAr || ''}
                                 onChange={(e) => setEditForm((p: any) => ({ ...p, fullNameAr: e.target.value }))}
                             />

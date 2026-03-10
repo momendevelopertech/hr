@@ -83,6 +83,20 @@ body {
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
 }
 
+.rbc-day-clickable {
+    cursor: pointer;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rbc-day-clickable:hover {
+    box-shadow: inset 0 0 0 1px rgba(47, 107, 95, 0.25);
+    background-color: rgba(47, 107, 95, 0.08) !important;
+}
+
+.rbc-day-disabled {
+    cursor: not-allowed;
+}
+
 :root[data-theme='dark'] {
     color-scheme: dark;
     --bg-1: #0b1220;

@@ -12,7 +12,7 @@ const locales = {
     ar: arSA,
 };
 
-type CalendarEvent = {
+export type CalendarEvent = {
     title: string;
     start: Date;
     end: Date;
@@ -24,10 +24,12 @@ export default function CalendarView({
     locale,
     events,
     onSelectSlot,
+    onSelectEvent,
 }: {
     locale: 'en' | 'ar';
     events: CalendarEvent[];
     onSelectSlot: (date: Date) => void;
+    onSelectEvent?: (event: CalendarEvent) => void;
 }) {
     const t = useTranslations('calendar');
     const localizer = useMemo(
@@ -55,6 +57,7 @@ export default function CalendarView({
         if (key === 'mission') return { ...base, style: { backgroundColor: '#0f766e', borderColor: '#0f766e' } };
         if (key === 'personal') return { ...base, style: { backgroundColor: '#1f3a52', borderColor: '#1f3a52' } };
         if (key === 'form') return { ...base, style: { backgroundColor: '#6b7280', borderColor: '#6b7280' } };
+        if (key === 'note') return { ...base, style: { backgroundColor: '#a16207', borderColor: '#a16207' } };
         return { ...base, style: { backgroundColor: '#475569', borderColor: '#475569' } };
     };
 
@@ -129,6 +132,10 @@ export default function CalendarView({
                 onSelectEvent={(event) => {
                     const selected = event.start as Date;
                     if (selected.getDay() === 5) return;
+                    if (onSelectEvent) {
+                        onSelectEvent(event);
+                        return;
+                    }
                     onSelectSlot(selected);
                 }}
                 startAccessor="start"
@@ -138,12 +145,12 @@ export default function CalendarView({
                 style={{ height: 520 }}
                 dayPropGetter={(date) => {
                     if (date.getDay() === 5) {
-                        return { style: { backgroundColor: '#e5e7eb', color: '#6b7280' } };
+                        return { className: 'rbc-day-disabled', style: { backgroundColor: '#e5e7eb', color: '#6b7280' } };
                     }
                     if (isSameDay(date, new Date())) {
-                        return { style: { backgroundColor: '#fef3c7' } };
+                        return { className: 'rbc-day-clickable', style: { backgroundColor: '#fef3c7' } };
                     }
-                    return { style: { backgroundColor: 'rgba(255,255,255,0.6)' } };
+                    return { className: 'rbc-day-clickable', style: { backgroundColor: 'rgba(255,255,255,0.6)' } };
                 }}
             />
         </div>

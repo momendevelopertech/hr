@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { useRequireAuth } from '@/lib/use-auth';
@@ -26,17 +26,10 @@ type PermissionRequest = {
     user: { fullName: string; employeeNumber: string };
 };
 
-type FormSubmission = {
-    id: string;
-    status: string;
-    createdAt: string;
-    form: { name: string; nameAr?: string | null };
-    user: { fullName: string; employeeNumber: string };
-};
-
 type RequestRow = {
     id: string;
-    requestType: 'leave' | 'permission' | 'form';
+    requestType: 'leave' | 'permission';
+    leaveType?: string;
     subtype: string;
     employeeName: string;
     employeeNumber: string;
@@ -52,9 +45,8 @@ export default function RequestsClient({ locale }: { locale: string }) {
     const apiBaseUrl = getPublicApiUrl();
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [permissions, setPermissions] = useState<PermissionRequest[]>([]);
-    const [forms, setForms] = useState<FormSubmission[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'all' | 'leave' | 'permission' | 'form'>('all');
+    const [activeTab, setActiveTab] = useState<'leave' | 'absence' | 'mission' | 'permission'>('leave');
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
     const [filters, setFilters] = useState({
@@ -66,26 +58,24 @@ export default function RequestsClient({ locale }: { locale: string }) {
 
     const dateLocale = useMemo(() => (locale === 'ar' ? 'ar-EG' : 'en-US'), [locale]);
 
-    const fetchAll = async () => {
+    const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
-            const [leaveReqs, permissionReqs, formSubs] = await Promise.all([
+            const [leaveReqs, permissionReqs] = await Promise.all([
                 api.get('/leaves'),
                 api.get('/permissions'),
-                api.get('/forms/submissions'),
             ]);
             setLeaves(leaveReqs.data);
             setPermissions(permissionReqs.data);
-            setForms(formSubs.data);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (!ready) return;
         fetchAll();
-    }, [ready]);
+    }, [fetchAll, ready]);
 
     const canManage = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGER';
     const canAdmin = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
@@ -100,16 +90,12 @@ export default function RequestsClient({ locale }: { locale: string }) {
     const cancelPermission = (id: string) => api.patch(`/permissions/${id}/cancel`).then(fetchAll);
     const deletePermission = (id: string) => api.delete(`/permissions/${id}`).then(fetchAll);
 
-    const approveForm = (id: string) => api.patch(`/forms/submissions/${id}/approve`).then(fetchAll);
-    const rejectForm = (id: string) => api.patch(`/forms/submissions/${id}/reject`).then(fetchAll);
-    const cancelForm = (id: string) => api.patch(`/forms/submissions/${id}/cancel`).then(fetchAll);
-    const deleteForm = (id: string) => api.delete(`/forms/submissions/${id}`).then(fetchAll);
-
     const leaveRows = useMemo<RequestRow[]>(
         () =>
             leaves.map((leave) => ({
                 id: leave.id,
                 requestType: 'leave',
+                leaveType: leave.leaveType,
                 subtype: enumLabels.leaveType(leave.leaveType, locale as 'en' | 'ar'),
                 employeeName: leave.user.fullName,
                 employeeNumber: leave.user.employeeNumber,
@@ -137,26 +123,30 @@ export default function RequestsClient({ locale }: { locale: string }) {
         [apiBaseUrl, locale, permissions],
     );
 
-    const formRows = useMemo<RequestRow[]>(
-        () =>
-            forms.map((form) => ({
-                id: form.id,
-                requestType: 'form',
-                subtype: locale === 'ar' ? form.form.nameAr || form.form.name : form.form.name,
-                employeeName: form.user.fullName,
-                employeeNumber: form.user.employeeNumber,
-                requestDate: form.createdAt,
-                status: form.status,
-                details: t('formRequest'),
-                pdfUrl: `${apiBaseUrl}/pdf/form/${form.id}`,
-            })),
-        [apiBaseUrl, forms, locale, t],
+    const leaveOnlyRows = useMemo(
+        () => leaveRows.filter((row) => row.leaveType && !['ABSENCE_WITH_PERMISSION', 'MISSION'].includes(row.leaveType)),
+        [leaveRows],
+    );
+    const absenceRows = useMemo(
+        () => leaveRows.filter((row) => row.leaveType === 'ABSENCE_WITH_PERMISSION'),
+        [leaveRows],
+    );
+    const missionRows = useMemo(
+        () => leaveRows.filter((row) => row.leaveType === 'MISSION'),
+        [leaveRows],
     );
 
-    const allRows = useMemo(() => [...leaveRows, ...permissionRows, ...formRows], [formRows, leaveRows, permissionRows]);
+    const rowsByTab = useMemo(
+        () => ({
+            leave: leaveOnlyRows,
+            absence: absenceRows,
+            mission: missionRows,
+            permission: permissionRows,
+        }),
+        [absenceRows, leaveOnlyRows, missionRows, permissionRows],
+    );
 
-    const filteredRows = useMemo(() => {
-        const rows = activeTab === 'all' ? allRows : allRows.filter((row) => row.requestType === activeTab);
+    const applyFilters = useCallback((rows: RequestRow[]) => {
         return rows.filter((row) => {
             const searchValue = `${row.employeeName} ${row.employeeNumber} ${row.subtype}`.toLowerCase();
             const statusOk = !filters.status || row.status === filters.status;
@@ -165,7 +155,9 @@ export default function RequestsClient({ locale }: { locale: string }) {
             const toOk = !filters.to || new Date(row.requestDate) <= new Date(`${filters.to}T23:59:59`);
             return statusOk && searchOk && fromOk && toOk;
         });
-    }, [activeTab, allRows, filters.from, filters.search, filters.status, filters.to]);
+    }, [filters.from, filters.search, filters.status, filters.to]);
+
+    const filteredRows = useMemo(() => applyFilters(rowsByTab[activeTab] || []), [activeTab, applyFilters, rowsByTab]);
 
     const total = filteredRows.length;
     const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -183,37 +175,33 @@ export default function RequestsClient({ locale }: { locale: string }) {
 
     const onApprove = (row: RequestRow) => {
         if (row.requestType === 'leave') return approveLeave(row.id);
-        if (row.requestType === 'permission') return approvePermission(row.id);
-        return approveForm(row.id);
+        return approvePermission(row.id);
     };
 
     const onReject = (row: RequestRow) => {
         if (row.requestType === 'leave') return rejectLeave(row.id);
-        if (row.requestType === 'permission') return rejectPermission(row.id);
-        return rejectForm(row.id);
+        return rejectPermission(row.id);
     };
 
     const onCancel = (row: RequestRow) => {
         if (row.requestType === 'leave') return cancelLeave(row.id);
-        if (row.requestType === 'permission') return cancelPermission(row.id);
-        return cancelForm(row.id);
+        return cancelPermission(row.id);
     };
 
     const onDelete = (row: RequestRow) => {
         if (row.requestType === 'leave') return deleteLeave(row.id);
-        if (row.requestType === 'permission') return deletePermission(row.id);
-        return deleteForm(row.id);
+        return deletePermission(row.id);
     };
 
     if (!ready || loading) {
         return <PageLoader text={locale === 'ar' ? 'جاري تحميل الطلبات...' : 'Loading requests...'} />;
     }
 
-    const tabs: Array<{ key: 'all' | 'leave' | 'permission' | 'form'; label: string; count: number }> = [
-        { key: 'all', label: t('tabAll'), count: allRows.length },
-        { key: 'leave', label: t('tabLeave'), count: leaveRows.length },
+    const tabs: Array<{ key: 'leave' | 'permission' | 'absence' | 'mission'; label: string; count: number }> = [
         { key: 'permission', label: t('tabPermission'), count: permissionRows.length },
-        { key: 'form', label: t('tabForm'), count: formRows.length },
+        { key: 'leave', label: t('tabLeave'), count: leaveOnlyRows.length },
+        { key: 'absence', label: t('tabAbsence'), count: absenceRows.length },
+        { key: 'mission', label: t('tabMission'), count: missionRows.length },
     ];
 
     return (

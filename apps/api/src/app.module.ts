@@ -10,6 +10,7 @@ import { LeavesModule } from './leaves/leaves.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { FormsModule } from './forms/forms.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { NotesModule } from './notes/notes.module';
 import { PdfModule } from './pdf/pdf.module';
 import { ReportsModule } from './reports/reports.module';
 import { AuditModule } from './audit/audit.module';
@@ -34,6 +35,7 @@ import { RootController } from './root.controller';
         LeavesModule,
         PermissionsModule,
         FormsModule,
+        NotesModule,
         NotificationsModule,
         PdfModule,
         ReportsModule,

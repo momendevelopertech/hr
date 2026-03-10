@@ -8,28 +8,14 @@ async function main() {
 
     const departmentsData = [
         {
-            name: 'ERC - Alexandria',
-            nameAr: 'ERC - Alexandria',
-            description: 'ERC Department - Alexandria',
-            governorate: 'ALEXANDRIA' as const,
+            name: 'ERC',
+            nameAr: 'ERC',
+            description: 'ERC Department',
         },
         {
-            name: 'SPHINX - Alexandria',
-            nameAr: 'SPHINX - Alexandria',
-            description: 'SPHINX Department - Alexandria',
-            governorate: 'ALEXANDRIA' as const,
-        },
-        {
-            name: 'ERC - Cairo',
-            nameAr: 'ERC - Cairo',
-            description: 'ERC Department - Cairo',
-            governorate: 'CAIRO' as const,
-        },
-        {
-            name: 'SPHINX - Cairo',
-            nameAr: 'SPHINX - Cairo',
-            description: 'SPHINX Department - Cairo',
-            governorate: 'CAIRO' as const,
+            name: 'SPHINX',
+            nameAr: 'SPHINX',
+            description: 'SPHINX Department',
         },
     ];
 
@@ -50,10 +36,8 @@ async function main() {
         ),
     );
 
-    const alexErcDept = departments.find((d) => d.name === 'ERC - Alexandria');
-    const alexSphinxDept = departments.find((d) => d.name === 'SPHINX - Alexandria');
-    const cairoErcDept = departments.find((d) => d.name === 'ERC - Cairo');
-    const cairoSphinxDept = departments.find((d) => d.name === 'SPHINX - Cairo');
+    const ercDept = departments.find((d) => d.name === 'ERC');
+    const sphinxDept = departments.find((d) => d.name === 'SPHINX');
 
     const superAdminPass = await bcrypt.hash('Admin@123456', 12);
     const superAdmin = await prisma.user.upsert({
@@ -68,7 +52,7 @@ async function main() {
             passwordHash: superAdminPass,
             role: 'SUPER_ADMIN',
             governorate: 'CAIRO',
-            departmentId: cairoSphinxDept?.id,
+            departmentId: sphinxDept?.id,
             jobTitle: 'System Administrator',
             jobTitleAr: 'System Administrator',
             mustChangePass: false,
@@ -89,7 +73,7 @@ async function main() {
             passwordHash: hrAdminPass,
             role: 'HR_ADMIN',
             governorate: 'CAIRO',
-            departmentId: cairoErcDept?.id,
+            departmentId: ercDept?.id,
             jobTitle: 'HR Manager',
             jobTitleAr: 'HR Manager',
             mustChangePass: false,
@@ -111,7 +95,7 @@ async function main() {
                 passwordHash: managerPass,
                 role: 'MANAGER',
                 governorate: 'ALEXANDRIA',
-                departmentId: alexErcDept?.id,
+                departmentId: ercDept?.id,
                 jobTitle: 'ERC Department Manager',
                 jobTitleAr: 'ERC Department Manager',
                 mustChangePass: false,
@@ -130,7 +114,7 @@ async function main() {
                 passwordHash: managerPass,
                 role: 'MANAGER',
                 governorate: 'ALEXANDRIA',
-                departmentId: alexSphinxDept?.id,
+                departmentId: sphinxDept?.id,
                 jobTitle: 'SPHINX Department Manager',
                 jobTitleAr: 'SPHINX Department Manager',
                 mustChangePass: false,
@@ -149,7 +133,7 @@ async function main() {
                 passwordHash: managerPass,
                 role: 'MANAGER',
                 governorate: 'CAIRO',
-                departmentId: cairoErcDept?.id,
+                departmentId: ercDept?.id,
                 jobTitle: 'ERC Department Manager',
                 jobTitleAr: 'ERC Department Manager',
                 mustChangePass: false,
@@ -168,7 +152,7 @@ async function main() {
                 passwordHash: managerPass,
                 role: 'MANAGER',
                 governorate: 'CAIRO',
-                departmentId: cairoSphinxDept?.id,
+                departmentId: sphinxDept?.id,
                 jobTitle: 'SPHINX Department Manager',
                 jobTitleAr: 'SPHINX Department Manager',
                 mustChangePass: false,
@@ -180,17 +164,11 @@ async function main() {
     const [alexErcManager, alexSphinxManager, cairoErcManager, cairoSphinxManager] = managers;
 
     await Promise.all([
-        alexErcDept?.id
-            ? prisma.department.update({ where: { id: alexErcDept.id }, data: { managerId: alexErcManager.id } })
+        ercDept?.id
+            ? prisma.department.update({ where: { id: ercDept.id }, data: { managerId: cairoErcManager.id } })
             : Promise.resolve(),
-        alexSphinxDept?.id
-            ? prisma.department.update({ where: { id: alexSphinxDept.id }, data: { managerId: alexSphinxManager.id } })
-            : Promise.resolve(),
-        cairoErcDept?.id
-            ? prisma.department.update({ where: { id: cairoErcDept.id }, data: { managerId: cairoErcManager.id } })
-            : Promise.resolve(),
-        cairoSphinxDept?.id
-            ? prisma.department.update({ where: { id: cairoSphinxDept.id }, data: { managerId: cairoSphinxManager.id } })
+        sphinxDept?.id
+            ? prisma.department.update({ where: { id: sphinxDept.id }, data: { managerId: cairoSphinxManager.id } })
             : Promise.resolve(),
     ]);
 
@@ -208,7 +186,7 @@ async function main() {
                 passwordHash: secretaryPass,
                 role: 'BRANCH_SECRETARY',
                 governorate: 'ALEXANDRIA',
-                departmentId: alexSphinxDept?.id,
+                departmentId: sphinxDept?.id,
                 jobTitle: 'Branch Secretary',
                 jobTitleAr: 'Branch Secretary',
                 mustChangePass: false,
@@ -227,7 +205,7 @@ async function main() {
                 passwordHash: secretaryPass,
                 role: 'BRANCH_SECRETARY',
                 governorate: 'CAIRO',
-                departmentId: cairoSphinxDept?.id,
+                departmentId: sphinxDept?.id,
                 jobTitle: 'Branch Secretary',
                 jobTitleAr: 'Branch Secretary',
                 mustChangePass: false,
@@ -249,7 +227,7 @@ async function main() {
             passwordHash: supportPass,
             role: 'SUPPORT',
             governorate: 'CAIRO',
-            departmentId: cairoSphinxDept?.id,
+            departmentId: sphinxDept?.id,
             jobTitle: 'Support Agent',
             jobTitleAr: 'Support Agent',
             mustChangePass: false,
@@ -270,7 +248,7 @@ async function main() {
             passwordHash: empPass,
             role: 'EMPLOYEE',
             governorate: 'ALEXANDRIA',
-            departmentId: alexErcDept?.id,
+            departmentId: ercDept?.id,
             jobTitle: 'ERC Specialist',
             jobTitleAr: 'ERC Specialist',
             mustChangePass: false,
@@ -290,13 +268,140 @@ async function main() {
             passwordHash: empPass,
             role: 'EMPLOYEE',
             governorate: 'CAIRO',
-            departmentId: cairoSphinxDept?.id,
+            departmentId: sphinxDept?.id,
             jobTitle: 'SPHINX Specialist',
             jobTitleAr: 'SPHINX Specialist',
             mustChangePass: false,
             isActive: true,
         },
     });
+
+    const extraEmployeesData = [
+        {
+            employeeNumber: 'EMP-0012',
+            fullName: 'Ahmed Hassan',
+            fullNameAr: 'Ahmed Hassan',
+            email: 'ahmed.erc.alex@sphinx.com',
+            phone: '+201000000012',
+            governorate: 'ALEXANDRIA' as const,
+            departmentId: ercDept?.id,
+            jobTitle: 'ERC Analyst',
+        },
+        {
+            employeeNumber: 'EMP-0013',
+            fullName: 'Reem Soliman',
+            fullNameAr: 'Reem Soliman',
+            email: 'reem.erc.alex@sphinx.com',
+            phone: '+201000000013',
+            governorate: 'ALEXANDRIA' as const,
+            departmentId: ercDept?.id,
+            jobTitle: 'ERC Coordinator',
+        },
+        {
+            employeeNumber: 'EMP-0014',
+            fullName: 'Omar Saeed',
+            fullNameAr: 'Omar Saeed',
+            email: 'omar.sphinx.alex@sphinx.com',
+            phone: '+201000000014',
+            governorate: 'ALEXANDRIA' as const,
+            departmentId: sphinxDept?.id,
+            jobTitle: 'SPHINX Specialist',
+        },
+        {
+            employeeNumber: 'EMP-0015',
+            fullName: 'Mariam Nabil',
+            fullNameAr: 'Mariam Nabil',
+            email: 'mariam.sphinx.alex@sphinx.com',
+            phone: '+201000000015',
+            governorate: 'ALEXANDRIA' as const,
+            departmentId: sphinxDept?.id,
+            jobTitle: 'SPHINX Coordinator',
+        },
+        {
+            employeeNumber: 'EMP-0016',
+            fullName: 'Kareem Adel',
+            fullNameAr: 'Kareem Adel',
+            email: 'kareem.erc.cairo@sphinx.com',
+            phone: '+201000000016',
+            governorate: 'CAIRO' as const,
+            departmentId: ercDept?.id,
+            jobTitle: 'ERC Specialist',
+        },
+        {
+            employeeNumber: 'EMP-0017',
+            fullName: 'Nada Ahmed',
+            fullNameAr: 'Nada Ahmed',
+            email: 'nada.erc.cairo@sphinx.com',
+            phone: '+201000000017',
+            governorate: 'CAIRO' as const,
+            departmentId: ercDept?.id,
+            jobTitle: 'ERC Officer',
+        },
+        {
+            employeeNumber: 'EMP-0018',
+            fullName: 'Youssef Ali',
+            fullNameAr: 'Youssef Ali',
+            email: 'youssef.sphinx.cairo@sphinx.com',
+            phone: '+201000000018',
+            governorate: 'CAIRO' as const,
+            departmentId: sphinxDept?.id,
+            jobTitle: 'SPHINX Analyst',
+        },
+        {
+            employeeNumber: 'EMP-0019',
+            fullName: 'Salma Tarek',
+            fullNameAr: 'Salma Tarek',
+            email: 'salma.sphinx.cairo@sphinx.com',
+            phone: '+201000000019',
+            governorate: 'CAIRO' as const,
+            departmentId: sphinxDept?.id,
+            jobTitle: 'SPHINX Officer',
+        },
+        {
+            employeeNumber: 'EMP-0020',
+            fullName: 'Hana Mostafa',
+            fullNameAr: 'Hana Mostafa',
+            email: 'hana.erc.alex@sphinx.com',
+            phone: '+201000000020',
+            governorate: 'ALEXANDRIA' as const,
+            departmentId: ercDept?.id,
+            jobTitle: 'ERC Assistant',
+        },
+        {
+            employeeNumber: 'EMP-0021',
+            fullName: 'Tamer Eid',
+            fullNameAr: 'Tamer Eid',
+            email: 'tamer.sphinx.cairo@sphinx.com',
+            phone: '+201000000021',
+            governorate: 'CAIRO' as const,
+            departmentId: sphinxDept?.id,
+            jobTitle: 'SPHINX Coordinator',
+        },
+    ];
+
+    const extraEmployees = await Promise.all(
+        extraEmployeesData.map((emp) =>
+            prisma.user.upsert({
+                where: { email: emp.email },
+                update: {},
+                create: {
+                    employeeNumber: emp.employeeNumber,
+                    fullName: emp.fullName,
+                    fullNameAr: emp.fullNameAr,
+                    email: emp.email,
+                    phone: emp.phone,
+                    passwordHash: empPass,
+                    role: 'EMPLOYEE',
+                    governorate: emp.governorate,
+                    departmentId: emp.departmentId,
+                    jobTitle: emp.jobTitle,
+                    jobTitleAr: emp.jobTitle,
+                    mustChangePass: false,
+                    isActive: true,
+                },
+            }),
+        ),
+    );
 
     console.log('Created users: superadmin, hradmin, managers, secretaries, support, employees');
 
@@ -313,6 +418,7 @@ async function main() {
         supportUser,
         employee,
         employee2,
+        ...extraEmployees,
     ];
 
     for (const user of allUsers) {
@@ -339,6 +445,46 @@ async function main() {
 
     console.log('Created leave balances');
 
+    const sampleNotes = [
+        {
+            id: 'note-employee-1',
+            userId: employee.id,
+            date: new Date(),
+            title: 'Weekly focus',
+            body: 'Finish onboarding tasks and review pending tickets.',
+        },
+        {
+            id: 'note-employee-2',
+            userId: employee2.id,
+            date: new Date(),
+            title: 'Client follow-up',
+            body: 'Call client and prepare the follow-up report.',
+        },
+        {
+            id: 'note-employee-3',
+            userId: extraEmployees[0]?.id,
+            date: new Date(),
+            title: 'Training',
+            body: 'Attend ERC compliance training session.',
+        },
+    ];
+
+    for (const note of sampleNotes) {
+        if (!note.userId) continue;
+        await prisma.note.upsert({
+            where: { id: note.id },
+            update: {
+                userId: note.userId,
+                date: note.date,
+                title: note.title,
+                body: note.body,
+            },
+            create: note,
+        });
+    }
+
+    console.log('Created sample notes');
+
     await prisma.dynamicForm.upsert({
         where: { id: 'form-commission-request' },
         update: {},
@@ -348,7 +494,7 @@ async function main() {
             nameAr: 'Commission Request',
             description: 'Request for sales commission',
             descriptionAr: 'Request for sales commission',
-            departmentId: cairoSphinxDept?.id,
+            departmentId: sphinxDept?.id,
             requiresManager: true,
             requiresHr: true,
             fields: {
@@ -372,7 +518,7 @@ async function main() {
             nameAr: 'Purchase Request',
             description: 'Request for purchasing items',
             descriptionAr: 'Request for purchasing items',
-            departmentId: cairoErcDept?.id,
+            departmentId: ercDept?.id,
             requiresManager: true,
             requiresHr: true,
             fields: {

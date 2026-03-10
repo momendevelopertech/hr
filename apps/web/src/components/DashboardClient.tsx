@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import StatsGrid from './StatsGrid';
 import CalendarView from './CalendarView';
 import RequestModal from './RequestModal';
-import NotificationsPanel from './NotificationsPanel';
+import EventDetailsModal from './EventDetailsModal';
 import ChangePasswordModal from './ChangePasswordModal';
 import { useRequireAuth } from '@/lib/use-auth';
 import { useTranslations } from 'next-intl';
@@ -38,41 +39,51 @@ type FormSubmission = {
     user: { fullName: string };
 };
 
+type NoteItem = {
+    id: string;
+    title: string;
+    body?: string | null;
+    date: string;
+    user: { fullName: string };
+};
+
 export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const t = useTranslations('dashboard');
     const { user, ready } = useRequireAuth(locale);
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [permissions, setPermissions] = useState<PermissionRequest[]>([]);
     const [forms, setForms] = useState<FormSubmission[]>([]);
+    const [notes, setNotes] = useState<NoteItem[]>([]);
     const [balances, setBalances] = useState<any[]>([]);
     const [permissionCycle, setPermissionCycle] = useState<any | null>(null);
     const [absenceDeduction, setAbsenceDeduction] = useState<any | null>(null);
-    const [notifications, setNotifications] = useState<any[]>([]);
     const [announcement, setAnnouncement] = useState({ title: '', body: '' });
     const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
     const [sendingPayroll, setSendingPayroll] = useState(false);
+    const [announcementOpen, setAnnouncementOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
-            const [leaveBalances, leaveReqs, permissionReqs, formSubs, cycle, absence, unread] = await Promise.all([
+            const [leaveBalances, leaveReqs, permissionReqs, formSubs, notesRes, cycle, absence] = await Promise.all([
                 api.get('/leaves/balances'),
                 api.get('/leaves'),
                 api.get('/permissions'),
                 api.get('/forms/submissions'),
+                api.get('/notes'),
                 api.get('/permissions/cycle'),
                 api.get('/leaves/absence-deductions'),
-                api.get('/notifications/unread'),
             ]);
             setBalances(leaveBalances.data);
             setLeaves(leaveReqs.data);
             setPermissions(permissionReqs.data);
             setForms(formSubs.data);
+            setNotes(notesRes.data);
             setPermissionCycle(cycle.data);
             setAbsenceDeduction(absence.data);
-            setNotifications(unread.data);
         } finally {
             setLoading(false);
         }
@@ -120,7 +131,8 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                 bodyAr: announcement.body.trim(),
             });
             setAnnouncement({ title: '', body: '' });
-            alert(locale === 'ar' ? 'تم إرسال الإعلان' : 'Announcement sent');
+            setAnnouncementOpen(false);
+            toast.success(t('announcementSent'));
         } finally {
             setSendingAnnouncement(false);
         }
@@ -130,7 +142,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         setSendingPayroll(true);
         try {
             await api.post('/notifications/payroll');
-            alert(locale === 'ar' ? 'تم صرف الرواتب' : 'Payroll notification sent');
+            toast.success(t('payrollSent'));
         } finally {
             setSendingPayroll(false);
         }
@@ -147,7 +159,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                 start: new Date(leave.startDate),
                 end: new Date(leave.endDate),
                 allDay: true,
-                resource: { key },
+                resource: { key, kind: key === 'absence' ? 'absence' : key === 'mission' ? 'mission' : 'leave', item: leave },
             };
         });
 
@@ -156,7 +168,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             start: new Date(permission.requestDate),
             end: new Date(permission.requestDate),
             allDay: true,
-            resource: { key: permission.permissionType === 'PERSONAL' ? 'personal' : 'permission' },
+            resource: { key: permission.permissionType === 'PERSONAL' ? 'personal' : 'permission', kind: 'permission', item: permission },
         }));
 
         const formEvents = forms.map((submission) => ({
@@ -164,11 +176,19 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             start: new Date(submission.createdAt),
             end: new Date(submission.createdAt),
             allDay: true,
-            resource: { key: 'form' },
+            resource: { key: 'form', kind: 'form', item: submission },
         }));
 
-        return [...leaveEvents, ...permissionEvents, ...formEvents];
-    }, [forms, leaves, locale, permissions]);
+        const noteEvents = notes.map((note) => ({
+            title: `${note.user.fullName} - ${note.title}`,
+            start: new Date(note.date),
+            end: new Date(note.date),
+            allDay: true,
+            resource: { key: 'note', kind: 'note', item: note },
+        }));
+
+        return [...leaveEvents, ...permissionEvents, ...formEvents, ...noteEvents];
+    }, [forms, leaves, locale, notes, permissions]);
 
     if (!ready || loading) {
         return <PageLoader text={locale === 'ar' ? 'جاري تحميل لوحة التحكم...' : 'Loading dashboard...'} />;
@@ -187,36 +207,27 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                             </div>
                             <div className="text-sm uppercase tracking-[0.2em] text-ink/50">{t('payrollTitle')}</div>
                         </div>
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <input
-                                className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-1"
-                                placeholder={locale === 'ar' ? 'عنوان الإعلان' : 'Announcement title'}
-                                value={announcement.title}
-                                onChange={(e) => setAnnouncement((prev) => ({ ...prev, title: e.target.value }))}
-                            />
-                            <input
-                                className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-2"
-                                placeholder={locale === 'ar' ? 'نص الإعلان' : 'Announcement message'}
-                                value={announcement.body}
-                                onChange={(e) => setAnnouncement((prev) => ({ ...prev, body: e.target.value }))}
-                            />
-                        </div>
                         <div className="flex flex-wrap gap-2">
-                            <button className="btn-primary" onClick={sendAnnouncement} disabled={sendingAnnouncement}>
-                                {sendingAnnouncement ? (locale === 'ar' ? 'جارٍ الإرسال...' : 'Sending...') : t('sendAnnouncement')}
+                            <button className="btn-primary" onClick={() => setAnnouncementOpen(true)}>
+                                {t('sendAnnouncement')}
                             </button>
                             <button className="btn-outline" onClick={triggerPayroll} disabled={sendingPayroll}>
-                                {sendingPayroll ? (locale === 'ar' ? 'جارٍ الصرف...' : 'Processing...') : t('payrollButton')}
+                                {sendingPayroll ? t('payrollProcessing') : t('payrollButton')}
                             </button>
                         </div>
                     </section>
                 </div>
             )}
             <div className="px-6 mt-6">
-                <CalendarView locale={locale} events={events} onSelectSlot={(d) => setSelectedDate(d)} />
-            </div>
-            <div className="px-6 mt-6">
-                <NotificationsPanel items={notifications} locale={locale} />
+                <CalendarView
+                    locale={locale}
+                    events={events}
+                    onSelectSlot={(d) => setSelectedDate(d)}
+                    onSelectEvent={(event) => {
+                        setSelectedDate(null);
+                        setSelectedEvent(event);
+                    }}
+                />
             </div>
             <RequestModal
                 open={!!selectedDate}
@@ -224,6 +235,44 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                 locale={locale}
                 onClose={() => setSelectedDate(null)}
                 onSubmitted={fetchAll}
+            />
+            {announcementOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+                    <div className="card w-full max-w-2xl p-6">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold">{t('announcementTitle')}</h3>
+                            <button className="btn-outline" onClick={() => setAnnouncementOpen(false)}>{t('close')}</button>
+                        </div>
+                        <div className="mt-4 grid gap-3 md:grid-cols-3">
+                            <input
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-1"
+                                placeholder={t('announcementTitlePlaceholder')}
+                                value={announcement.title}
+                                onChange={(e) => setAnnouncement((prev) => ({ ...prev, title: e.target.value }))}
+                            />
+                            <input
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-2"
+                                placeholder={t('announcementBodyPlaceholder')}
+                                value={announcement.body}
+                                onChange={(e) => setAnnouncement((prev) => ({ ...prev, body: e.target.value }))}
+                            />
+                        </div>
+                        <div className="mt-4 flex justify-end gap-2">
+                            <button className="btn-outline" onClick={() => setAnnouncementOpen(false)}>
+                                {t('cancel')}
+                            </button>
+                            <button className="btn-primary" onClick={sendAnnouncement} disabled={sendingAnnouncement}>
+                                {sendingAnnouncement ? t('sending') : t('sendAnnouncement')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <EventDetailsModal
+                open={!!selectedEvent}
+                event={selectedEvent}
+                locale={locale}
+                onClose={() => setSelectedEvent(null)}
             />
             <ChangePasswordModal />
         </main>
