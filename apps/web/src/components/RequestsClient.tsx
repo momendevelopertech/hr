@@ -289,7 +289,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                 <div className="mt-4 overflow-x-auto">
                     <table className="min-w-[980px] w-full text-sm">
                         <thead>
-                            <tr className="border-b border-ink/10 text-left">
+                            <tr className="border-b border-ink/10 text-start">
                                 <th className="py-2">{t('employee')}</th>
                                 <th className="py-2">{t('requestType')}</th>
                                 <th className="py-2">{t('details')}</th>

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 export default function MessageInput({ onSend }: { onSend: (message: string) => Promise<void> }) {
+    const t = useTranslations('chat');
     const [message, setMessage] = useState('');
 
     const submit = async () => {
@@ -21,9 +23,9 @@ export default function MessageInput({ onSend }: { onSend: (message: string) => 
                 onKeyDown={(e) => {
                     if (e.key === 'Enter') submit();
                 }}
-                placeholder="Type a message..."
+                placeholder={t('messagePlaceholder')}
             />
-            <button className="btn-primary" onClick={submit}>Send</button>
+            <button className="btn-primary" onClick={submit}>{t('send')}</button>
         </div>
     );
 }

@@ -85,7 +85,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
                     <div className="flex flex-wrap gap-2">
                         <button className={`btn-outline ${tab === 'leaves' ? 'bg-ink/10' : ''}`} onClick={() => { setTab('leaves'); setPage(1); }}>{t('leaveTitle')}</button>
                         <button className={`btn-outline ${tab === 'permissions' ? 'bg-ink/10' : ''}`} onClick={() => { setTab('permissions'); setPage(1); }}>{t('permissionTitle')}</button>
-                        <button className={`btn-outline ${tab === 'forms' ? 'bg-ink/10' : ''}`} onClick={() => { setTab('forms'); setPage(1); }}>Reports Type 3</button>
+                        <button className={`btn-outline ${tab === 'forms' ? 'bg-ink/10' : ''}`} onClick={() => { setTab('forms'); setPage(1); }}>{t('formsTitle')}</button>
                         <button className={`btn-outline ${tab === 'employees' ? 'bg-ink/10' : ''}`} onClick={() => { setTab('employees'); setPage(1); }}>{t('employeeTitle')}</button>
                     </div>
                     {(tab === 'leaves' || tab === 'permissions') && (
@@ -103,17 +103,17 @@ export default function ReportsClient({ locale }: { locale: string }) {
                 <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
                     <input type="date" className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.from} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, from: e.target.value })); }} />
                     <input type="date" className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.to} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, to: e.target.value })); }} />
-                    <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={locale === 'ar' ? 'الموظف' : 'Employee'} value={filters.employee} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, employee: e.target.value })); }} />
-                    <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={locale === 'ar' ? 'نوع التقرير' : 'Report Type'} value={filters.reportType} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, reportType: e.target.value })); }} />
+                    <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('employeeFilter')} value={filters.employee} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, employee: e.target.value })); }} />
+                    <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('reportTypeFilter')} value={filters.reportType} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, reportType: e.target.value })); }} />
                     <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.status} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, status: e.target.value })); }}>
-                        <option value="">Status</option>
-                        <option value="PENDING">PENDING</option>
-                        <option value="MANAGER_APPROVED">MANAGER_APPROVED</option>
-                        <option value="HR_APPROVED">HR_APPROVED</option>
-                        <option value="REJECTED">REJECTED</option>
+                        <option value="">{t('status')}</option>
+                        <option value="PENDING">{enumLabels.status('PENDING', locale as 'en' | 'ar')}</option>
+                        <option value="MANAGER_APPROVED">{enumLabels.status('MANAGER_APPROVED', locale as 'en' | 'ar')}</option>
+                        <option value="HR_APPROVED">{enumLabels.status('HR_APPROVED', locale as 'en' | 'ar')}</option>
+                        <option value="REJECTED">{enumLabels.status('REJECTED', locale as 'en' | 'ar')}</option>
                     </select>
                     <label className="text-sm">
-                        Rows per page:
+                        {t('rowsPerPage')}
                         <select className="ms-2 rounded-lg border border-ink/20 px-2 py-1" value={rows} onChange={(e) => { setPage(1); setRows(parseInt(e.target.value, 10)); }}>
                             <option value={10}>10</option>
                             <option value={20}>20</option>
@@ -126,26 +126,41 @@ export default function ReportsClient({ locale }: { locale: string }) {
                 <div className="mt-4 overflow-x-auto">
                     <table className="min-w-[920px] w-full text-sm">
                         <thead>
-                            <tr className="border-b border-ink/10 text-left">
-                                <th className="py-2">Employee</th>
-                                <th className="py-2">Type</th>
-                                <th className="py-2">Status</th>
-                                <th className="py-2">Date</th>
-                                <th className="py-2">Department</th>
+                            <tr className="border-b border-ink/10 text-start">
+                                <th className="py-2">{t('employee')}</th>
+                                <th className="py-2">{t('type')}</th>
+                                <th className="py-2">{t('status')}</th>
+                                <th className="py-2">{t('date')}</th>
+                                <th className="py-2">{t('department')}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {data.map((item) => {
                                 const employee = item.user?.fullName || item.fullName || '-';
-                                const type = item.leaveType || item.permissionType || item.form?.name || item.role || '-';
+                                const type = item.leaveType
+                                    || item.permissionType
+                                    || (tab === 'forms' ? (locale === 'ar' ? item.form?.nameAr || item.form?.name : item.form?.name) : null)
+                                    || item.form?.name
+                                    || item.role
+                                    || '-';
                                 const status = item.status || (item.isActive ? 'ACTIVE' : 'INACTIVE');
+                                const statusLabel = tab === 'employees'
+                                    ? (status === 'ACTIVE' ? t('active') : t('inactive'))
+                                    : enumLabels.status(status, locale as 'en' | 'ar');
+                                const typeLabel = tab === 'leaves'
+                                    ? enumLabels.leaveType(type, locale as 'en' | 'ar')
+                                    : tab === 'permissions'
+                                        ? enumLabels.permissionType(type, locale as 'en' | 'ar')
+                                        : tab === 'employees'
+                                            ? enumLabels.role(type, locale as 'en' | 'ar')
+                                            : type;
                                 const date = item.createdAt || item.requestDate || '-';
                                 const dept = item.user?.department?.name || item.department?.name || '-';
                                 return (
                                     <tr key={item.id} className="border-b border-ink/5">
                                         <td className="py-2">{employee}</td>
-                                        <td className="py-2">{tab === 'leaves' ? enumLabels.leaveType(type, locale as 'en' | 'ar') : tab === 'permissions' ? enumLabels.permissionType(type, locale as 'en' | 'ar') : type}</td>
-                                        <td className="py-2">{status}</td>
+                                        <td className="py-2">{typeLabel}</td>
+                                        <td className="py-2">{statusLabel}</td>
                                         <td className="py-2">{date !== '-' ? new Date(date).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US') : '-'}</td>
                                         <td className="py-2">{dept}</td>
                                     </tr>
@@ -156,11 +171,11 @@ export default function ReportsClient({ locale }: { locale: string }) {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between">
-                    <p className="text-sm text-ink/60">{total} records</p>
+                    <p className="text-sm text-ink/60">{t('records', { count: total })}</p>
                     <div className="flex items-center gap-2">
-                        <button className="btn-outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
-                        <p className="text-sm">Page {page} / {totalPages}</p>
-                        <button className="btn-outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+                        <button className="btn-outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>{t('prev')}</button>
+                        <p className="text-sm">{t('page', { page, totalPages })}</p>
+                        <button className="btn-outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>{t('next')}</button>
                     </div>
                 </div>
             </section>

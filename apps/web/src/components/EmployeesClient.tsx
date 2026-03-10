@@ -129,7 +129,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
         });
 
         const msg = locale === 'ar'
-            ? `تم إنشاء المستخدم بنجاح\nUsername: ${res.data.generatedUsername}\nPassword: ${res.data.defaultPassword}`
+            ? `تم إنشاء المستخدم بنجاح\nاسم المستخدم: ${res.data.generatedUsername}\nكلمة المرور: ${res.data.defaultPassword}`
             : `Employee created successfully\nUsername: ${res.data.generatedUsername}\nPassword: ${res.data.defaultPassword}`;
         alert(msg);
 
@@ -235,18 +235,18 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                         ))}
                     </select>
                     <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.status} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, status: e.target.value })); }}>
-                        <option value="">Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
+                        <option value="">{t('status')}</option>
+                        <option value="active">{t('active')}</option>
+                        <option value="inactive">{t('inactive')}</option>
                     </select>
                     <input type="date" className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.from} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, from: e.target.value })); }} />
                     <input type="date" className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.to} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, to: e.target.value })); }} />
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm text-ink/60">{total} records</p>
+                    <p className="text-sm text-ink/60">{t('records', { count: total })}</p>
                     <label className="text-sm">
-                        Rows per page:
+                        {t('rowsPerPage')}
                         <select className="ms-2 rounded-lg border border-ink/20 px-2 py-1" value={limit} onChange={(e) => { setPage(1); setLimit(parseInt(e.target.value, 10)); }}>
                             <option value={20}>20</option>
                             <option value={50}>50</option>
@@ -258,17 +258,17 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                 <div className="mt-4 overflow-x-auto">
                     <table className="min-w-[920px] w-full text-sm">
                         <thead>
-                            <tr className="border-b border-ink/10 text-left">
+                            <tr className="border-b border-ink/10 text-start">
                                 <th className="py-2">#{t('employeeNumber')}</th>
-                                <th className="py-2">Username</th>
+                                <th className="py-2">{t('username')}</th>
                                 <th className="py-2">{t('fullName')}</th>
                                 <th className="py-2">{t('phone')}</th>
                                 <th className="py-2">{t('department')}</th>
                                 <th className="py-2">{t('governorate')}</th>
-                                <th className="py-2">Role</th>
-                                <th className="py-2">Status</th>
-                                <th className="py-2">Created</th>
-                                {canViewEmployees && <th className="py-2">Action</th>}
+                                <th className="py-2">{t('role')}</th>
+                                <th className="py-2">{t('status')}</th>
+                                <th className="py-2">{t('created')}</th>
+                                {canViewEmployees && <th className="py-2">{t('action')}</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -287,7 +287,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                                 : t('notAvailable')}
                                     </td>
                                     <td className="py-2">{enumLabels.role(emp.role, locale as 'en' | 'ar')}</td>
-                                    <td className="py-2">{emp.isActive ? 'Active' : 'Inactive'}</td>
+                                    <td className="py-2">{emp.isActive ? t('active') : t('inactive')}</td>
                                     <td className="py-2">{new Date(emp.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</td>
                                     {canViewEmployees && (
                                         <td className="py-2">
@@ -315,9 +315,9 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between">
-                    <button className="btn-outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
-                    <p className="text-sm">Page {page} / {totalPages}</p>
-                    <button className="btn-outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+                    <button className="btn-outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>{t('prev')}</button>
+                    <p className="text-sm">{t('page', { page, totalPages })}</p>
+                    <button className="btn-outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>{t('next')}</button>
                 </div>
             </section>
 
@@ -355,7 +355,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                 <option value="SUPPORT">{t('roles.support')}</option>
                             </select>
                             <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('fingerprintId')} onChange={(e) => setForm((p: any) => ({ ...p, fingerprintId: e.target.value }))} />
-                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder="Default Password (SPHINX@2026)" onChange={(e) => setForm((p: any) => ({ ...p, password: e.target.value }))} />
+                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('defaultPassword')} onChange={(e) => setForm((p: any) => ({ ...p, password: e.target.value }))} />
                         </div>
                         <div className="mt-4 flex justify-end gap-2">
                             <button className="btn-outline" onClick={() => setCreateOpen(false)}>{cancelLabel}</button>

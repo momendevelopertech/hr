@@ -34,6 +34,13 @@ export default function NotificationsClient({ locale }: { locale: string }) {
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const [filters, setFilters] = useState<any>({ type: '', status: '', search: '', from: '', to: '' });
+    const typeLabels = useMemo(() => {
+        const map: Record<string, string> = {};
+        notificationTypes.forEach((type) => {
+            map[type] = t(`types.${type}`);
+        });
+        return map;
+    }, [t]);
 
     const params = useMemo(() => ({
         page,
@@ -82,22 +89,22 @@ export default function NotificationsClient({ locale }: { locale: string }) {
                 </div>
 
                 <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
-                    <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={locale === 'ar' ? 'بحث' : 'Search'} value={filters.search} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, search: e.target.value })); }} />
+                    <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('search')} value={filters.search} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, search: e.target.value })); }} />
                     <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.type} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, type: e.target.value })); }}>
-                        <option value="">Type</option>
+                        <option value="">{t('type')}</option>
                         {notificationTypes.map((type) => (
-                            <option key={type} value={type}>{type}</option>
+                            <option key={type} value={type}>{typeLabels[type]}</option>
                         ))}
                     </select>
                     <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.status} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, status: e.target.value })); }}>
-                        <option value="">Status</option>
-                        <option value="read">Read</option>
-                        <option value="unread">Unread</option>
+                        <option value="">{t('status')}</option>
+                        <option value="read">{t('read')}</option>
+                        <option value="unread">{t('unread')}</option>
                     </select>
                     <input type="date" className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.from} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, from: e.target.value })); }} />
                     <input type="date" className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.to} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, to: e.target.value })); }} />
                     <label className="text-sm">
-                        Rows per page:
+                        {t('rowsPerPage')}
                         <select className="ms-2 rounded-lg border border-ink/20 px-2 py-1" value={limit} onChange={(e) => { setPage(1); setLimit(parseInt(e.target.value, 10)); }}>
                             <option value={20}>20</option>
                             <option value={50}>50</option>
@@ -109,20 +116,20 @@ export default function NotificationsClient({ locale }: { locale: string }) {
                 <div className="mt-4 overflow-x-auto">
                     <table className="min-w-[760px] w-full text-sm">
                         <thead>
-                            <tr className="border-b border-ink/10 text-left">
-                                <th className="py-2">Title</th>
-                                <th className="py-2">Type</th>
-                                <th className="py-2">Date</th>
-                                <th className="py-2">Status</th>
+                            <tr className="border-b border-ink/10 text-start">
+                                <th className="py-2">{t('titleColumn')}</th>
+                                <th className="py-2">{t('type')}</th>
+                                <th className="py-2">{t('date')}</th>
+                                <th className="py-2">{t('status')}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {items.map((item) => (
                                 <tr key={item.id} className="border-b border-ink/5">
                                     <td className="py-2">{item.title}</td>
-                                    <td className="py-2">{item.type}</td>
+                                    <td className="py-2">{typeLabels[item.type] || item.type}</td>
                                     <td className="py-2">{new Date(item.createdAt).toLocaleString(dateLocale)}</td>
-                                    <td className="py-2">{item.isRead ? 'Read' : 'Unread'}</td>
+                                    <td className="py-2">{item.isRead ? t('read') : t('unread')}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -130,11 +137,11 @@ export default function NotificationsClient({ locale }: { locale: string }) {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between">
-                    <p className="text-sm text-ink/60">{total} records</p>
+                    <p className="text-sm text-ink/60">{t('records', { count: total })}</p>
                     <div className="flex items-center gap-2">
-                        <button className="btn-outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
-                        <p className="text-sm">Page {page} / {totalPages}</p>
-                        <button className="btn-outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+                        <button className="btn-outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>{t('prev')}</button>
+                        <p className="text-sm">{t('page', { page, totalPages })}</p>
+                        <button className="btn-outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>{t('next')}</button>
                     </div>
                 </div>
             </section>

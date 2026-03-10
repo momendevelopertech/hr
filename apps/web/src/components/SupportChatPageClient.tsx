@@ -1,12 +1,14 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/lib/use-auth';
 import ChatLayout from '@/components/chat/ChatLayout';
 import PageLoader from '@/components/PageLoader';
 
 export default function SupportChatPageClient({ locale }: { locale: string }) {
     const { user, ready } = useRequireAuth(locale);
+    const t = useTranslations('chat');
 
     const roleFilter = useMemo(() => {
         if (!user) return undefined;
@@ -14,7 +16,7 @@ export default function SupportChatPageClient({ locale }: { locale: string }) {
     }, [user]);
 
     if (!ready || !user) {
-        return <PageLoader text={locale === 'ar' ? '???? ????? ????? ?????...' : 'Loading support chat...'} />;
+        return <PageLoader text={t('supportLoading')} />;
     }
 
     return (
@@ -25,6 +27,7 @@ export default function SupportChatPageClient({ locale }: { locale: string }) {
                 governorate: user.governorate,
                 role: user.role,
             }}
+            locale={locale}
             roleFilter={roleFilter}
             autoStart
             autoSelectFirst

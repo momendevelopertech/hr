@@ -1,8 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { getSocket } from '@/lib/socket';
+import { enumLabels } from '@/lib/enum-labels';
 import EmployeeList from './EmployeeList';
 import ChatWindow from './ChatWindow';
 import { ChatEmployee, ChatMessage } from './types';
@@ -14,12 +16,14 @@ type ChatLayoutProps = {
         governorate?: 'CAIRO' | 'ALEXANDRIA' | null;
         role: string;
     };
+    locale: string;
     roleFilter?: string;
     autoStart?: boolean;
     autoSelectFirst?: boolean;
 };
 
-export default function ChatLayout({ currentUser, roleFilter, autoStart, autoSelectFirst }: ChatLayoutProps) {
+export default function ChatLayout({ currentUser, locale, roleFilter, autoStart, autoSelectFirst }: ChatLayoutProps) {
+    const t = useTranslations('chat');
     const [started, setStarted] = useState(!!autoStart);
     const [employees, setEmployees] = useState<ChatEmployee[]>([]);
     const [search, setSearch] = useState('');
@@ -107,18 +111,18 @@ export default function ChatLayout({ currentUser, roleFilter, autoStart, autoSel
     };
 
     const branchLabel = useMemo(() => {
-        if (currentUser.governorate === 'ALEXANDRIA') return 'Alexandria';
-        if (currentUser.governorate === 'CAIRO') return 'Cairo';
-        return 'N/A';
-    }, [currentUser.governorate]);
+        if (currentUser.governorate === 'ALEXANDRIA') return t('branchAlexandria');
+        if (currentUser.governorate === 'CAIRO') return t('branchCairo');
+        return t('notAvailable');
+    }, [currentUser.governorate, t]);
 
     if (!started) {
         return (
             <section className="card mx-4 p-6 sm:mx-6">
-                <h2 className="text-xl font-semibold">Welcome {currentUser.fullName}</h2>
-                <p className="mt-1 text-slate-600">Position: {currentUser.role}</p>
-                <p className="text-slate-600">Branch: {branchLabel}</p>
-                <button className="btn-primary mt-4" onClick={() => setStarted(true)}>Start Chat</button>
+                <h2 className="text-xl font-semibold">{t('welcome', { name: currentUser.fullName })}</h2>
+                <p className="mt-1 text-slate-600">{t('position')}: {enumLabels.role(currentUser.role, locale as 'en' | 'ar')}</p>
+                <p className="text-slate-600">{t('branch')}: {branchLabel}</p>
+                <button className="btn-primary mt-4" onClick={() => setStarted(true)}>{t('start')}</button>
             </section>
         );
     }
