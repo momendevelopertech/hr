@@ -4,6 +4,8 @@ export type ChatEmployee = {
     jobTitle?: string | null;
     governorate?: 'CAIRO' | 'ALEXANDRIA' | null;
     unreadCount?: number;
+    lastMessage?: string;
+    lastMessageAt?: string;
 };
 
 export type ChatMessage = {

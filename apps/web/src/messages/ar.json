@@ -32,7 +32,9 @@
     "selectPrompt": "اختر موظفًا لبدء المحادثة.",
     "employeeFallback": "موظف",
     "messagePlaceholder": "اكتب رسالة...",
-    "send": "إرسال"
+    "send": "إرسال",
+    "searchEmpty": "لا توجد نتائج مطابقة.",
+    "historyEmpty": "لا توجد محادثات سابقة حتى الآن."
   },
   "auth": {
     "welcome": "مرحبًا بعودتك",

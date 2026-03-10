@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { getSocket } from '@/lib/socket';
@@ -29,57 +29,31 @@ export default function ChatLayout({ currentUser, locale, roleFilter, autoStart,
     const [search, setSearch] = useState('');
     const [selectedEmployee, setSelectedEmployee] = useState<ChatEmployee | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const selectedRef = useRef<ChatEmployee | null>(null);
 
     useEffect(() => {
-        const socket = getSocket();
-        socket.emit('join_user_room', { employeeId: currentUser.id });
+        selectedRef.current = selectedEmployee;
+    }, [selectedEmployee]);
 
-        const onReceive = (message: ChatMessage) => {
-            const isForCurrentConversation =
-                selectedEmployee &&
-                ((message.senderId === selectedEmployee.id && message.receiverId === currentUser.id) ||
-                    (message.senderId === currentUser.id && message.receiverId === selectedEmployee.id));
-
-            if (isForCurrentConversation) {
-                setMessages((prev) => [...prev, message]);
-                if (message.senderId === selectedEmployee?.id) {
-                    socket.emit('message_read', { readerId: currentUser.id, senderId: selectedEmployee.id });
-                }
-            }
-
-            if (message.receiverId === currentUser.id) {
-                setEmployees((prev) => prev.map((emp) => (
-                    emp.id === message.senderId
-                        ? { ...emp, unreadCount: (emp.unreadCount || 0) + (selectedEmployee?.id === emp.id ? 0 : 1) }
-                        : emp
-                )));
-            }
-        };
-
-        socket.on('receive_message', onReceive);
-
-        return () => {
-            socket.off('receive_message', onReceive);
-        };
-    }, [currentUser.id, selectedEmployee]);
+    const loadChats = useCallback(async () => {
+        const params = roleFilter ? { role: roleFilter } : {};
+        const res = await api.get<ChatEmployee[]>('/chat/chats', { params });
+        setEmployees(res.data);
+    }, [roleFilter]);
 
     const loadEmployees = useCallback(async () => {
         const params = {
             ...(search ? { search } : {}),
             ...(roleFilter ? { role: roleFilter } : {}),
         };
-        const [employeesRes, chatsRes] = await Promise.all([
-            api.get<ChatEmployee[]>('/chat/employees', { params }),
-            api.get<ChatEmployee[]>('/chat/chats', { params: roleFilter ? { role: roleFilter } : {} }),
-        ]);
-
-        const unreadMap = new Map(chatsRes.data.map((e) => [e.id, e.unreadCount || 0]));
-        setEmployees(
-            employeesRes.data.map((employee) => ({
+        const res = await api.get<ChatEmployee[]>('/chat/employees', { params });
+        setEmployees((prev) => {
+            const historyMap = new Map(prev.map((item) => [item.id, item]));
+            return res.data.map((employee) => ({
+                ...historyMap.get(employee.id),
                 ...employee,
-                unreadCount: unreadMap.get(employee.id) ?? 0,
-            })),
-        );
+            }));
+        });
     }, [roleFilter, search]);
 
     const openConversation = useCallback(async (employee: ChatEmployee) => {
@@ -93,13 +67,69 @@ export default function ChatLayout({ currentUser, locale, roleFilter, autoStart,
 
     useEffect(() => {
         if (!started) return;
-        loadEmployees();
-    }, [loadEmployees, started]);
+        if (search.trim()) {
+            loadEmployees();
+            return;
+        }
+        loadChats();
+    }, [loadChats, loadEmployees, search, started]);
 
     useEffect(() => {
         if (!autoSelectFirst || !started || selectedEmployee || employees.length === 0) return;
         openConversation(employees[0]);
     }, [autoSelectFirst, employees, openConversation, selectedEmployee, started]);
+
+    useEffect(() => {
+        const socket = getSocket();
+        socket.emit('join_user_room', { employeeId: currentUser.id });
+
+        const onReceive = (message: ChatMessage) => {
+            const active = selectedRef.current;
+            const isForCurrentConversation =
+                active &&
+                ((message.senderId === active.id && message.receiverId === currentUser.id) ||
+                    (message.senderId === currentUser.id && message.receiverId === active.id));
+
+            if (isForCurrentConversation) {
+                setMessages((prev) => {
+                    if (prev.some((item) => item.id === message.id)) return prev;
+                    return [...prev, message];
+                });
+                if (message.senderId === active?.id) {
+                    socket.emit('message_read', { readerId: currentUser.id, senderId: active.id });
+                }
+            }
+
+            const chatPartnerId = message.senderId === currentUser.id ? message.receiverId : message.senderId;
+            setEmployees((prev) => {
+                const index = prev.findIndex((emp) => emp.id === chatPartnerId);
+                if (index === -1) return prev;
+
+                const next = [...prev];
+                const updated = {
+                    ...next[index],
+                    lastMessage: message.messageText,
+                    lastMessageAt: message.createdAt,
+                    unreadCount:
+                        message.receiverId === currentUser.id && active?.id !== chatPartnerId
+                            ? (next[index].unreadCount || 0) + 1
+                            : next[index].unreadCount || 0,
+                };
+                next.splice(index, 1);
+                return [updated, ...next];
+            });
+
+            if (message.receiverId === currentUser.id) {
+                loadChats();
+            }
+        };
+
+        socket.on('receive_message', onReceive);
+
+        return () => {
+            socket.off('receive_message', onReceive);
+        };
+    }, [currentUser.id, loadChats]);
 
     const sendMessage = async (messageText: string) => {
         if (!selectedEmployee) return;

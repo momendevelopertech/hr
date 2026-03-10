@@ -32,7 +32,9 @@
     "selectPrompt": "Select an employee to start chatting.",
     "employeeFallback": "Employee",
     "messagePlaceholder": "Type a message...",
-    "send": "Send"
+    "send": "Send",
+    "searchEmpty": "No matching employees found.",
+    "historyEmpty": "No previous conversations yet."
   },
   "auth": {
     "welcome": "Welcome back",

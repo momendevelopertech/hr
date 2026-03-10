@@ -42,23 +42,24 @@ export class ChatService {
     }
 
     async getEmployeeChats(employeeId: string, roleFilter?: string) {
-        const where: any = {
+        const userWhere: any = {
             isActive: true,
             id: { not: employeeId },
+            ...(roleFilter ? { role: roleFilter as any } : {}),
         };
-        if (roleFilter) {
-            where.role = roleFilter as any;
-        }
-        const [employees, unreadGrouped] = await Promise.all([
-            this.prisma.user.findMany({
-                where,
-                select: {
-                    id: true,
-                    fullName: true,
-                    jobTitle: true,
-                    governorate: true,
+
+        const [recentMessages, unreadGrouped, users] = await Promise.all([
+            this.prisma.message.findMany({
+                where: {
+                    OR: [{ senderId: employeeId }, { receiverId: employeeId }],
                 },
-                orderBy: { fullName: 'asc' },
+                select: {
+                    senderId: true,
+                    receiverId: true,
+                    messageText: true,
+                    createdAt: true,
+                },
+                orderBy: { createdAt: 'desc' },
             }),
             this.prisma.message.groupBy({
                 by: ['senderId'],
@@ -68,14 +69,52 @@ export class ChatService {
                 },
                 _count: { _all: true },
             }),
+            this.prisma.user.findMany({
+                where: userWhere,
+                select: {
+                    id: true,
+                    fullName: true,
+                    jobTitle: true,
+                    governorate: true,
+                },
+            }),
         ]);
 
+        const userMap = new Map<string, { id: string; fullName: string; jobTitle: string | null; governorate: 'CAIRO' | 'ALEXANDRIA' | null }>(
+            users.map((user) => [user.id, user]),
+        );
         const unreadMap = new Map(unreadGrouped.map((u) => [u.senderId, u._count._all]));
+        const latestByPartner = new Map<string, { messageText: string; createdAt: Date }>();
 
-        return employees.map((employee) => ({
-            ...employee,
-            unreadCount: unreadMap.get(employee.id) ?? 0,
-        }));
+        for (const message of recentMessages) {
+            const partnerId = message.senderId === employeeId ? message.receiverId : message.senderId;
+            if (!latestByPartner.has(partnerId)) {
+                latestByPartner.set(partnerId, {
+                    messageText: message.messageText,
+                    createdAt: message.createdAt,
+                });
+            }
+        }
+
+        const chatSummaries = Array.from(latestByPartner.entries())
+            .filter(([partnerId]) => userMap.has(partnerId))
+            .map(([partnerId, latest]) => {
+                const user = userMap.get(partnerId);
+                if (!user) return null;
+                return {
+                    id: user.id,
+                    fullName: user.fullName,
+                    jobTitle: user.jobTitle,
+                    governorate: user.governorate,
+                    unreadCount: unreadMap.get(partnerId) ?? 0,
+                    lastMessage: latest.messageText,
+                    lastMessageAt: latest.createdAt,
+                };
+            })
+            .filter((chat): chat is NonNullable<typeof chat> => !!chat)
+            .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime());
+
+        return chatSummaries;
     }
 
     async getEmployees(employeeId: string, search?: string, roleFilter?: string) {
