@@ -9,6 +9,24 @@ const withPWA = require('next-pwa')({
 const createNextIntlPlugin = require('next-intl/plugin');
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+
+const hasScheme = (value) => /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
+const isLocalHost = (value) => /^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value);
+
+const normalizeApiHost = (value) => {
+    const trimmed = (value || '').trim();
+    if (!trimmed || trimmed.startsWith('/')) return '';
+
+    const withoutProtocolRelative = trimmed.startsWith('//') ? `https:${trimmed}` : trimmed;
+    const withScheme = hasScheme(withoutProtocolRelative)
+        ? withoutProtocolRelative
+        : isLocalHost(withoutProtocolRelative)
+            ? `http://${withoutProtocolRelative}`
+            : `https://${withoutProtocolRelative}`;
+
+    return withScheme.replace(/\/$/, '').replace(/\/api$/, '');
+};
+
 const nextConfig = {
     reactStrictMode: true,
     images: {
@@ -16,12 +34,9 @@ const nextConfig = {
     },
     async rewrites() {
         const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || '';
-        const normalizedApiUrl = rawApiUrl
-            .trim()
-            .replace(/\/$/, '')
-            .replace(/\/api$/, '');
+        const normalizedApiUrl = normalizeApiHost(rawApiUrl);
 
-        if (!normalizedApiUrl || normalizedApiUrl.startsWith('/')) {
+        if (!normalizedApiUrl) {
             return [];
         }
 
