@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import csurf = require('csurf');
 import { HttpExceptionFilter } from './shared/http-exception.filter';
+import { corsOriginDelegate } from './shared/cors.util';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -35,7 +36,7 @@ async function bootstrap() {
 
     // CORS
     app.enableCors({
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: corsOriginDelegate,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
