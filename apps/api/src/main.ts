@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser = require('cookie-parser');
 import helmet from 'helmet';
@@ -60,7 +60,9 @@ async function bootstrap() {
     app.useWebSocketAdapter(new IoAdapter(app));
 
     // API prefix
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix('api', {
+        exclude: [{ path: '', method: RequestMethod.GET }],
+    });
 
     // Swagger docs
     if (!isProd) {
