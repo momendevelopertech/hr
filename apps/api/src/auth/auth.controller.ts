@@ -15,6 +15,7 @@ import { LoginDto, ChangePasswordDto, ResetPasswordRequestDto, ResetPasswordDto 
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { getCookieSettings } from '../shared/cookie-settings';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -46,27 +47,28 @@ export class AuthController {
             req.headers['user-agent'],
         );
         const ages = this.getCookieAges(rememberMe);
+        const { sameSite, secure } = getCookieSettings();
 
         // Set HttpOnly cookies
         res.cookie('access_token', result.accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            secure,
+            sameSite,
             maxAge: ages.accessMs,
         });
 
         res.cookie('refresh_token', result.refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            secure,
+            sameSite,
             maxAge: ages.refreshMs,
         });
 
         if (rememberMe) {
             res.cookie('remember_me', '1', {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
+                secure,
+                sameSite,
                 maxAge: ages.refreshMs,
             });
         } else {
@@ -97,18 +99,19 @@ export class AuthController {
         const rememberMe = req.cookies?.remember_me === '1';
         const tokens = await this.authService.refreshTokens(refreshToken, rememberMe);
         const ages = this.getCookieAges(rememberMe);
+        const { sameSite, secure } = getCookieSettings();
 
         res.cookie('access_token', tokens.accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            secure,
+            sameSite,
             maxAge: ages.accessMs,
         });
 
         res.cookie('refresh_token', tokens.refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            secure,
+            sameSite,
             maxAge: ages.refreshMs,
         });
 
