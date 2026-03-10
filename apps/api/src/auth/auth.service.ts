@@ -163,6 +163,9 @@ export class AuthService {
 
     async changePassword(userId: string, currentPassword: string, newPassword: string) {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
 
         const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
         if (!isValid) {
@@ -213,7 +216,7 @@ export class AuthService {
             where: { token: `reset_${token}` },
         });
 
-        if (!stored || stored.isRevoked) {
+        if (!stored || stored.isRevoked || stored.expiresAt < new Date()) {
             throw new BadRequestException('Invalid or expired reset token');
         }
 
