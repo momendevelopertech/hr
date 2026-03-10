@@ -125,7 +125,6 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             jobTitleAr: form.jobTitleAr,
             fingerprintId: form.fingerprintId || form.employeeNumber,
             role: form.role || 'EMPLOYEE',
-            password: form.password || 'SPHINX@2026',
         });
 
         const msg = locale === 'ar'
@@ -354,7 +353,13 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                 <option value="BRANCH_SECRETARY">{t('roles.branchSecretary')}</option>
                                 <option value="SUPPORT">{t('roles.support')}</option>
                             </select>
-                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('defaultPassword')} onChange={(e) => setForm((p: any) => ({ ...p, password: e.target.value }))} />
+                            <input
+                                className="rounded-xl border border-ink/20 bg-slate-50 px-3 py-2 text-ink/70"
+                                value="SPHINX@2026"
+                                readOnly
+                                aria-label={t('defaultPassword')}
+                                title={locale === 'ar' ? 'كلمة مرور ثابتة للعرض فقط' : 'Fixed default password for display only'}
+                            />
                         </div>
                         <div className="mt-4 flex justify-end gap-2">
                             <button className="btn-outline" onClick={() => setCreateOpen(false)}>{cancelLabel}</button>

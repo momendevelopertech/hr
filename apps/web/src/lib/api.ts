@@ -40,6 +40,19 @@ api.interceptors.response.use((response) => {
 }, async (error) => {
     const original = error?.config as any;
     const status = error?.response?.status;
+    const responseMessage = error?.response?.data?.message;
+
+    if (
+        status === 403 &&
+        responseMessage === 'Invalid CSRF token' &&
+        original &&
+        !original._csrfRetry &&
+        !original.url?.includes('/auth/csrf')
+    ) {
+        original._csrfRetry = true;
+        await api.get('/auth/csrf');
+        return api(original);
+    }
 
     if (
         status === 401 &&
