@@ -39,14 +39,40 @@ type RequestRow = {
     pdfUrl: string;
 };
 
+type LatenessItem = {
+    id: string;
+    date: string;
+    minutesLate: number;
+    convertedToPermission: boolean;
+    permissionId?: string | null;
+};
+
+type LatenessResponse = {
+    items: LatenessItem[];
+    totalCount: number;
+    totalMinutes: number;
+    deductionDays: number;
+    cycleStart: string;
+    cycleEnd: string;
+};
+
 export default function RequestsClient({ locale }: { locale: string }) {
     const t = useTranslations('requestsPage');
     const { user, ready } = useRequireAuth(locale);
     const apiBaseUrl = getPublicApiUrl();
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [permissions, setPermissions] = useState<PermissionRequest[]>([]);
+    const [latenessItems, setLatenessItems] = useState<LatenessItem[]>([]);
+    const [latenessSummary, setLatenessSummary] = useState({
+        totalCount: 0,
+        totalMinutes: 0,
+        deductionDays: 0,
+        cycleStart: '',
+        cycleEnd: '',
+    });
+    const [latenessLoading, setLatenessLoading] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'all' | 'leave' | 'absence' | 'mission' | 'permission'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'leave' | 'absence' | 'mission' | 'permission' | 'lateness'>('all');
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
     const [filters, setFilters] = useState({
@@ -55,6 +81,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
         from: '',
         to: '',
     });
+    const [salary, setSalary] = useState('');
 
     const dateLocale = useMemo(() => (locale === 'ar' ? 'ar-EG' : 'en-US'), [locale]);
 
@@ -76,6 +103,28 @@ export default function RequestsClient({ locale }: { locale: string }) {
         if (!ready) return;
         fetchAll();
     }, [fetchAll, ready]);
+
+    const fetchLateness = useCallback(async () => {
+        setLatenessLoading(true);
+        try {
+            const res = await api.get<LatenessResponse>('/lateness');
+            setLatenessItems(res.data.items || []);
+            setLatenessSummary({
+                totalCount: res.data.totalCount || 0,
+                totalMinutes: res.data.totalMinutes || 0,
+                deductionDays: res.data.deductionDays || 0,
+                cycleStart: res.data.cycleStart,
+                cycleEnd: res.data.cycleEnd,
+            });
+        } finally {
+            setLatenessLoading(false);
+        }
+    }, []);
+
+    const convertLateness = async (id: string) => {
+        await api.post(`/lateness/${id}/convert`);
+        await fetchLateness();
+    };
 
     const canManage = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGER';
     const canAdmin = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
@@ -174,6 +223,13 @@ export default function RequestsClient({ locale }: { locale: string }) {
         }
     }, [page, totalPages]);
 
+    useEffect(() => {
+        if (!ready) return;
+        if (activeTab === 'lateness') {
+            fetchLateness();
+        }
+    }, [activeTab, fetchLateness, ready]);
+
     const onApprove = (row: RequestRow) => {
         if (row.requestType === 'leave') return approveLeave(row.id);
         return approvePermission(row.id);
@@ -198,13 +254,21 @@ export default function RequestsClient({ locale }: { locale: string }) {
         return <PageLoader text={t('loading')} />;
     }
 
-    const tabs: Array<{ key: 'all' | 'leave' | 'permission' | 'absence' | 'mission'; label: string; count: number }> = [
+    const tabs: Array<{ key: 'all' | 'leave' | 'permission' | 'absence' | 'mission' | 'lateness'; label: string; count: number }> = [
         { key: 'all', label: t('tabAll'), count: rowsByTab.all.length },
         { key: 'permission', label: t('tabPermission'), count: permissionRows.length },
         { key: 'leave', label: t('tabLeave'), count: leaveOnlyRows.length },
         { key: 'absence', label: t('tabAbsence'), count: absenceRows.length },
         { key: 'mission', label: t('tabMission'), count: missionRows.length },
+        { key: 'lateness', label: t('tabLateness'), count: latenessSummary.totalCount },
     ];
+
+    const tableAlignClass = locale === 'ar' ? 'text-right' : 'text-left';
+    const cycleLabel = latenessSummary.cycleStart && latenessSummary.cycleEnd
+        ? `${new Date(latenessSummary.cycleStart).toLocaleDateString(dateLocale)} - ${new Date(latenessSummary.cycleEnd).toLocaleDateString(dateLocale)}`
+        : '';
+    const salaryValue = Number(salary) || 0;
+    const estimatedDeduction = salaryValue > 0 ? (salaryValue / 30) * (latenessSummary.deductionDays || 0) : 0;
 
     return (
         <main className="px-4 pb-12 sm:px-6">
@@ -237,122 +301,215 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     ))}
                 </div>
 
-                <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-                    <input
-                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                        placeholder={t('search')}
-                        value={filters.search}
-                        onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                    />
-                    <select
-                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                        value={filters.status}
-                        onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
-                    >
-                        <option value="">{t('allStatuses')}</option>
-                        <option value="PENDING">{enumLabels.status('PENDING', locale as 'en' | 'ar')}</option>
-                        <option value="MANAGER_APPROVED">{enumLabels.status('MANAGER_APPROVED', locale as 'en' | 'ar')}</option>
-                        <option value="HR_APPROVED">{enumLabels.status('HR_APPROVED', locale as 'en' | 'ar')}</option>
-                        <option value="REJECTED">{enumLabels.status('REJECTED', locale as 'en' | 'ar')}</option>
-                        <option value="CANCELLED">{enumLabels.status('CANCELLED', locale as 'en' | 'ar')}</option>
-                    </select>
-                    <input
-                        type="date"
-                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                        value={filters.from}
-                        onChange={(e) => setFilters((prev) => ({ ...prev, from: e.target.value }))}
-                    />
-                    <input
-                        type="date"
-                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                        value={filters.to}
-                        onChange={(e) => setFilters((prev) => ({ ...prev, to: e.target.value }))}
-                    />
-                    <button
-                        className="btn-outline"
-                        onClick={() => setFilters({ status: '', search: '', from: '', to: '' })}
-                    >
-                        {t('resetFilters')}
-                    </button>
-                </div>
-
-                <div className="mt-4 overflow-x-auto">
-                    <table className={`min-w-[980px] w-full text-sm ${locale === 'ar' ? 'text-right' : 'text-left'}`}>
-                        <thead className={locale === 'ar' ? 'text-right' : 'text-left'}>
-                            <tr className="border-b border-ink/10">
-                                <th className="py-2">{t('employee')}</th>
-                                <th className="py-2">{t('requestType')}</th>
-                                <th className="py-2">{t('details')}</th>
-                                <th className="py-2">{t('date')}</th>
-                                <th className="py-2">{t('status')}</th>
-                                <th className="py-2">{t('actions')}</th>
-                            </tr>
-                        </thead>
-                        <tbody className={locale === 'ar' ? 'text-right' : 'text-left'}>
-                            {pagedRows.map((row) => (
-                                <tr key={`${row.requestType}-${row.id}`} className="border-b border-ink/5">
-                                    <td className="py-2">
-                                        <p className="font-medium">{row.employeeName}</p>
-                                        <p className="text-xs text-ink/60">#{row.employeeNumber}</p>
-                                    </td>
-                                    <td className="py-2">{row.subtype}</td>
-                                    <td className="py-2">{row.details}</td>
-                                    <td className="py-2">{new Date(row.requestDate).toLocaleDateString(dateLocale)}</td>
-                                    <td className="py-2">
-                                        <span className="pill bg-ink/10 text-ink">{enumLabels.status(row.status, locale as 'en' | 'ar')}</span>
-                                    </td>
-                                    <td className="py-2">
-                                        <div className="flex flex-wrap gap-2">
-                                            <a className="btn-outline" href={row.pdfUrl} target="_blank" rel="noreferrer noopener">
-                                                {t('printPdf')}
-                                            </a>
-                                            {row.status === 'PENDING' && (
-                                                <button className="btn-outline" onClick={() => onCancel(row)}>
-                                                    {t('cancel')}
-                                                </button>
-                                            )}
-                                            {canManage && row.status === 'PENDING' && (
-                                                <>
-                                                    <button className="btn-primary" onClick={() => onApprove(row)}>
-                                                        {t('approve')}
-                                                    </button>
-                                                    <button className="btn-secondary" onClick={() => onReject(row)}>
-                                                        {t('reject')}
-                                                    </button>
-                                                </>
-                                            )}
-                                            {canAdmin && (
-                                                <button className="btn-outline" onClick={() => onDelete(row)}>
-                                                    {t('delete')}
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {pagedRows.length === 0 && (
-                                <tr>
-                                    <td className="py-6 text-center text-ink/60" colSpan={6}>
-                                        {t('noResults')}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between gap-3">
-                    <p className="text-sm text-ink/60">{t('records', { count: total })}</p>
-                    <div className="flex items-center gap-2">
-                        <button className="btn-outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                            {t('prev')}
-                        </button>
-                        <p className="text-sm">{t('pageIndicator', { page, totalPages })}</p>
-                        <button className="btn-outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-                            {t('next')}
+                {activeTab !== 'lateness' && (
+                    <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+                        <input
+                            className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                            placeholder={t('search')}
+                            value={filters.search}
+                            onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                        />
+                        <select
+                            className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                            value={filters.status}
+                            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+                        >
+                            <option value="">{t('allStatuses')}</option>
+                            <option value="PENDING">{enumLabels.status('PENDING', locale as 'en' | 'ar')}</option>
+                            <option value="MANAGER_APPROVED">{enumLabels.status('MANAGER_APPROVED', locale as 'en' | 'ar')}</option>
+                            <option value="HR_APPROVED">{enumLabels.status('HR_APPROVED', locale as 'en' | 'ar')}</option>
+                            <option value="REJECTED">{enumLabels.status('REJECTED', locale as 'en' | 'ar')}</option>
+                            <option value="CANCELLED">{enumLabels.status('CANCELLED', locale as 'en' | 'ar')}</option>
+                        </select>
+                        <input
+                            type="date"
+                            className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                            value={filters.from}
+                            onChange={(e) => setFilters((prev) => ({ ...prev, from: e.target.value }))}
+                        />
+                        <input
+                            type="date"
+                            className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                            value={filters.to}
+                            onChange={(e) => setFilters((prev) => ({ ...prev, to: e.target.value }))}
+                        />
+                        <button
+                            className="btn-outline"
+                            onClick={() => setFilters({ status: '', search: '', from: '', to: '' })}
+                        >
+                            {t('resetFilters')}
                         </button>
                     </div>
-                </div>
+                )}
+
+                {activeTab !== 'lateness' ? (
+                    <div className="mt-4 overflow-x-auto">
+                        <table className={`min-w-[980px] w-full text-sm ${tableAlignClass}`}>
+                            <thead className={tableAlignClass}>
+                                <tr className="border-b border-ink/10">
+                                    <th className="py-2">{t('employee')}</th>
+                                    <th className="py-2">{t('requestType')}</th>
+                                    <th className="py-2">{t('details')}</th>
+                                    <th className="py-2">{t('date')}</th>
+                                    <th className="py-2">{t('status')}</th>
+                                    <th className="py-2">{t('actions')}</th>
+                                </tr>
+                            </thead>
+                            <tbody className={tableAlignClass}>
+                                {pagedRows.map((row) => (
+                                    <tr key={`${row.requestType}-${row.id}`} className="border-b border-ink/5">
+                                        <td className="py-2">
+                                            <p className="font-medium">{row.employeeName}</p>
+                                            <p className="text-xs text-ink/60">#{row.employeeNumber}</p>
+                                        </td>
+                                        <td className="py-2">{row.subtype}</td>
+                                        <td className="py-2">{row.details}</td>
+                                        <td className="py-2">{new Date(row.requestDate).toLocaleDateString(dateLocale)}</td>
+                                        <td className="py-2">
+                                            <span className="pill bg-ink/10 text-ink">{enumLabels.status(row.status, locale as 'en' | 'ar')}</span>
+                                        </td>
+                                        <td className="py-2">
+                                            <div className="flex flex-wrap gap-2">
+                                                <a className="btn-outline" href={row.pdfUrl} target="_blank" rel="noreferrer noopener">
+                                                    {t('printPdf')}
+                                                </a>
+                                                {row.status === 'PENDING' && (
+                                                    <button className="btn-outline" onClick={() => onCancel(row)}>
+                                                        {t('cancel')}
+                                                    </button>
+                                                )}
+                                                {canManage && row.status === 'PENDING' && (
+                                                    <>
+                                                        <button className="btn-primary" onClick={() => onApprove(row)}>
+                                                            {t('approve')}
+                                                        </button>
+                                                        <button className="btn-secondary" onClick={() => onReject(row)}>
+                                                            {t('reject')}
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {canAdmin && (
+                                                    <button className="btn-outline" onClick={() => onDelete(row)}>
+                                                        {t('delete')}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {pagedRows.length === 0 && (
+                                    <tr>
+                                        <td className="py-6 text-center text-ink/60" colSpan={6}>
+                                            {t('noResults')}
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="mt-4 space-y-4">
+                        <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h3 className="text-base font-semibold">{t('latenessTitle')}</h3>
+                                {cycleLabel && <span className="text-sm text-ink/60">{t('latenessCycle', { range: cycleLabel })}</span>}
+                            </div>
+                            <div className="mt-3 grid gap-3 md:grid-cols-4">
+                                <div className="rounded-xl border border-ink/10 bg-white p-3">
+                                    <p className="text-xs text-ink/60">{t('latenessCount')}</p>
+                                    <p className="text-lg font-semibold">{latenessSummary.totalCount}</p>
+                                </div>
+                                <div className="rounded-xl border border-ink/10 bg-white p-3">
+                                    <p className="text-xs text-ink/60">{t('latenessMinutes')}</p>
+                                    <p className="text-lg font-semibold">{latenessSummary.totalMinutes}</p>
+                                </div>
+                                <div className="rounded-xl border border-ink/10 bg-white p-3">
+                                    <p className="text-xs text-ink/60">{t('latenessDeduction')}</p>
+                                    <p className="text-lg font-semibold">{latenessSummary.deductionDays}</p>
+                                </div>
+                                <div className="rounded-xl border border-ink/10 bg-white p-3">
+                                    <label className="text-xs text-ink/60">{t('latenessSalary')}</label>
+                                    <input
+                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2 text-sm"
+                                        type="number"
+                                        min={0}
+                                        placeholder="0"
+                                        value={salary}
+                                        onChange={(e) => setSalary(e.target.value)}
+                                    />
+                                    <p className="mt-2 text-sm text-ink/70">
+                                        {t('latenessEstimate')}: <span className="font-semibold">
+                                            {estimatedDeduction ? estimatedDeduction.toLocaleString(dateLocale) : '0'}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <p className="mt-3 text-xs text-ink/50">{t('latenessPolicy')}</p>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className={`min-w-[720px] w-full text-sm ${tableAlignClass}`}>
+                                <thead className={tableAlignClass}>
+                                    <tr className="border-b border-ink/10">
+                                        <th className="py-2">{t('latenessDate')}</th>
+                                        <th className="py-2">{t('latenessLateMinutes')}</th>
+                                        <th className="py-2">{t('latenessStatus')}</th>
+                                        <th className="py-2">{t('latenessAction')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className={tableAlignClass}>
+                                    {latenessLoading && (
+                                        <tr>
+                                            <td className="py-6 text-center text-ink/60" colSpan={4}>
+                                                {t('latenessLoading')}
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {!latenessLoading && latenessItems.length === 0 && (
+                                        <tr>
+                                            <td className="py-6 text-center text-ink/60" colSpan={4}>
+                                                {t('latenessEmpty')}
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {!latenessLoading && latenessItems.map((item) => (
+                                        <tr key={item.id} className="border-b border-ink/5">
+                                            <td className="py-2">{new Date(item.date).toLocaleDateString(dateLocale)}</td>
+                                            <td className="py-2">{item.minutesLate}</td>
+                                            <td className="py-2">
+                                                {item.convertedToPermission ? t('latenessConverted') : t('latenessNotConverted')}
+                                            </td>
+                                            <td className="py-2">
+                                                <button
+                                                    className="btn-outline"
+                                                    disabled={item.convertedToPermission}
+                                                    onClick={() => convertLateness(item.id)}
+                                                >
+                                                    {item.convertedToPermission ? t('latenessConverted') : t('latenessConvert')}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab !== 'lateness' && (
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                        <p className="text-sm text-ink/60">{t('records', { count: total })}</p>
+                        <div className="flex items-center gap-2">
+                            <button className="btn-outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                                {t('prev')}
+                            </button>
+                            <p className="text-sm">{t('pageIndicator', { page, totalPages })}</p>
+                            <button className="btn-outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                                {t('next')}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </section>
         </main>
     );

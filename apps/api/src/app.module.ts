@@ -20,6 +20,7 @@ import { RedisModule } from './redis/redis.module';
 import { ChatModule } from './chat/chat.module';
 import { RootController } from './root.controller';
 import { SettingsModule } from './settings/settings.module';
+import { LatenessModule } from './lateness/lateness.module';
 
 @Module({
     imports: [
@@ -49,6 +50,7 @@ import { SettingsModule } from './settings/settings.module';
         CloudinaryModule,
         RedisModule,
         ChatModule,
+        LatenessModule,
     ],
     controllers: [RootController],
 })

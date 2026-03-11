@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { useTranslations } from 'next-intl';
 
-type RequestType = 'leave' | 'absence' | 'permission' | 'mission' | 'note';
+type RequestType = 'leave' | 'absence' | 'permission' | 'mission' | 'note' | 'lateness';
 
 type Props = {
     open: boolean;
@@ -121,6 +121,34 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
         return tm('permissionConfirmDeparture', { time });
     }, [date, formData.durationHours, formData.durationMinutes, formData.permissionScope, locale, schedule, tm, type]);
 
+    const latenessPreview = useMemo(() => {
+        if (!date || type !== 'lateness') return null;
+        const minutesLate = Number(formData.latenessMinutes) || 0;
+        if (minutesLate <= 0) return null;
+        const dateLocale = locale === 'ar' ? arSA : enUS;
+        const startDate = parseDateOnly(schedule.ramadanStartDate);
+        const endDate = parseDateOnly(schedule.ramadanEndDate);
+        const current = dateOnly(date);
+        const isRamadan =
+            schedule.activeMode === 'RAMADAN' &&
+            startDate &&
+            endDate &&
+            current >= startDate &&
+            current <= endDate;
+        const isSaturday = date.getDay() === 6;
+        const startTime = isRamadan
+            ? schedule.ramadanStart
+            : isSaturday
+                ? schedule.saturdayStart
+                : schedule.weekdayStart;
+        const base = new Date(date);
+        const [startHour, startMinute] = startTime.split(':').map((part) => Number(part));
+        base.setHours(startHour || 0, startMinute || 0, 0, 0);
+        const arrival = addMinutes(base, minutesLate);
+        const time = format(arrival, 'h:mm a', { locale: dateLocale });
+        return tm('latenessConfirm', { time });
+    }, [date, formData.latenessMinutes, locale, schedule, tm, type]);
+
     if (!open) return null;
 
     const update = (key: string, value: any) => setFormData((prev) => ({ ...prev, [key]: value }));
@@ -189,6 +217,19 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                 });
             }
 
+            if (type === 'lateness') {
+                const minutesLate = Math.max(0, Math.round(Number(formData.latenessMinutes || 0)));
+                if (!minutesLate) {
+                    toast.error(tm('latenessMinutesError'));
+                    setLoading(false);
+                    return;
+                }
+                await api.post('/lateness', {
+                    date: dateValue,
+                    minutesLate,
+                });
+            }
+
             onSubmitted();
             onClose();
             setType(null);
@@ -196,6 +237,8 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
 
             if (type === 'note') {
                 toast.success(tm('noteSaved'));
+            } else if (type === 'lateness') {
+                toast.success(tm('latenessSaved'));
             } else {
                 toast.success(tm('pendingToast'));
             }
@@ -222,6 +265,9 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                         <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{tm('pickTypeTitle')}</p>
                         <button className={`btn-outline w-full ${type === 'permission' ? 'bg-ink/10' : ''}`} onClick={() => setType('permission')}>
                             {tm('personalPermission')}
+                        </button>
+                        <button className={`btn-outline w-full ${type === 'lateness' ? 'bg-ink/10' : ''}`} onClick={() => setType('lateness')}>
+                            {tm('latenessRequest')}
                         </button>
                         <button className={`btn-outline w-full ${type === 'leave' ? 'bg-ink/10' : ''}`} onClick={() => setType('leave')}>
                             {tm('leaveRequest')}
@@ -366,6 +412,41 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                             {permissionPreview && (
                                 <div className="rounded-xl border border-ink/10 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                                     {permissionPreview}
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {type === 'lateness' && (
+                        <>
+                            <div className="space-y-2">
+                                <p className="text-sm text-ink/70">{tm('latenessQuick')}</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {[2, 5, 10, 15, 30].map((minutes) => (
+                                        <button
+                                            key={minutes}
+                                            className={`btn-outline ${Number(formData.latenessMinutes) === minutes ? 'bg-ink/10' : ''}`}
+                                            onClick={() => update('latenessMinutes', minutes)}
+                                        >
+                                            {tm('latenessMinutesValue', { minutes })}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <label className="text-sm">
+                                {tm('latenessMinutes')}
+                                <input
+                                    type="number"
+                                    min={1}
+                                    className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                    placeholder={tm('durationMinutes')}
+                                    value={formData.latenessMinutes || ''}
+                                    onChange={(e) => update('latenessMinutes', e.target.value)}
+                                />
+                            </label>
+                            {latenessPreview && (
+                                <div className="rounded-xl border border-ink/10 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                    {latenessPreview}
                                 </div>
                             )}
                         </>

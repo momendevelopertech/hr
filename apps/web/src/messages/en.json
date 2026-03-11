@@ -132,7 +132,14 @@
     "noteBody": "Note details",
     "noteTitlePlaceholder": "Add a short title",
     "noteBodyPlaceholder": "Write your note",
-    "noteSaved": "Note saved"
+    "noteSaved": "Note saved",
+    "latenessRequest": "Late arrival",
+    "latenessQuick": "Quick minutes",
+    "latenessMinutes": "Minutes late",
+    "latenessMinutesValue": "{minutes} min",
+    "latenessMinutesError": "Please enter minutes late.",
+    "latenessConfirm": "Arrival will be recorded at {time}.",
+    "latenessSaved": "Lateness recorded."
   },
   "eventDetails": {
     "title": "Request details",
@@ -295,6 +302,7 @@
     "tabForm": "Forms",
     "tabAbsence": "Absence with permission",
     "tabMission": "Mission",
+    "tabLateness": "My Lateness",
     "rowsPerPage": "Rows per page:",
     "search": "Search by employee or request",
     "allStatuses": "All statuses",
@@ -319,7 +327,24 @@
     "leaveRequests": "Leave Requests",
     "permissionRequests": "Permission Requests",
     "formSubmissions": "Form Submissions",
-    "duplicate": "Duplicate"
+    "duplicate": "Duplicate",
+    "latenessTitle": "My Lateness",
+    "latenessCycle": "Cycle: {range}",
+    "latenessCount": "Total delays",
+    "latenessMinutes": "Total minutes",
+    "latenessDeduction": "Deduction days",
+    "latenessSalary": "Monthly salary",
+    "latenessEstimate": "Estimated deduction",
+    "latenessPolicy": "Policy: 1st delay = 1/4 day, 2nd = 1/2 day, 3rd+ = 1 day (max).",
+    "latenessDate": "Date",
+    "latenessLateMinutes": "Late (min)",
+    "latenessStatus": "Status",
+    "latenessAction": "Action",
+    "latenessConvert": "Convert to permission",
+    "latenessConverted": "Converted",
+    "latenessNotConverted": "Not converted",
+    "latenessEmpty": "No lateness records in this cycle.",
+    "latenessLoading": "Loading lateness..."
   }
   ,
   "workSchedule": {

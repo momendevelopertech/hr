@@ -134,7 +134,14 @@
     "noteBody": "تفاصيل الملاحظة",
     "noteTitlePlaceholder": "اكتب عنوانًا قصيرًا",
     "noteBodyPlaceholder": "اكتب الملاحظة هنا",
-    "noteSaved": "تم حفظ الملاحظة"
+    "noteSaved": "تم حفظ الملاحظة",
+    "latenessRequest": "تسجيل تأخير",
+    "latenessQuick": "اختصارات الوقت",
+    "latenessMinutes": "عدد دقائق التأخير",
+    "latenessMinutesValue": "{minutes} دقيقة",
+    "latenessMinutesError": "يرجى إدخال دقائق التأخير.",
+    "latenessConfirm": "سيتم تسجيل الوصول الساعة {time}.",
+    "latenessSaved": "تم تسجيل التأخير."
   },
   "eventDetails": {
     "title": "تفاصيل الطلب",
@@ -297,6 +304,7 @@
     "tabForm": "النماذج",
     "tabAbsence": "غياب بإذن",
     "tabMission": "مأمورية",
+    "tabLateness": "تأخيراتى",
     "rowsPerPage": "عدد الصفوف:",
     "search": "بحث بالموظف أو نوع الطلب",
     "allStatuses": "كل الحالات",
@@ -321,7 +329,24 @@
     "leaveRequests": "طلبات الإجازات",
     "permissionRequests": "طلبات الأذونات",
     "formSubmissions": "طلبات النماذج",
-    "duplicate": "نسخ"
+    "duplicate": "نسخ",
+    "latenessTitle": "تأخيراتى",
+    "latenessCycle": "الدورة: {range}",
+    "latenessCount": "إجمالي التأخيرات",
+    "latenessMinutes": "إجمالي الدقائق",
+    "latenessDeduction": "أيام الخصم",
+    "latenessSalary": "الراتب الشهري",
+    "latenessEstimate": "الخصم المتوقع",
+    "latenessPolicy": "اللائحة: أول تأخير ربع يوم، ثاني تأخير نصف يوم، ثالث تأخير يوم كامل (حد أقصى).",
+    "latenessDate": "التاريخ",
+    "latenessLateMinutes": "دقائق التأخير",
+    "latenessStatus": "الحالة",
+    "latenessAction": "الإجراء",
+    "latenessConvert": "تحويل إلى إذن",
+    "latenessConverted": "تم التحويل",
+    "latenessNotConverted": "غير محول",
+    "latenessEmpty": "لا توجد تأخيرات في هذه الدورة.",
+    "latenessLoading": "جاري تحميل التأخيرات..."
   }
   ,
   "workSchedule": {
