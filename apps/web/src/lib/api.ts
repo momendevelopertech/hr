@@ -2,6 +2,7 @@ import axios from 'axios';
 import { getPublicApiUrl } from './public-urls';
 
 let csrfToken: string | null = null;
+let refreshPromise: Promise<void> | null = null;
 
 export class AppApiError extends Error {
     constructor(
@@ -23,6 +24,17 @@ const api = axios.create({
     withCredentials: true,
     timeout: 15000,
 });
+
+const ensureRefresh = async () => {
+    if (!refreshPromise) {
+        refreshPromise = api.post('/auth/refresh', {})
+            .then(() => undefined)
+            .finally(() => {
+                refreshPromise = null;
+            });
+    }
+    return refreshPromise;
+};
 
 api.interceptors.request.use((config) => {
     if (csrfToken) {
@@ -63,7 +75,7 @@ api.interceptors.response.use((response) => {
         !original.url?.includes('/auth/csrf')
     ) {
         original._retry = true;
-        await api.post('/auth/refresh', {});
+        await ensureRefresh();
         return api(original);
     }
 
