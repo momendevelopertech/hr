@@ -192,6 +192,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
             absence: absenceRows,
             mission: missionRows,
             permission: permissionRows,
+            lateness: [] as RequestRow[],
         }),
         [absenceRows, leaveOnlyRows, missionRows, permissionRows],
     );

@@ -205,7 +205,7 @@ model Lateness {
   date                  DateTime
   minutesLate           Int
   convertedToPermission Boolean            @default(false)
-  permissionId          String?
+  permissionId          String?            @unique
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 
