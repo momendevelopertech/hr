@@ -104,10 +104,39 @@ export default function RequestsClient({ locale }: { locale: string }) {
         fetchAll();
     }, [fetchAll, ready]);
 
+    const formatDateOnly = (value: Date) => {
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const getCycleRange = (value: Date) => {
+        const day = value.getDate();
+        let start: Date;
+        let end: Date;
+
+        if (day >= 11) {
+            start = new Date(value.getFullYear(), value.getMonth(), 11);
+            end = new Date(value.getFullYear(), value.getMonth() + 1, 10);
+        } else {
+            start = new Date(value.getFullYear(), value.getMonth() - 1, 11);
+            end = new Date(value.getFullYear(), value.getMonth(), 10);
+        }
+
+        return { start, end };
+    };
+
     const fetchLateness = useCallback(async () => {
         setLatenessLoading(true);
         try {
-            const res = await api.get<LatenessResponse>('/lateness');
+            const { start, end } = getCycleRange(new Date());
+            const res = await api.get<LatenessResponse>('/lateness', {
+                params: {
+                    from: formatDateOnly(start),
+                    to: formatDateOnly(end),
+                },
+            });
             setLatenessItems(res.data.items || []);
             setLatenessSummary({
                 totalCount: res.data.totalCount || 0,
