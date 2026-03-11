@@ -419,6 +419,7 @@ model WorkScheduleSettings {
   ramadanEnd       String           @default("14:30")
   ramadanStartDate String?
   ramadanEndDate   String?
+  pwaInstallEnabled Boolean         @default(false)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 }

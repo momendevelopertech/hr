@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: Prisma.WorkScheduleSettingsCreateInput = {
     ramadanEnd: '14:30',
     ramadanStartDate: null,
     ramadanEndDate: null,
+    pwaInstallEnabled: false,
 };
 
 const getActiveMode = (
@@ -47,6 +48,10 @@ const toCreateInput = (
     };
     const activeMode = getActiveMode(data.activeMode);
     if (activeMode) result.activeMode = activeMode;
+    const pwaValue = (data as Record<string, unknown>).pwaInstallEnabled;
+    if (typeof pwaValue === 'boolean') {
+        result.pwaInstallEnabled = pwaValue;
+    }
     assignIfString('weekdayStart');
     assignIfString('weekdayEnd');
     assignIfString('saturdayStart');

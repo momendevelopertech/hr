@@ -17,7 +17,9 @@
     "chat": "Chat",
     "themeLight": "Light",
     "themeDark": "Dark",
-    "settings": "Settings"
+    "settings": "Settings",
+    "installApp": "Install App",
+    "installIosHint": "iOS: Share → Add to Home Screen"
   },
   "chat": {
     "loading": "Loading chat...",
@@ -332,6 +334,9 @@
     "duplicate": "Duplicate",
     "latenessTitle": "My Lateness",
     "latenessCycle": "Cycle: {range}",
+    "prevCycle": "Previous",
+    "currentCycle": "Current",
+    "nextCycle": "Next",
     "latenessCount": "Total delays",
     "latenessMinutes": "Total minutes",
     "latenessDeduction": "Deduction days",
@@ -367,6 +372,10 @@
     "endTime": "End time",
     "save": "Save",
     "saving": "Saving...",
-    "saved": "Settings updated"
+    "saved": "Settings updated",
+    "pwaTitle": "PWA Install Button",
+    "pwaDescription": "Control whether users can see the install button.",
+    "pwaInstallLabel": "Show install button to all users",
+    "pwaInstallHint": "Shown only when the browser supports installation; iOS shows instructions instead."
   }
 }

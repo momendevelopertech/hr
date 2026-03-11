@@ -17,7 +17,9 @@
     "chat": "الدردشة",
     "themeLight": "فاتح",
     "themeDark": "داكن",
-    "settings": "الإعدادات"
+    "settings": "الإعدادات",
+    "installApp": "تثبيت التطبيق",
+    "installIosHint": "على iOS: مشاركة ثم أضف إلى الشاشة الرئيسية"
   },
   "chat": {
     "loading": "جاري تحميل المحادثات...",
@@ -334,6 +336,9 @@
     "duplicate": "نسخ",
     "latenessTitle": "تأخيراتى",
     "latenessCycle": "الدورة: {range}",
+    "prevCycle": "السابقة",
+    "currentCycle": "الحالية",
+    "nextCycle": "التالية",
     "latenessCount": "إجمالي التأخيرات",
     "latenessMinutes": "إجمالي الدقائق",
     "latenessDeduction": "أيام الخصم",
@@ -369,7 +374,11 @@
     "endTime": "وقت النهاية",
     "save": "حفظ",
     "saving": "جاري الحفظ...",
-    "saved": "تم تحديث الإعدادات"
+    "saved": "تم تحديث الإعدادات",
+    "pwaTitle": "زر تثبيت التطبيق",
+    "pwaDescription": "تحكم في ظهور زر التثبيت لكل المستخدمين.",
+    "pwaInstallLabel": "إظهار زر التثبيت لكل المستخدمين",
+    "pwaInstallHint": "يظهر فقط عند دعم المتصفح للتثبيت، وعلى iOS تظهر رسالة إرشادية."
   }
 }
 

@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { addMonths } from 'date-fns';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
@@ -71,6 +72,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
         cycleEnd: '',
     });
     const [latenessLoading, setLatenessLoading] = useState(false);
+    const [cycleBaseDate, setCycleBaseDate] = useState(new Date());
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'all' | 'leave' | 'absence' | 'mission' | 'permission' | 'lateness'>('all');
     const [page, setPage] = useState(1);
@@ -130,7 +132,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
     const fetchLateness = useCallback(async () => {
         setLatenessLoading(true);
         try {
-            const { start, end } = getCycleRange(new Date());
+            const { start, end } = getCycleRange(cycleBaseDate);
             const res = await api.get<LatenessResponse>('/lateness', {
                 params: {
                     from: formatDateOnly(start),
@@ -148,7 +150,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
         } finally {
             setLatenessLoading(false);
         }
-    }, []);
+    }, [cycleBaseDate]);
 
     useEffect(() => {
         if (!ready) return;
@@ -284,6 +286,12 @@ export default function RequestsClient({ locale }: { locale: string }) {
         if (row.requestType === 'leave') return deleteLeave(row.id);
         return deletePermission(row.id);
     };
+
+    const isCurrentCycle = useMemo(() => {
+        const current = getCycleRange(new Date());
+        const selected = getCycleRange(cycleBaseDate);
+        return formatDateOnly(current.start) === formatDateOnly(selected.start);
+    }, [cycleBaseDate]);
 
     if (!ready || loading) {
         return <PageLoader text={t('loading')} />;
@@ -447,7 +455,18 @@ export default function RequestsClient({ locale }: { locale: string }) {
                         <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <h3 className="text-base font-semibold">{t('latenessTitle')}</h3>
-                                {cycleLabel && <span className="text-sm text-ink/60">{t('latenessCycle', { range: cycleLabel })}</span>}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {cycleLabel && <span className="text-sm text-ink/60">{t('latenessCycle', { range: cycleLabel })}</span>}
+                                    <button className="btn-outline text-xs" onClick={() => setCycleBaseDate(addMonths(cycleBaseDate, -1))}>
+                                        {t('prevCycle')}
+                                    </button>
+                                    <button className="btn-outline text-xs" onClick={() => setCycleBaseDate(new Date())} disabled={isCurrentCycle}>
+                                        {t('currentCycle')}
+                                    </button>
+                                    <button className="btn-outline text-xs" onClick={() => setCycleBaseDate(addMonths(cycleBaseDate, 1))} disabled={isCurrentCycle}>
+                                        {t('nextCycle')}
+                                    </button>
+                                </div>
                             </div>
                             <div className="mt-3 grid gap-3 md:grid-cols-4">
                                 <div className="rounded-xl border border-ink/10 bg-white p-3">

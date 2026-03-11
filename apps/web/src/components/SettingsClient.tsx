@@ -19,6 +19,7 @@ type WorkScheduleSettings = {
     ramadanEnd: string;
     ramadanStartDate: string | null;
     ramadanEndDate: string | null;
+    pwaInstallEnabled: boolean;
 };
 
 const DEFAULT_SETTINGS: WorkScheduleSettings = {
@@ -32,6 +33,7 @@ const DEFAULT_SETTINGS: WorkScheduleSettings = {
     ramadanEnd: '14:30',
     ramadanStartDate: null,
     ramadanEndDate: null,
+    pwaInstallEnabled: false,
 };
 
 export default function SettingsClient({ locale }: { locale: string }) {
@@ -99,7 +101,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                     <p className="text-sm text-ink/60">{t('description')}</p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <div className="space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('activeModeLabel')}</p>
                         <label className="flex items-center gap-3 text-sm">
@@ -227,6 +229,22 @@ export default function SettingsClient({ locale }: { locale: string }) {
                                 </label>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-4">
+                        <div className="space-y-1">
+                            <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('pwaTitle')}</p>
+                            <p className="text-sm text-ink/60">{t('pwaDescription')}</p>
+                        </div>
+                        <label className="flex items-center gap-3 text-sm">
+                            <input
+                                type="checkbox"
+                                checked={settings.pwaInstallEnabled}
+                                onChange={(e) => update('pwaInstallEnabled', e.target.checked)}
+                            />
+                            {t('pwaInstallLabel')}
+                        </label>
+                        <p className="text-xs text-ink/60">{t('pwaInstallHint')}</p>
                     </div>
                 </div>
 
