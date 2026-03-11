@@ -49,7 +49,6 @@ export default function NavLinks({ locale }: { locale: string }) {
         { href: `/${locale}`, label: t('dashboard') },
         { href: `/${locale}/requests`, label: t('requests') },
         { href: `/${locale}/chat`, label: t('chat'), badge: unreadChats },
-        { href: `/${locale}/support`, label: t('support') },
         ...(canManageEmployees ? [{ href: `/${locale}/employees`, label: t('employees') }] : []),
         ...(isAdmin
             ? [

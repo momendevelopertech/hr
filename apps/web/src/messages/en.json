@@ -15,12 +15,10 @@
     "profile": "Profile",
     "logout": "Logout",
     "chat": "Chat",
-    "support": "Support",
     "settings": "Settings"
   },
   "chat": {
     "loading": "Loading chat...",
-    "supportLoading": "Loading support chat...",
     "welcome": "Welcome {name}",
     "position": "Position",
     "branch": "Branch",
