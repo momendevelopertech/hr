@@ -121,6 +121,11 @@ export default function RequestsClient({ locale }: { locale: string }) {
         }
     }, []);
 
+    useEffect(() => {
+        if (!ready) return;
+        fetchLateness();
+    }, [fetchLateness, ready]);
+
     const convertLateness = async (id: string) => {
         await api.post(`/lateness/${id}/convert`);
         await fetchLateness();
