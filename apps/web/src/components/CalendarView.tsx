@@ -20,16 +20,33 @@ export type CalendarEvent = {
     resource?: any;
 };
 
+type WorkSchedule = {
+    activeMode: 'NORMAL' | 'RAMADAN';
+    ramadanStartDate: string | null;
+    ramadanEndDate: string | null;
+};
+
+const parseDateOnly = (value?: string | null) => {
+    if (!value) return null;
+    const [year, month, day] = value.split('-').map((part) => Number(part));
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day);
+};
+
+const dateOnly = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate());
+
 export default function CalendarView({
     locale,
     events,
     onSelectSlot,
     onSelectEvent,
+    schedule,
 }: {
     locale: 'en' | 'ar';
     events: CalendarEvent[];
     onSelectSlot: (date: Date) => void;
     onSelectEvent?: (event: CalendarEvent) => void;
+    schedule?: WorkSchedule | null;
 }) {
     const t = useTranslations('calendar');
     const localizer = useMemo(
@@ -87,6 +104,14 @@ export default function CalendarView({
         setCurrentDate((prev) => addDays(prev, multiplier));
     };
 
+    const ramadanRange = useMemo(() => {
+        if (!schedule || schedule.activeMode !== 'RAMADAN') return null;
+        const start = parseDateOnly(schedule.ramadanStartDate);
+        const end = parseDateOnly(schedule.ramadanEndDate);
+        if (!start || !end) return null;
+        return { start, end };
+    }, [schedule]);
+
     return (
         <div className="card p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -94,6 +119,15 @@ export default function CalendarView({
                     <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('title')}</p>
                     <p className="text-lg font-semibold text-ink">{t('createRequest')}</p>
                     <p className="text-sm text-ink/70">{title}</p>
+                    {ramadanRange && (
+                        <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-900">
+                            <span>{t('ramadanBadge')}</span>
+                            <span className="text-amber-800">
+                                {format(ramadanRange.start, 'd MMM yyyy', { locale: locale === 'ar' ? arSA : enUS })} -{' '}
+                                {format(ramadanRange.end, 'd MMM yyyy', { locale: locale === 'ar' ? arSA : enUS })}
+                            </span>
+                        </div>
+                    )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <button className="btn-outline" onClick={() => navigate('prev')}>
@@ -145,11 +179,21 @@ export default function CalendarView({
                 formats={{ weekdayFormat }}
                 style={{ height: 520 }}
                 dayPropGetter={(date) => {
+                    const isRamadan =
+                        !!ramadanRange &&
+                        dateOnly(date) >= ramadanRange.start &&
+                        dateOnly(date) <= ramadanRange.end;
                     if (date.getDay() === 5) {
                         return { className: 'rbc-day-disabled', style: { backgroundColor: '#e5e7eb', color: '#6b7280' } };
                     }
                     if (isSameDay(date, new Date())) {
-                        return { className: 'rbc-day-clickable', style: { backgroundColor: '#fef3c7' } };
+                        return {
+                            className: 'rbc-day-clickable',
+                            style: { backgroundColor: isRamadan ? '#fde68a' : '#fef3c7' },
+                        };
+                    }
+                    if (isRamadan) {
+                        return { className: 'rbc-day-clickable', style: { backgroundColor: '#fef9c3' } };
                     }
                     return { className: 'rbc-day-clickable', style: { backgroundColor: 'rgba(255,255,255,0.6)' } };
                 }}

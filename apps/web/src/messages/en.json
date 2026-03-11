@@ -76,7 +76,8 @@
     "week": "Week",
     "day": "Day",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "ramadanBadge": "Ramadan period"
   },
   "requests": {
     "new": "New Request",

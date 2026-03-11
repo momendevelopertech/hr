@@ -64,11 +64,12 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
+    const [schedule, setSchedule] = useState<any | null>(null);
 
     const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
-            const [leaveBalances, leaveReqs, permissionReqs, formSubs, notesRes, cycle, absence] = await Promise.all([
+            const [leaveBalances, leaveReqs, permissionReqs, formSubs, notesRes, cycle, absence, scheduleRes] = await Promise.all([
                 api.get('/leaves/balances'),
                 api.get('/leaves'),
                 api.get('/permissions'),
@@ -76,6 +77,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                 api.get('/notes'),
                 api.get('/permissions/cycle'),
                 api.get('/leaves/absence-deductions'),
+                api.get('/settings/work-schedule'),
             ]);
             setBalances(leaveBalances.data);
             setLeaves(leaveReqs.data);
@@ -84,6 +86,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             setNotes(notesRes.data);
             setPermissionCycle(cycle.data);
             setAbsenceDeduction(absence.data);
+            setSchedule(scheduleRes.data);
         } finally {
             setLoading(false);
         }
@@ -213,6 +216,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                 <CalendarView
                     locale={locale}
                     events={events}
+                    schedule={schedule}
                     onSelectSlot={(d) => setSelectedDate(d)}
                     onSelectEvent={(event) => {
                         setSelectedDate(null);

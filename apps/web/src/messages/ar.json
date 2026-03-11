@@ -76,7 +76,8 @@
     "week": "أسبوع",
     "day": "يوم",
     "previous": "السابق",
-    "next": "التالي"
+    "next": "التالي",
+    "ramadanBadge": "فترة رمضان"
   },
   "requests": {
     "new": "طلب جديد",
