@@ -62,7 +62,7 @@ export default function NavLinks({ locale }: { locale: string }) {
     ];
 
     return (
-        <nav className="flex flex-wrap gap-2 px-6 pb-4">
+        <nav className="flex flex-wrap gap-2 px-4 pb-4 sm:px-6">
             {links.map((link) => {
                 const active = pathname === link.href;
                 return (

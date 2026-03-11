@@ -4,7 +4,7 @@ import { Calendar, dateFnsLocalizer, View } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay, isSameDay, addMonths, addWeeks, addDays, endOfWeek } from 'date-fns';
 import { enUS, arSA } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
 const locales = {
@@ -63,6 +63,7 @@ export default function CalendarView({
 
     const [view, setView] = useState<View>('month');
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
+    const [isMobile, setIsMobile] = useState(false);
     const weekdayFormat = (date: Date) =>
         format(date, locale === 'ar' ? 'EEEE' : 'EEEE', { locale: locale === 'ar' ? arSA : enUS });
 
@@ -112,9 +113,16 @@ export default function CalendarView({
         return { start, end };
     }, [schedule]);
 
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 640);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
     return (
-        <div className="card p-4">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="card calendar-shell p-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
                     <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('title')}</p>
                     <p className="text-lg font-semibold text-ink">{t('createRequest')}</p>
@@ -129,20 +137,20 @@ export default function CalendarView({
                         </div>
                     )}
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <button className="btn-outline" onClick={() => navigate('prev')}>
+                <div className="calendar-controls flex flex-wrap items-center gap-2">
+                    <button className="btn-outline text-xs sm:text-sm" onClick={() => navigate('prev')}>
                         {t('previous')}
                     </button>
-                    <button className="btn-outline" onClick={() => navigate('next')}>
+                    <button className="btn-outline text-xs sm:text-sm" onClick={() => navigate('next')}>
                         {t('next')}
                     </button>
-                    <button className={`btn-outline ${view === 'month' ? 'bg-ink/10' : ''}`} onClick={() => setView('month')}>
+                    <button className={`btn-outline text-xs sm:text-sm ${view === 'month' ? 'bg-ink/10' : ''}`} onClick={() => setView('month')}>
                         {t('month')}
                     </button>
-                    <button className={`btn-outline ${view === 'week' ? 'bg-ink/10' : ''}`} onClick={() => setView('week')}>
+                    <button className={`btn-outline text-xs sm:text-sm ${view === 'week' ? 'bg-ink/10' : ''}`} onClick={() => setView('week')}>
                         {t('week')}
                     </button>
-                    <button className={`btn-outline ${view === 'day' ? 'bg-ink/10' : ''}`} onClick={() => setView('day')}>
+                    <button className={`btn-outline text-xs sm:text-sm ${view === 'day' ? 'bg-ink/10' : ''}`} onClick={() => setView('day')}>
                         {t('day')}
                     </button>
                 </div>
@@ -177,25 +185,23 @@ export default function CalendarView({
                 endAccessor="end"
                 eventPropGetter={eventPropGetter}
                 formats={{ weekdayFormat }}
-                style={{ height: 520 }}
+                className="rbc-sphinx"
+                style={{ height: isMobile ? 420 : 520 }}
                 dayPropGetter={(date) => {
                     const isRamadan =
                         !!ramadanRange &&
                         dateOnly(date) >= ramadanRange.start &&
                         dateOnly(date) <= ramadanRange.end;
                     if (date.getDay() === 5) {
-                        return { className: 'rbc-day-disabled', style: { backgroundColor: '#e5e7eb', color: '#6b7280' } };
+                        return { className: 'rbc-day-disabled rbc-day-friday', style: { color: 'var(--calendar-day-disabled-text)' } };
                     }
                     if (isSameDay(date, new Date())) {
-                        return {
-                            className: 'rbc-day-clickable',
-                            style: { backgroundColor: isRamadan ? '#fde68a' : '#fef3c7' },
-                        };
+                        return { className: `rbc-day-clickable rbc-day-today${isRamadan ? ' rbc-day-ramadan' : ''}` };
                     }
                     if (isRamadan) {
-                        return { className: 'rbc-day-clickable', style: { backgroundColor: '#fef9c3' } };
+                        return { className: 'rbc-day-clickable rbc-day-ramadan' };
                     }
-                    return { className: 'rbc-day-clickable', style: { backgroundColor: 'rgba(255,255,255,0.6)' } };
+                    return { className: 'rbc-day-clickable rbc-day-default' };
                 }}
             />
         </div>

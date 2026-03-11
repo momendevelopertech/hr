@@ -15,6 +15,8 @@
     "profile": "Profile",
     "logout": "Logout",
     "chat": "Chat",
+    "themeLight": "Light",
+    "themeDark": "Dark",
     "settings": "Settings"
   },
   "chat": {

@@ -47,23 +47,23 @@ export default function TopNav({ locale }: { locale: string }) {
     };
 
     return (
-        <header className="flex items-center justify-between px-6 py-5">
-            <div className="flex items-center gap-4">
+        <header className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
+            <div className="flex flex-wrap items-center gap-3">
                 <BrandLogo locale={locale} compact />
                 <div>
-                    <p className="text-sm uppercase tracking-[0.2em] text-ink/60">SPHINX HR</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-ink/60">SPHINX HR</p>
                     <p className="text-lg font-semibold text-ink">{t('dashboard')}</p>
                 </div>
             </div>
-            <div className="flex items-center gap-3">
-                <button className="btn-outline" onClick={() => switchLocale(locale === 'ar' ? 'en' : 'ar')}>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <button className="btn-outline text-xs sm:text-sm" onClick={() => switchLocale(locale === 'ar' ? 'en' : 'ar')}>
                     {locale === 'ar' ? 'EN' : 'AR'}
                 </button>
-                <button className="btn-outline" onClick={toggleTheme}>
-                    {theme === 'dark' ? (locale === 'ar' ? 'فاتح' : 'Light') : (locale === 'ar' ? 'داكن' : 'Dark')}
+                <button className="btn-outline text-xs sm:text-sm" onClick={toggleTheme}>
+                    {theme === 'dark' ? t('themeLight') : t('themeDark')}
                 </button>
                 <div className="hidden md:flex items-center gap-3 rounded-xl bg-white/70 px-4 py-2">
-                    <div className="h-9 w-9 rounded-full bg-cactus/20 flex items-center justify-center font-semibold">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-cactus/20 font-semibold">
                         {user?.fullName?.slice(0, 1) || 'U'}
                     </div>
                     <div>
@@ -71,10 +71,11 @@ export default function TopNav({ locale }: { locale: string }) {
                         <p className="text-xs text-ink/60">{user?.role || ''}</p>
                     </div>
                 </div>
-                <button className="btn-secondary" onClick={logout}>
+                <button className="btn-secondary text-xs sm:text-sm" onClick={logout}>
                     {t('logout')}
                 </button>
             </div>
         </header>
     );
 }
+

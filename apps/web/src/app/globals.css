@@ -11,6 +11,13 @@
     --text-2: #324255;
     --accent-1: #2f6b5f;
     --accent-2: #d86f45;
+    --calendar-day-bg: rgba(255, 255, 255, 0.75);
+    --calendar-day-today: #fef3c7;
+    --calendar-day-ramadan: #fef9c3;
+    --calendar-day-ramadan-today: #fde68a;
+    --calendar-day-disabled: #e5e7eb;
+    --calendar-day-disabled-text: #6b7280;
+    --calendar-border: rgba(15, 23, 42, 0.08);
 }
 
 * {
@@ -83,6 +90,10 @@ body {
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
 }
 
+.rbc-event {
+    color: #ffffff;
+}
+
 .rbc-day-clickable {
     cursor: pointer;
     transition: background-color 0.15s ease, box-shadow 0.15s ease;
@@ -97,6 +108,80 @@ body {
     cursor: not-allowed;
 }
 
+.calendar-shell .rbc-sphinx {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--calendar-border);
+}
+
+.rbc-day-default {
+    background-color: var(--calendar-day-bg);
+}
+
+.rbc-day-today {
+    background-color: var(--calendar-day-today);
+}
+
+.rbc-day-ramadan {
+    background-color: var(--calendar-day-ramadan);
+}
+
+.rbc-day-ramadan.rbc-day-today {
+    background-color: var(--calendar-day-ramadan-today);
+}
+
+.rbc-day-friday {
+    background-color: var(--calendar-day-disabled);
+    color: var(--calendar-day-disabled-text);
+}
+
+.rbc-sphinx .rbc-month-row,
+.rbc-sphinx .rbc-time-view,
+.rbc-sphinx .rbc-month-view,
+.rbc-sphinx .rbc-time-header-content,
+.rbc-sphinx .rbc-time-content {
+    border-color: var(--calendar-border);
+}
+
+.rbc-sphinx .rbc-header,
+.rbc-sphinx .rbc-date-cell {
+    padding: 6px;
+}
+
+@media (max-width: 640px) {
+    .calendar-shell {
+        padding: 1rem;
+    }
+
+    .calendar-shell .calendar-controls {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .rbc-sphinx {
+        font-size: 11px;
+    }
+
+    .rbc-sphinx .rbc-header {
+        font-size: 10px;
+        padding: 6px 4px;
+    }
+
+    .rbc-sphinx .rbc-date-cell {
+        padding: 4px;
+    }
+
+    .rbc-sphinx .rbc-month-row {
+        min-height: 70px;
+    }
+
+    .rbc-sphinx .rbc-event {
+        font-size: 10px;
+        padding: 2px 4px;
+        border-radius: 8px;
+    }
+}
+
 :root[data-theme='dark'] {
     color-scheme: dark;
     --bg-1: #0b1220;
@@ -106,6 +191,13 @@ body {
     --text-2: #cbd5f5;
     --accent-1: #4f8f82;
     --accent-2: #e07a4f;
+    --calendar-day-bg: rgba(15, 23, 42, 0.65);
+    --calendar-day-today: rgba(59, 130, 246, 0.18);
+    --calendar-day-ramadan: rgba(234, 179, 8, 0.15);
+    --calendar-day-ramadan-today: rgba(234, 179, 8, 0.25);
+    --calendar-day-disabled: rgba(30, 41, 59, 0.85);
+    --calendar-day-disabled-text: rgba(148, 163, 184, 0.7);
+    --calendar-border: rgba(148, 163, 184, 0.25);
 }
 
 :root[data-theme='dark'] body {
@@ -143,8 +235,53 @@ body {
 
 :root[data-theme='dark'] .bg-white,
 :root[data-theme='dark'] .bg-white\/70,
-:root[data-theme='dark'] .bg-white\/80 {
+:root[data-theme='dark'] .bg-white\/80,
+:root[data-theme='dark'] .bg-white\/95 {
     background-color: rgba(15, 23, 42, 0.85) !important;
+}
+
+:root[data-theme='dark'] .bg-amber-50 {
+    background-color: rgba(120, 53, 15, 0.25) !important;
+}
+
+:root[data-theme='dark'] .bg-amber-100 {
+    background-color: rgba(120, 53, 15, 0.35) !important;
+}
+
+:root[data-theme='dark'] .bg-amber-200\/60 {
+    background-color: rgba(120, 53, 15, 0.45) !important;
+}
+
+:root[data-theme='dark'] .border-amber-200 {
+    border-color: rgba(251, 191, 36, 0.4) !important;
+}
+
+:root[data-theme='dark'] .text-amber-900 {
+    color: #fde68a !important;
+}
+
+:root[data-theme='dark'] .text-amber-800 {
+    color: #fcd34d !important;
+}
+
+:root[data-theme='dark'] .bg-slate-50 {
+    background-color: rgba(15, 23, 42, 0.8) !important;
+}
+
+:root[data-theme='dark'] .text-slate-400 {
+    color: rgba(226, 232, 240, 0.55) !important;
+}
+
+:root[data-theme='dark'] .text-slate-500 {
+    color: rgba(226, 232, 240, 0.6) !important;
+}
+
+:root[data-theme='dark'] .text-slate-600 {
+    color: rgba(226, 232, 240, 0.7) !important;
+}
+
+:root[data-theme='dark'] .brand-logo {
+    filter: invert(1) brightness(1.15);
 }
 
 :root[data-theme='dark'] .text-ink {
