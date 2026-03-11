@@ -1,6 +1,6 @@
 # SPHINX HR System
 
-Enterprise HR Management System for SPHINX. The stack is a Next.js 14 app with a NestJS API, Prisma, PostgreSQL, Redis, Socket.io, and Cloudinary uploads. The system supports Arabic (RTL) and English (LTR), PWA installation, and real-time notifications.
+Enterprise HR Management System for SPHINX. The stack is a Next.js 14 app with a NestJS API, Prisma, PostgreSQL, Redis, Pusher Channels, and Cloudinary uploads. The system supports Arabic (RTL) and English (LTR), PWA installation, and real-time notifications.
 
 ## Monorepo Structure
 
@@ -37,7 +37,8 @@ Deploy `apps/web` to Vercel as the frontend app.
 Required Vercel environment variables:
 
 - `NEXT_PUBLIC_API_URL` (your deployed API URL + `/api`)
-- `NEXT_PUBLIC_SOCKET_URL` (your deployed API URL)
+- `NEXT_PUBLIC_PUSHER_KEY`
+- `NEXT_PUBLIC_PUSHER_CLUSTER`
 
 The NestJS API (`apps/api`) should be deployed as a separate service (for example Render/Railway/Fly.io) because it needs a long-running Node server, PostgreSQL, and Redis.
 

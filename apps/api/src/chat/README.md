@@ -15,11 +15,11 @@
 - `POST /api/chat/messages`
 - `PATCH /api/chat/messages/read/:employeeId`
 
-### WebSocket Events
-- `join_user_room`
-- `send_message`
-- `receive_message`
-- `message_read`
+### Realtime Events (Pusher)
+- Channel: `user-{userId}`
+- Events:
+  - `receive_message`
+  - `message_read`
 
 ## Frontend
 1. Run web app:

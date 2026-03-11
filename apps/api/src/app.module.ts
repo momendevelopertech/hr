@@ -15,7 +15,7 @@ import { PdfModule } from './pdf/pdf.module';
 import { ReportsModule } from './reports/reports.module';
 import { AuditModule } from './audit/audit.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
-import { EventsGateway } from './events/events.gateway';
+import { PusherModule } from './pusher/pusher.module';
 import { RedisModule } from './redis/redis.module';
 import { ChatModule } from './chat/chat.module';
 import { RootController } from './root.controller';
@@ -45,11 +45,11 @@ import { SettingsModule } from './settings/settings.module';
         ReportsModule,
         AuditModule,
         SettingsModule,
+        PusherModule,
         CloudinaryModule,
         RedisModule,
         ChatModule,
     ],
     controllers: [RootController],
-    providers: [EventsGateway],
 })
 export class AppModule { }

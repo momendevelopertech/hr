@@ -1,5 +1,4 @@
 const LOCAL_API_URL = 'http://localhost:3001/api';
-const LOCAL_SOCKET_URL = 'http://localhost:3001';
 
 type NormalizeOptions = {
     allowRelative?: boolean;
@@ -33,5 +32,3 @@ export const getPublicApiUrl = () =>
         return configuredUrl;
     })();
 
-export const getPublicSocketUrl = () =>
-    normalizePublicUrl(process.env.NEXT_PUBLIC_SOCKET_URL || LOCAL_SOCKET_URL, { allowRelative: true });

@@ -1,6 +1,6 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EventsGateway } from '../events/events.gateway';
+import { PusherService } from '../pusher/pusher.service';
 import axios from 'axios';
 import * as nodemailer from 'nodemailer';
 
@@ -11,7 +11,7 @@ export class NotificationsService {
 
     constructor(
         private prisma: PrismaService,
-        private eventsGateway: EventsGateway,
+        private pusher: PusherService,
     ) {
         this.transporter = nodemailer.createTransport({
             host: process.env.MAIL_HOST,
@@ -35,7 +35,8 @@ export class NotificationsService {
         metadata?: any;
     }) {
         const notification = await this.prisma.notification.create({ data });
-        this.eventsGateway.sendToUser(data.receiverId, 'notification', notification);
+        // Realtime: notify receiver on their scoped channel.
+        await this.pusher.triggerToUser(data.receiverId, 'notification', notification);
         return notification;
     }
 
@@ -68,9 +69,11 @@ export class NotificationsService {
             })),
         });
 
-        for (const user of users) {
-            this.eventsGateway.sendToUser(user.id, 'notification', { type: data.type });
-        }
+        await Promise.all(
+            users.map((user) =>
+                this.pusher.triggerToUser(user.id, 'notification', { type: data.type }),
+            ),
+        );
 
         return { sent: users.length };
     }

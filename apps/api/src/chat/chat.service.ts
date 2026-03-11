@@ -1,19 +1,31 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SendMessageDto } from './dto/send-message.dto';
+import { PusherService } from '../pusher/pusher.service';
 
 @Injectable()
 export class ChatService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private pusher: PusherService,
+    ) { }
 
     async sendMessage(senderId: string, dto: SendMessageDto) {
-        return this.prisma.message.create({
+        const saved = await this.prisma.message.create({
             data: {
                 senderId,
                 receiverId: dto.receiverId,
                 messageText: dto.messageText,
             },
         });
+
+        // Realtime: push to both participants.
+        await Promise.all([
+            this.pusher.triggerToUser(dto.receiverId, 'receive_message', saved),
+            this.pusher.triggerToUser(senderId, 'receive_message', saved),
+        ]);
+
+        return saved;
     }
 
     async getConversation(senderId: string, receiverId: string) {
@@ -36,6 +48,12 @@ export class ChatService {
                 readStatus: false,
             },
             data: { readStatus: true },
+        });
+
+        // Realtime: inform sender that messages were read.
+        await this.pusher.triggerToUser(senderId, 'message_read', {
+            readerId,
+            senderId,
         });
 
         return { success: true };

@@ -27,7 +27,12 @@ Set the required variables in `.env`:
 `MAIL_PASS`  
 `FRONTEND_URL`  
 `NEXT_PUBLIC_API_URL`  
-`NEXT_PUBLIC_SOCKET_URL`  
+`NEXT_PUBLIC_PUSHER_KEY`  
+`NEXT_PUBLIC_PUSHER_CLUSTER`  
+`PUSHER_APP_ID`  
+`PUSHER_KEY`  
+`PUSHER_SECRET`  
+`PUSHER_CLUSTER`  
 `CSRF_SECRET`  
 
 ## Local Run (Without Docker)
@@ -59,7 +64,8 @@ Deploy `apps/web` on Vercel.
 Set in Vercel project env vars:
 
 - `NEXT_PUBLIC_API_URL=https://<your-api-domain>/api`
-- `NEXT_PUBLIC_SOCKET_URL=https://<your-api-domain>`
+- `NEXT_PUBLIC_PUSHER_KEY=your_pusher_key`
+- `NEXT_PUBLIC_PUSHER_CLUSTER=your_pusher_cluster`
 
 ## Backend Deployment
 

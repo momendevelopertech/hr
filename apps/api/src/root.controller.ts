@@ -143,8 +143,8 @@ export class RootController {
             <a href="/api/docs">/api/docs</a>
           </div>
           <div class="item">
-            <b>Real-time Gateway</b>
-            <code>/socket.io</code>
+            <b>Real-time Provider</b>
+            <code>Pusher Channels</code>
           </div>
           <div class="item">
             <b>Security stack</b>

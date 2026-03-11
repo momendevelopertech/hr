@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { getSocket } from '@/lib/socket';
+import { usePusherChannel } from '@/lib/use-pusher-channel';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function NavLinks({ locale }: { locale: string }) {
@@ -31,19 +31,19 @@ export default function NavLinks({ locale }: { locale: string }) {
     useEffect(() => {
         if (!user) return;
         fetchCounts();
-        const socket = getSocket();
-        socket.emit('join', user.id);
-        const onNotification = () => fetchCounts();
-        const onMessage = (message: any) => {
-            if (message?.receiverId === user.id) fetchCounts();
-        };
-        socket.on('notification', onNotification);
-        socket.on('receive_message', onMessage);
-        return () => {
-            socket.off('notification', onNotification);
-            socket.off('receive_message', onMessage);
-        };
     }, [fetchCounts, user]);
+
+    const pusherHandlers = useMemo(
+        () => ({
+            notification: () => fetchCounts(),
+            receive_message: (message: any) => {
+                if (message?.receiverId === user?.id) fetchCounts();
+            },
+        }),
+        [fetchCounts, user?.id],
+    );
+
+    usePusherChannel(user ? `user-${user.id}` : null, pusherHandlers);
 
     const links = [
         { href: `/${locale}`, label: t('dashboard') },

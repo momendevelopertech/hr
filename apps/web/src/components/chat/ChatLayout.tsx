@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
-import { getSocket } from '@/lib/socket';
+import { usePusherChannel } from '@/lib/use-pusher-channel';
 import { enumLabels } from '@/lib/enum-labels';
 import EmployeeList from './EmployeeList';
 import ChatWindow from './ChatWindow';
@@ -62,7 +62,6 @@ export default function ChatLayout({ currentUser, locale, roleFilter, autoStart,
         setMessages(res.data);
         await api.patch(`/chat/messages/read/${employee.id}`);
         setEmployees((prev) => prev.map((emp) => (emp.id === employee.id ? { ...emp, unreadCount: 0 } : emp)));
-        getSocket().emit('message_read', { readerId: currentUser.id, senderId: employee.id });
     }, [currentUser.id]);
 
     useEffect(() => {
@@ -79,11 +78,7 @@ export default function ChatLayout({ currentUser, locale, roleFilter, autoStart,
         openConversation(employees[0]);
     }, [autoSelectFirst, employees, openConversation, selectedEmployee, started]);
 
-    useEffect(() => {
-        const socket = getSocket();
-        socket.emit('join_user_room', { employeeId: currentUser.id });
-
-        const onReceive = (message: ChatMessage) => {
+    const handleIncomingMessage = useCallback((message: ChatMessage) => {
             const active = selectedRef.current;
             const isForCurrentConversation =
                 active &&
@@ -96,7 +91,7 @@ export default function ChatLayout({ currentUser, locale, roleFilter, autoStart,
                     return [...prev, message];
                 });
                 if (message.senderId === active?.id) {
-                    socket.emit('message_read', { readerId: currentUser.id, senderId: active.id });
+                    api.patch(`/chat/messages/read/${active.id}`).catch(() => undefined);
                 }
             }
 
@@ -122,22 +117,24 @@ export default function ChatLayout({ currentUser, locale, roleFilter, autoStart,
             if (message.receiverId === currentUser.id) {
                 loadChats();
             }
-        };
-
-        socket.on('receive_message', onReceive);
-
-        return () => {
-            socket.off('receive_message', onReceive);
-        };
     }, [currentUser.id, loadChats]);
+
+    const pusherHandlers = useMemo(
+        () => ({
+            receive_message: (message: ChatMessage) => handleIncomingMessage(message),
+        }),
+        [handleIncomingMessage],
+    );
+
+    usePusherChannel(`user-${currentUser.id}`, pusherHandlers);
 
     const sendMessage = async (messageText: string) => {
         if (!selectedEmployee) return;
-        getSocket().emit('send_message', {
-            senderId: currentUser.id,
+        const res = await api.post<ChatMessage>('/chat/messages', {
             receiverId: selectedEmployee.id,
             messageText,
         });
+        handleIncomingMessage(res.data);
     };
 
     const branchLabel = useMemo(() => {

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
-import { getSocket } from '@/lib/socket';
+import { usePusherChannel } from '@/lib/use-pusher-channel';
 import StatsGrid from './StatsGrid';
 import CalendarView from './CalendarView';
 import RequestModal from './RequestModal';
@@ -97,15 +97,14 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         fetchAll();
     }, [ready, fetchAll]);
 
-    useEffect(() => {
-        if (!user) return;
-        const socket = getSocket();
-        socket.emit('join', user.id);
-        socket.on('notification', () => fetchAll());
-        return () => {
-            socket.off('notification');
-        };
-    }, [user?.id, fetchAll, user]);
+    const notificationHandlers = useMemo(
+        () => ({
+            notification: () => fetchAll(),
+        }),
+        [fetchAll],
+    );
+
+    usePusherChannel(user ? `user-${user.id}` : null, notificationHandlers);
 
     const stats = useMemo(() => {
         const annual = balances.find((b) => b.leaveType === 'ANNUAL');

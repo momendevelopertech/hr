@@ -4,7 +4,6 @@ import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser = require('cookie-parser');
 import helmet from 'helmet';
-import { IoAdapter } from '@nestjs/platform-socket.io';
 import csurf = require('csurf');
 import { HttpExceptionFilter } from './shared/http-exception.filter';
 import { getCookieSettings, getFrontendOrigin } from './shared/cookie-settings';
@@ -55,9 +54,6 @@ async function bootstrap() {
         }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
-
-    // WebSocket adapter
-    app.useWebSocketAdapter(new IoAdapter(app));
 
     // API prefix
     app.setGlobalPrefix('api', {
