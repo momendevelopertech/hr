@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
+import { arSA, enUS } from 'date-fns/locale';
+import { NotebookPen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { useTranslations } from 'next-intl';
@@ -29,6 +31,11 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
         if (!date) return '';
         return format(date, 'yyyy-MM-dd');
     }, [date]);
+    const dayName = useMemo(() => {
+        if (!date) return '';
+        const dateLocale = locale === 'ar' ? arSA : enUS;
+        return format(date, 'EEEE', { locale: dateLocale });
+    }, [date, locale]);
 
     if (!open) return null;
 
@@ -123,6 +130,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
 
                 <p className="mt-3 text-sm text-ink/70">
                     {tm('selectedDate')}: <span className="font-semibold">{dateValue}</span>
+                    {dayName ? <span className="ml-2 text-ink/60">• {dayName}</span> : null}
                 </p>
 
                 <div className="mt-4 grid gap-2 md:grid-cols-2">
@@ -138,8 +146,14 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     <button className={`btn-outline ${type === 'mission' ? 'bg-ink/10' : ''}`} onClick={() => setType('mission')}>
                         {tm('missionRequest')}
                     </button>
-                    <button className={`btn-outline ${type === 'note' ? 'bg-ink/10' : ''}`} onClick={() => setType('note')}>
-                        {tm('noteRequest')}
+                    <button
+                        className={`btn-outline md:col-span-2 ${type === 'note' ? 'bg-amber-200/60 border-amber-200 text-amber-900' : 'bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100'}`}
+                        onClick={() => setType('note')}
+                    >
+                        <span className="inline-flex items-center justify-center gap-2">
+                            <NotebookPen className="h-4 w-4" />
+                            {tm('noteRequest')}
+                        </span>
                     </button>
                 </div>
 
