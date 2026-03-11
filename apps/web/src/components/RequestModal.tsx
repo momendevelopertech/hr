@@ -45,7 +45,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
         const scope = formData.permissionScope || 'ARRIVAL';
         const base = new Date(date);
         if (scope === 'ARRIVAL') {
-            base.setHours(10, 0, 0, 0);
+            base.setHours(9, 0, 0, 0);
             const arrival = addMinutes(base, totalMinutes);
             const time = format(arrival, 'h:mm a', { locale: locale === 'ar' ? arSA : enUS });
             return tm('permissionConfirmArrival', { time });
@@ -397,4 +397,5 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
         </div>
     );
 }
+
 
