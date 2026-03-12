@@ -146,12 +146,6 @@ export default function TopNav({ locale }: { locale: string }) {
                         </div>
                     )}
                 </div>
-                <button className="btn-secondary text-xs sm:text-sm" onClick={logout}>
-                    <span className="inline-flex items-center gap-2">
-                        <LogOut size={16} />
-                        {t('logout')}
-                    </span>
-                </button>
             </div>
         </header>
     );

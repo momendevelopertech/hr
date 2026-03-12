@@ -108,8 +108,8 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                 <button
                     className="btn-outline text-xs sm:text-sm"
                     onClick={() => switchLocale(params.locale === 'ar' ? 'en' : 'ar')}
-                    title={params.locale === 'ar' ? 'English' : 'Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©'}
-                    aria-label={params.locale === 'ar' ? 'Switch to English' : 'Ø§Ù„ØªØ¨Ø¯ÙŠÙ„ Ø¥Ù„Ù‰ Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©'}
+                    title={params.locale === 'ar' ? 'English' : 'العربية'}
+                    aria-label={params.locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
                 >
                     <Languages size={16} />
                 </button>
@@ -138,7 +138,7 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                     className="space-y-4"
                 >
                     <label className="text-sm">
-                        {params.locale === 'ar' ? 'Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ / Ø§Ø³Ù… Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…' : 'Email / Username'}
+                        {params.locale === 'ar' ? 'البريد الإلكتروني / اسم المستخدم' : 'Email / Username'}
                         <input
                             type="text"
                             className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
@@ -185,7 +185,7 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                         disabled={loading}
                         onClick={submit}
                     >
-                        {loading ? (params.locale === 'ar' ? 'Ø¬Ø§Ø±Ù ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„...' : 'Signing in...') : t('login')}
+                        {loading ? (params.locale === 'ar' ? 'جارٍ تسجيل الدخول...' : 'Signing in...') : t('login')}
                     </button>
                     <div className="flex items-center justify-between text-sm">
                         <Link className="text-ink/70 hover:text-ink" href={`/${params.locale}/forgot-password`}>
