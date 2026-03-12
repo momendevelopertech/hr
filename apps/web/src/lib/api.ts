@@ -48,13 +48,33 @@ export const clearApiCache = () => {
     responseCache.clear();
 };
 
+
+export const clearBrowserRuntimeCache = async () => {
+    clearApiCache();
+    csrfToken = null;
+
+    if (typeof window === 'undefined') return;
+
+    if ('caches' in window) {
+        const keys = await window.caches.keys();
+        await Promise.all(keys.map((key) => window.caches.delete(key)));
+    }
+
+    if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+};
+
 const defaultAdapter = axios.getAdapter(axios.defaults.adapter);
 
 api.defaults.adapter = async (config) => {
     const method = (config.method || 'get').toLowerCase();
     const skipCache = config.headers?.['x-no-cache'];
+    const allowCache = config.headers?.['x-allow-cache'];
+    const shouldUseCache = method === 'get' && !skipCache && allowCache === '1';
 
-    if (method === 'get' && !skipCache) {
+    if (shouldUseCache) {
         const key = getCacheKey(config);
         const cached = responseCache.get(key);
         if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -75,7 +95,7 @@ api.defaults.adapter = async (config) => {
             : defaultAdapter;
     const response = await requestAdapter(config);
 
-    if (method === 'get' && !skipCache) {
+    if (shouldUseCache) {
         const key = getCacheKey(config);
         responseCache.set(key, {
             timestamp: Date.now(),
@@ -112,6 +132,14 @@ api.interceptors.response.use((response) => {
     if (response.config.url?.includes('/auth/csrf') && response.data?.csrfToken) {
         setCsrfToken(response.data.csrfToken);
     }
+
+    if (
+        response.config.url?.includes('/auth/login') ||
+        response.config.url?.includes('/auth/logout')
+    ) {
+        clearApiCache();
+    }
+
     return response;
 }, async (error) => {
     const original = error?.config as any;
