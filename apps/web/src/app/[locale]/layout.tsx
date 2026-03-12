@@ -6,6 +6,7 @@ import { getMessages } from 'next-intl/server';
 import { Toaster } from 'react-hot-toast';
 import { defaultLocale, locales } from '@/i18n/routing';
 import { Noto_Kufi_Arabic, Sora } from 'next/font/google';
+import ClientCacheManager from '@/components/ClientCacheManager';
 
 const notoKufiArabic = Noto_Kufi_Arabic({
     subsets: ['arabic'],
@@ -50,6 +51,7 @@ export default async function LocaleLayout({
         <html lang={locale} dir={dir} className={fontClass}>
             <body className={`bg-atmosphere text-ink ${locale === 'ar' ? 'font-ar' : 'font-base'}`}>
                 <NextIntlClientProvider messages={messages}>
+                    <ClientCacheManager />
                     {children}
                     <Toaster position={locale === 'ar' ? 'top-left' : 'top-right'} />
                 </NextIntlClientProvider>

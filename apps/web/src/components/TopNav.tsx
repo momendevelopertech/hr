@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { usePathname, useRouter } from 'next/navigation';
-import api, { clearApiCache } from '@/lib/api';
+import api, { clearApiCache, clearBrowserRuntimeCache } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import BrandLogo from './BrandLogo';
 import PwaInstallButton from './PwaInstallButton';
@@ -65,6 +65,7 @@ export default function TopNav({ locale }: { locale: string }) {
 
     const logout = async () => {
         await api.post('/auth/logout');
+        await clearBrowserRuntimeCache();
         clearApiCache();
         setUser(null);
         router.push(`/${locale}/login`);

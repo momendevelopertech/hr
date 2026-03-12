@@ -19,28 +19,10 @@ export class NotesService {
         });
     }
 
-    async findAll(userId: string, role: string, filters?: { from?: string; to?: string }) {
-        const where: any = {};
-
-        if (role === 'EMPLOYEE') {
-            where.userId = userId;
-        } else if (role === 'MANAGER') {
-            const manager = await this.prisma.user.findUnique({ where: { id: userId } });
-            const employees = await this.prisma.user.findMany({
-                where: { departmentId: manager?.departmentId || undefined },
-                select: { id: true },
-            });
-            where.userId = { in: employees.map((e) => e.id) };
-        } else if (role === 'BRANCH_SECRETARY') {
-            const secretary = await this.prisma.user.findUnique({ where: { id: userId } });
-            if (secretary?.governorate) {
-                const employees = await this.prisma.user.findMany({
-                    where: { governorate: secretary.governorate },
-                    select: { id: true },
-                });
-                where.userId = { in: employees.map((e) => e.id) };
-            }
-        }
+    async findAll(userId: string, _role: string, filters?: { from?: string; to?: string }) {
+        const where: any = {
+            userId,
+        };
 
         if (filters?.from || filters?.to) {
             where.date = {
