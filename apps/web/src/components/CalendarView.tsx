@@ -6,6 +6,7 @@ import { enUS, arSA } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const locales = {
     en: enUS,
@@ -65,6 +66,8 @@ export default function CalendarView({
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
     const [isMobile, setIsMobile] = useState(false);
     const calendarLocale = locale === 'ar' ? arSA : enUS;
+    const PrevIcon = locale === 'ar' ? ChevronRight : ChevronLeft;
+    const NextIcon = locale === 'ar' ? ChevronLeft : ChevronRight;
     const fullWeekdayFormat = (date: Date) => format(date, 'EEEE', { locale: calendarLocale });
 
     const eventPropGetter = (event: CalendarEvent) => {
@@ -137,22 +140,37 @@ export default function CalendarView({
                         </div>
                     )}
                 </div>
-                <div className="calendar-controls flex flex-wrap items-center gap-2">
-                    <button className="btn-outline text-xs sm:text-sm" onClick={() => navigate('prev')}>
-                        {t('previous')}
-                    </button>
-                    <button className="btn-outline text-xs sm:text-sm" onClick={() => navigate('next')}>
-                        {t('next')}
-                    </button>
-                    <button className={`btn-outline text-xs sm:text-sm ${view === 'month' ? 'bg-ink/10' : ''}`} onClick={() => setView('month')}>
-                        {t('month')}
-                    </button>
-                    <button className={`btn-outline text-xs sm:text-sm ${view === 'week' ? 'bg-ink/10' : ''}`} onClick={() => setView('week')}>
-                        {t('week')}
-                    </button>
-                    <button className={`btn-outline text-xs sm:text-sm ${view === 'day' ? 'bg-ink/10' : ''}`} onClick={() => setView('day')}>
-                        {t('day')}
-                    </button>
+                <div className="calendar-controls flex flex-wrap items-center gap-2 sm:justify-end">
+                    <div className="inline-flex items-center rounded-xl border border-ink/15 bg-white/80 p-1 shadow-sm">
+                        <button className="btn-outline border-0 bg-transparent px-3 py-1.5 text-xs sm:text-sm" onClick={() => navigate('prev')}>
+                            <PrevIcon className="size-4" aria-hidden="true" />
+                            <span>{t('previous')}</span>
+                        </button>
+                        <button className="btn-outline border-0 bg-transparent px-3 py-1.5 text-xs sm:text-sm" onClick={() => navigate('next')}>
+                            <span>{t('next')}</span>
+                            <NextIcon className="size-4" aria-hidden="true" />
+                        </button>
+                    </div>
+                    <div className="inline-flex items-center rounded-xl border border-ink/15 bg-white/80 p-1 shadow-sm">
+                        <button
+                            className={`btn-outline border-0 px-3 py-1.5 text-xs sm:text-sm ${view === 'month' ? 'bg-cactus/15 text-cactus' : 'bg-transparent'}`}
+                            onClick={() => setView('month')}
+                        >
+                            {t('month')}
+                        </button>
+                        <button
+                            className={`btn-outline border-0 px-3 py-1.5 text-xs sm:text-sm ${view === 'week' ? 'bg-cactus/15 text-cactus' : 'bg-transparent'}`}
+                            onClick={() => setView('week')}
+                        >
+                            {t('week')}
+                        </button>
+                        <button
+                            className={`btn-outline border-0 px-3 py-1.5 text-xs sm:text-sm ${view === 'day' ? 'bg-cactus/15 text-cactus' : 'bg-transparent'}`}
+                            onClick={() => setView('day')}
+                        >
+                            {t('day')}
+                        </button>
+                    </div>
                 </div>
             </div>
             <Calendar
