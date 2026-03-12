@@ -30,7 +30,6 @@ export default function PwaInstallButton({ enabled }: { enabled: boolean }) {
     const [isInstalled, setIsInstalled] = useState(false);
 
     useEffect(() => {
-        if (!enabled) return;
         setIsIos(detectIos());
         setIsInstalled(detectStandalone());
 
@@ -51,7 +50,8 @@ export default function PwaInstallButton({ enabled }: { enabled: boolean }) {
         };
     }, [enabled]);
 
-    if (!enabled || isInstalled) return null;
+    if (isInstalled) return null;
+    if (!enabled) return null;
 
     if (isIos) {
         return <span className="text-xs text-ink/60 sm:text-sm">{t('installIosHint')}</span>;

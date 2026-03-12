@@ -155,18 +155,12 @@ body {
     padding: 6px;
 }
 
-.rbc-sphinx .rbc-time-header-content .rbc-header {
-    white-space: normal;
-    line-height: 1.25;
-    min-height: 42px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
 
-.rbc-sphinx.rbc-rtl .rbc-time-header-content .rbc-header {
-    font-size: 12px;
+.rbc-sphinx .rbc-time-header .rbc-header,
+.rbc-sphinx .rbc-time-view .rbc-allday-cell + .rbc-row .rbc-header {
+    white-space: normal;
+    word-break: keep-all;
+    line-height: 1.25;
 }
 
 @media (max-width: 640px) {
@@ -186,6 +180,7 @@ body {
     .rbc-sphinx .rbc-header {
         font-size: 10px;
         padding: 6px 4px;
+        min-height: 48px;
     }
 
     .rbc-sphinx .rbc-date-cell {

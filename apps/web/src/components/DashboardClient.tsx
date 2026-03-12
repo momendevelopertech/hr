@@ -47,13 +47,22 @@ type NoteItem = {
     user: { fullName: string };
 };
 
+type LatenessItem = {
+    id: string;
+    date: string;
+    minutesLate: number;
+    status?: string;
+};
+
 export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const t = useTranslations('dashboard');
+    const tm = useTranslations('requestModal');
     const { user, ready } = useRequireAuth(locale);
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [permissions, setPermissions] = useState<PermissionRequest[]>([]);
     const [forms, setForms] = useState<FormSubmission[]>([]);
     const [notes, setNotes] = useState<NoteItem[]>([]);
+    const [latenessItems, setLatenessItems] = useState<LatenessItem[]>([]);
     const [balances, setBalances] = useState<any[]>([]);
     const [permissionCycle, setPermissionCycle] = useState<any | null>(null);
     const [absenceDeduction, setAbsenceDeduction] = useState<any | null>(null);
@@ -69,7 +78,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
-            const [leaveBalances, leaveReqs, permissionReqs, formSubs, notesRes, cycle, absence, scheduleRes] = await Promise.all([
+            const [leaveBalances, leaveReqs, permissionReqs, formSubs, notesRes, cycle, absence, scheduleRes, latenessRes] = await Promise.all([
                 api.get('/leaves/balances'),
                 api.get('/leaves'),
                 api.get('/permissions'),
@@ -78,6 +87,12 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                 api.get('/permissions/cycle'),
                 api.get('/leaves/absence-deductions'),
                 api.get('/settings/work-schedule'),
+                api.get('/lateness', {
+                    params: {
+                        from: '2000-01-01',
+                        to: '2100-12-31',
+                    },
+                }),
             ]);
             setBalances(leaveBalances.data);
             setLeaves(leaveReqs.data);
@@ -87,6 +102,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             setPermissionCycle(cycle.data);
             setAbsenceDeduction(absence.data);
             setSchedule(scheduleRes.data);
+            setLatenessItems(latenessRes.data?.items || []);
         } finally {
             setLoading(false);
         }
@@ -189,8 +205,16 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             resource: { key: 'note', kind: 'note', item: note },
         }));
 
-        return [...leaveEvents, ...permissionEvents, ...formEvents, ...noteEvents];
-    }, [forms, leaves, locale, notes, permissions]);
+        const latenessEvents = latenessItems.map((item) => ({
+            title: `${user?.fullName || (locale === 'ar' ? 'الموظف' : 'Employee')} - ${tm('latenessRequest')}`,
+            start: new Date(item.date),
+            end: new Date(item.date),
+            allDay: true,
+            resource: { key: 'lateness', kind: 'lateness', item: { ...item, user } },
+        }));
+
+        return [...leaveEvents, ...permissionEvents, ...formEvents, ...noteEvents, ...latenessEvents];
+    }, [forms, latenessItems, leaves, locale, notes, permissions, tm, user]);
 
     if (!ready || loading) {
         return <PageLoader text={locale === 'ar' ? 'جاري تحميل لوحة التحكم...' : 'Loading dashboard...'} />;

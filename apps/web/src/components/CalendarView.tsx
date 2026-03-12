@@ -65,8 +65,7 @@ export default function CalendarView({
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
     const [isMobile, setIsMobile] = useState(false);
     const calendarLocale = locale === 'ar' ? arSA : enUS;
-    const weekdayFormat = (date: Date) => format(date, locale === 'ar' ? 'EEE' : 'EEEEEE', { locale: calendarLocale });
-    const dayFormat = (date: Date) => format(date, locale === 'ar' ? 'EEE d/M' : 'EEE M/d', { locale: calendarLocale });
+    const fullWeekdayFormat = (date: Date) => format(date, 'EEEE', { locale: calendarLocale });
 
     const eventPropGetter = (event: CalendarEvent) => {
         const key = event.resource?.key;
@@ -77,6 +76,7 @@ export default function CalendarView({
         if (key === 'personal') return { ...base, style: { backgroundColor: '#1f3a52', borderColor: '#1f3a52' } };
         if (key === 'form') return { ...base, style: { backgroundColor: '#6b7280', borderColor: '#6b7280' } };
         if (key === 'note') return { ...base, style: { backgroundColor: '#a16207', borderColor: '#a16207' } };
+        if (key === 'lateness') return { ...base, style: { backgroundColor: '#dc2626', borderColor: '#dc2626' } };
         return { ...base, style: { backgroundColor: '#475569', borderColor: '#475569' } };
     };
 
@@ -184,9 +184,13 @@ export default function CalendarView({
                 startAccessor="start"
                 endAccessor="end"
                 eventPropGetter={eventPropGetter}
-                formats={{ weekdayFormat, dayFormat }}
+                formats={{
+                    weekdayFormat: fullWeekdayFormat,
+                    dayFormat: fullWeekdayFormat,
+                    dayHeaderFormat: (date: Date) => `${fullWeekdayFormat(date)} ${format(date, 'd MMM', { locale: calendarLocale })}`,
+                }}
                 className="rbc-sphinx"
-                style={{ height: isMobile ? 420 : 520 }}
+                style={{ height: isMobile ? 440 : 540 }}
                 dayPropGetter={(date) => {
                     const isRamadan =
                         !!ramadanRange &&
