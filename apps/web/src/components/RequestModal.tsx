@@ -260,33 +260,50 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     {dayName ? <span className="ml-2 text-ink/60">- {dayName}</span> : null}
                 </p>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-[220px_1fr]">
-                    <div className="space-y-2">
-                        <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{tm('pickTypeTitle')}</p>
-                        <button className={`btn-outline w-full ${type === 'permission' ? 'bg-ink/10' : ''}`} onClick={() => setType('permission')}>
-                            {tm('personalPermission')}
-                        </button>
-                        <button className={`btn-outline w-full ${type === 'lateness' ? 'bg-ink/10' : ''}`} onClick={() => setType('lateness')}>
-                            {tm('latenessRequest')}
-                        </button>
-                        <button className={`btn-outline w-full ${type === 'leave' ? 'bg-ink/10' : ''}`} onClick={() => setType('leave')}>
-                            {tm('leaveRequest')}
-                        </button>
-                        <button className={`btn-outline w-full ${type === 'absence' ? 'bg-ink/10' : ''}`} onClick={() => setType('absence')}>
-                            {tm('absenceRequest')}
-                        </button>
-                        <button className={`btn-outline w-full ${type === 'mission' ? 'bg-ink/10' : ''}`} onClick={() => setType('mission')}>
-                            {tm('missionRequest')}
-                        </button>
-                        <button
-                            className={`btn-outline w-full py-3 text-base ${type === 'note' ? 'bg-amber-200/60 border-amber-200 text-amber-900' : 'bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100'}`}
-                            onClick={() => setType('note')}
-                        >
-                            <span className="inline-flex items-center justify-center gap-2">
-                                <NotebookPen className="h-4 w-4" />
-                                {tm('noteRequest')}
-                            </span>
-                        </button>
+                <div className="mt-4 grid gap-4 md:grid-cols-[240px_1fr]">
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{tm('pickTypeTitle')}</p>
+                            <button className={`btn-outline w-full ${type === 'leave' ? 'bg-ink/10' : ''}`} onClick={() => setType('leave')}>
+                                {tm('leaveRequest')}
+                            </button>
+                            <button className={`btn-outline w-full ${type === 'absence' ? 'bg-ink/10' : ''}`} onClick={() => setType('absence')}>
+                                {tm('absenceRequest')}
+                            </button>
+                            <button className={`btn-outline w-full ${type === 'mission' ? 'bg-ink/10' : ''}`} onClick={() => setType('mission')}>
+                                {tm('missionRequest')}
+                            </button>
+                            <button className={`btn-outline w-full ${type === 'permission' ? 'bg-ink/10' : ''}`} onClick={() => setType('permission')}>
+                                {tm('personalPermission')}
+                            </button>
+                        </div>
+
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-3">
+                            <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-amber-900/70">{tm('employeeActionsTitle')}</p>
+                            <div className="space-y-2">
+                                <button
+                                    className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold transition ${type === 'lateness'
+                                        ? 'border-amber-300 bg-amber-200/70 text-amber-900 shadow-sm'
+                                        : 'border-amber-200 bg-white/70 text-amber-900 hover:bg-amber-100'
+                                        }`}
+                                    onClick={() => setType('lateness')}
+                                >
+                                    {tm('latenessRequest')}
+                                </button>
+                                <button
+                                    className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold transition ${type === 'note'
+                                        ? 'border-amber-300 bg-amber-200/70 text-amber-900 shadow-sm'
+                                        : 'border-amber-200 bg-white/70 text-amber-900 hover:bg-amber-100'
+                                        }`}
+                                    onClick={() => setType('note')}
+                                >
+                                    <span className="inline-flex items-center justify-center gap-2">
+                                        <NotebookPen className="h-4 w-4" />
+                                        {tm('noteRequest')}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">

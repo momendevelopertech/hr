@@ -136,7 +136,6 @@
     "selectedDate": "التاريخ المختار",
     "pickTypeTitle": "نوع الطلب",
     "pickTypeHint": "اختر نوع الطلب لعرض النموذج.",
-
     "personalPermission": "طلب إذن",
     "leaveRequest": "طلب إجازة",
     "absenceRequest": "طلب غياب بإذن",
@@ -157,7 +156,6 @@
     "permissionDurationError": "يرجى إدخال مدة الإذن",
     "permissionConfirmArrival": "هتسجل حضور الساعة {time}.",
     "permissionConfirmDeparture": "هتسجل انصراف الساعة {time}.",
-
     "pendingToast": "تم إرسال الطلب وهو قيد الانتظار لموافقة مديرك المباشر.",
     "noteRequest": "ملاحظة",
     "noteTitle": "عنوان الملاحظة",
@@ -171,7 +169,8 @@
     "latenessMinutesValue": "{minutes} دقيقة",
     "latenessMinutesError": "يرجى إدخال دقائق التأخير.",
     "latenessConfirm": "سيتم تسجيل الوصول الساعة {time}.",
-    "latenessSaved": "تم تسجيل التأخير."
+    "latenessSaved": "تم تسجيل التأخير.",
+    "employeeActionsTitle": "إجراءات الموظف"
   },
   "eventDetails": {
     "title": "تفاصيل الطلب",
@@ -380,8 +379,7 @@
     "latenessNotConverted": "غير محول",
     "latenessEmpty": "لا توجد تأخيرات في هذه الدورة.",
     "latenessLoading": "جاري تحميل التأخيرات..."
-  }
-  ,
+  },
   "workSchedule": {
     "title": "مواعيد العمل",
     "description": "المواعيد الافتراضية للعمل للموظفين.",
@@ -407,4 +405,3 @@
     "pwaInstallHint": "يظهر فقط عند دعم المتصفح للتثبيت، وعلى iOS تظهر رسالة إرشادية."
   }
 }
-

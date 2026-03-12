@@ -81,17 +81,16 @@ export default function CalendarView({
     };
 
     const title = useMemo(() => {
-        const dateLocale = locale === 'ar' ? arSA : enUS;
         if (view === 'month') {
-            return format(currentDate, 'MMMM yyyy', { locale: dateLocale });
+            return format(currentDate, 'MMMM yyyy', { locale: calendarLocale });
         }
         if (view === 'week') {
             const start = startOfWeek(currentDate, { weekStartsOn: 6 });
             const end = endOfWeek(currentDate, { weekStartsOn: 6 });
-            return `${format(start, 'd MMM', { locale: dateLocale })} - ${format(end, 'd MMM yyyy', { locale: dateLocale })}`;
+            return `${format(start, 'd MMM', { locale: calendarLocale })} - ${format(end, 'd MMM yyyy', { locale: calendarLocale })}`;
         }
-        return format(currentDate, 'PPPP', { locale: dateLocale });
-    }, [currentDate, locale, view]);
+        return format(currentDate, 'PPPP', { locale: calendarLocale });
+    }, [calendarLocale, currentDate, view]);
 
     const navigate = (direction: 'prev' | 'next') => {
         const multiplier = direction === 'next' ? 1 : -1;

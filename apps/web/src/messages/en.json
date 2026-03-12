@@ -169,7 +169,8 @@
     "latenessMinutesValue": "{minutes} min",
     "latenessMinutesError": "Please enter minutes late.",
     "latenessConfirm": "Arrival will be recorded at {time}.",
-    "latenessSaved": "Lateness recorded."
+    "latenessSaved": "Lateness recorded.",
+    "employeeActionsTitle": "Employee actions"
   },
   "eventDetails": {
     "title": "Request details",
@@ -378,8 +379,7 @@
     "latenessNotConverted": "Not converted",
     "latenessEmpty": "No lateness records in this cycle.",
     "latenessLoading": "Loading lateness..."
-  }
-  ,
+  },
   "workSchedule": {
     "title": "Work Schedule",
     "description": "Default working hours for employees.",
