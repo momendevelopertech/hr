@@ -24,6 +24,11 @@ const resetRefreshState = () => {
     refreshDisabled = false;
 };
 
+const disableRefreshState = () => {
+    refreshDisabled = true;
+    csrfToken = null;
+};
+
 const api = axios.create({
     baseURL: getPublicApiUrl(),
     withCredentials: true,
@@ -151,11 +156,13 @@ api.interceptors.response.use((response) => {
         setCsrfToken(response.data.csrfToken);
     }
 
-    if (
-        response.config.url?.includes('/auth/login') ||
-        response.config.url?.includes('/auth/logout')
-    ) {
+    if (response.config.url?.includes('/auth/login')) {
         resetRefreshState();
+        clearApiCache();
+    }
+
+    if (response.config.url?.includes('/auth/logout')) {
+        disableRefreshState();
         clearApiCache();
     }
 
@@ -196,8 +203,7 @@ api.interceptors.response.use((response) => {
         } catch (refreshError: any) {
             const refreshStatus = refreshError?.response?.status;
             if (refreshStatus === 401 || refreshStatus === 403 || refreshStatus === 500) {
-                refreshDisabled = true;
-                csrfToken = null;
+                disableRefreshState();
             }
             return Promise.reject(refreshError);
         }
