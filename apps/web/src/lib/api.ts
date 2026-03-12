@@ -25,6 +25,65 @@ const api = axios.create({
     timeout: 15000,
 });
 
+type CachedResponse = {
+    timestamp: number;
+    status: number;
+    statusText: string;
+    headers: any;
+    data: any;
+};
+
+const CACHE_TTL_MS = 30000;
+const responseCache = new Map<string, CachedResponse>();
+
+const getCacheKey = (config: any) => {
+    const base = config.baseURL ? config.baseURL.replace(/\/$/, '') : '';
+    const url = config.url || '';
+    const params = config.params ? new URLSearchParams(config.params).toString() : '';
+    const suffix = params ? `?${params}` : '';
+    return `${config.method || 'get'}:${base}${url}${suffix}`;
+};
+
+export const clearApiCache = () => {
+    responseCache.clear();
+};
+
+api.defaults.adapter = async (config) => {
+    const method = (config.method || 'get').toLowerCase();
+    const skipCache = config.headers?.['x-no-cache'];
+
+    if (method === 'get' && !skipCache) {
+        const key = getCacheKey(config);
+        const cached = responseCache.get(key);
+        if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+            return Promise.resolve({
+                data: cached.data,
+                status: cached.status,
+                statusText: cached.statusText,
+                headers: cached.headers,
+                config,
+                request: {},
+            });
+        }
+    }
+
+    const adapter = axios.getAdapter(config.adapter || axios.defaults.adapter);
+    const response = await adapter(config);
+
+    if (method === 'get' && !skipCache) {
+        const key = getCacheKey(config);
+        responseCache.set(key, {
+            timestamp: Date.now(),
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+            data: response.data,
+        });
+    }
+
+    return response;
+};
+
 const ensureRefresh = async () => {
     if (!refreshPromise) {
         refreshPromise = api.post('/auth/refresh', {})

@@ -221,6 +221,7 @@ export class LeavesService {
             where: { id },
             include: {
                 user: { include: { department: true } },
+                approvedByMgr: { select: { fullName: true, fullNameAr: true } },
             },
         });
     }

@@ -240,6 +240,17 @@ export class PermissionsService {
         });
     }
 
+    async findOne(id: string) {
+        return this.prisma.permissionRequest.findUnique({
+            where: { id },
+            include: {
+                user: { select: { fullName: true, fullNameAr: true, employeeNumber: true } },
+                cycle: true,
+                approvedByMgr: { select: { fullName: true, fullNameAr: true } },
+            },
+        });
+    }
+
     async updateStatus(id: string, actorId: string, role: string, action: 'approve' | 'reject', comment?: string) {
         const request = await this.prisma.permissionRequest.findUnique({
             where: { id },

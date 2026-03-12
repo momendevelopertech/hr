@@ -26,6 +26,10 @@ export class ChangePasswordDto {
 export class ResetPasswordRequestDto {
     @IsEmail()
     email: string;
+
+    @IsOptional()
+    @IsString()
+    locale?: string;
 }
 
 export class ResetPasswordDto {

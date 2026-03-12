@@ -7,6 +7,17 @@ import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { usePusherChannel } from '@/lib/use-pusher-channel';
 import { useAuthStore } from '@/stores/auth-store';
+import {
+    Bell,
+    Building2,
+    ClipboardList,
+    FileText,
+    LayoutDashboard,
+    MessageCircle,
+    Settings,
+    Users,
+    BarChart3,
+} from 'lucide-react';
 
 export default function NavLinks({ locale }: { locale: string }) {
     const t = useTranslations('nav');
@@ -20,8 +31,8 @@ export default function NavLinks({ locale }: { locale: string }) {
     const fetchCounts = useCallback(async () => {
         if (!user) return;
         const [notificationsRes, chatsRes] = await Promise.all([
-            api.get('/notifications/unread'),
-            api.get('/chat/chats'),
+            api.get('/notifications/unread', { headers: { 'x-no-cache': '1' } }),
+            api.get('/chat/chats', { headers: { 'x-no-cache': '1' } }),
         ]);
         setUnreadNotifications((notificationsRes.data || []).length);
         const totalUnread = (chatsRes.data || []).reduce((sum: number, chat: any) => sum + (chat.unreadCount || 0), 0);
@@ -46,19 +57,19 @@ export default function NavLinks({ locale }: { locale: string }) {
     usePusherChannel(user ? `user-${user.id}` : null, pusherHandlers);
 
     const links = [
-        { href: `/${locale}`, label: t('dashboard') },
-        { href: `/${locale}/requests`, label: t('requests') },
-        { href: `/${locale}/chat`, label: t('chat'), badge: unreadChats },
-        ...(canManageEmployees ? [{ href: `/${locale}/employees`, label: t('employees') }] : []),
+        { href: `/${locale}`, label: t('dashboard'), icon: LayoutDashboard },
+        { href: `/${locale}/requests`, label: t('requests'), icon: ClipboardList },
+        { href: `/${locale}/chat`, label: t('chat'), badge: unreadChats, icon: MessageCircle },
+        ...(canManageEmployees ? [{ href: `/${locale}/employees`, label: t('employees'), icon: Users }] : []),
         ...(isAdmin
             ? [
-                { href: `/${locale}/departments`, label: t('departments') },
-                { href: `/${locale}/forms`, label: t('forms') },
-                { href: `/${locale}/reports`, label: t('reports') },
-                { href: `/${locale}/settings`, label: t('settings') },
+                { href: `/${locale}/departments`, label: t('departments'), icon: Building2 },
+                { href: `/${locale}/forms`, label: t('forms'), icon: FileText },
+                { href: `/${locale}/reports`, label: t('reports'), icon: BarChart3 },
+                { href: `/${locale}/settings`, label: t('settings'), icon: Settings },
             ]
             : []),
-        { href: `/${locale}/notifications`, label: t('notifications'), badge: unreadNotifications },
+        { href: `/${locale}/notifications`, label: t('notifications'), badge: unreadNotifications, icon: Bell },
     ];
 
     return (
@@ -72,6 +83,7 @@ export default function NavLinks({ locale }: { locale: string }) {
                         className={`btn-outline ${active ? 'bg-ink/10' : ''}`}
                     >
                         <span className="inline-flex items-center gap-2">
+                            {link.icon && <link.icon size={16} />}
                             {link.label}
                             {!!link.badge && (
                                 <span className="min-w-[20px] rounded-full bg-cactus px-2 py-0.5 text-center text-xs font-semibold text-white">

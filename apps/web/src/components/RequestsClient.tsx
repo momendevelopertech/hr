@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { useRequireAuth } from '@/lib/use-auth';
 import { enumLabels } from '@/lib/enum-labels';
-import { getPublicApiUrl } from '@/lib/public-urls';
 import PageLoader from './PageLoader';
 
 type LeaveRequest = {
@@ -37,7 +36,7 @@ type RequestRow = {
     requestDate: string;
     status: string;
     details: string;
-    pdfUrl: string;
+    printUrl: string;
 };
 
 type LatenessItem = {
@@ -60,7 +59,6 @@ type LatenessResponse = {
 export default function RequestsClient({ locale }: { locale: string }) {
     const t = useTranslations('requestsPage');
     const { user, ready } = useRequireAuth(locale);
-    const apiBaseUrl = getPublicApiUrl();
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [permissions, setPermissions] = useState<PermissionRequest[]>([]);
     const [latenessItems, setLatenessItems] = useState<LatenessItem[]>([]);
@@ -187,9 +185,9 @@ export default function RequestsClient({ locale }: { locale: string }) {
                 requestDate: leave.startDate,
                 status: leave.status,
                 details: `${new Date(leave.startDate).toLocaleDateString(dateLocale)} - ${new Date(leave.endDate).toLocaleDateString(dateLocale)}`,
-                pdfUrl: `${apiBaseUrl}/pdf/leave/${leave.id}`,
+                printUrl: `/${locale}/requests/print/leave/${leave.id}`,
             })),
-        [apiBaseUrl, dateLocale, leaves, locale],
+        [dateLocale, leaves, locale],
     );
 
     const permissionRows = useMemo<RequestRow[]>(
@@ -203,9 +201,9 @@ export default function RequestsClient({ locale }: { locale: string }) {
                 requestDate: perm.requestDate,
                 status: perm.status,
                 details: `${perm.hoursUsed}h`,
-                pdfUrl: `${apiBaseUrl}/pdf/permission/${perm.id}`,
+                printUrl: `/${locale}/requests/print/permission/${perm.id}`,
             })),
-        [apiBaseUrl, locale, permissions],
+        [locale, permissions],
     );
 
     const leaveOnlyRows = useMemo(
@@ -413,7 +411,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                         </td>
                                         <td className="py-2">
                                             <div className="flex flex-wrap gap-2">
-                                                <a className="btn-outline" href={row.pdfUrl} target="_blank" rel="noreferrer noopener">
+                                                <a className="btn-outline" href={row.printUrl} target="_blank" rel="noreferrer noopener">
                                                     {t('printPdf')}
                                                 </a>
                                                 {row.status === 'PENDING' && (

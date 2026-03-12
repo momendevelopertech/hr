@@ -6,7 +6,7 @@ import cookieParser = require('cookie-parser');
 import helmet from 'helmet';
 import csurf = require('csurf');
 import { HttpExceptionFilter } from './shared/http-exception.filter';
-import { getCookieSettings, getFrontendOrigin } from './shared/cookie-settings';
+import { getAllowedOrigins, getCookieSettings, getFrontendOrigin } from './shared/cookie-settings';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -17,6 +17,7 @@ async function bootstrap() {
     app.use(helmet());
     app.use(cookieParser(process.env.CSRF_SECRET || 'sphinx-csrf'));
     const frontendOrigin = getFrontendOrigin();
+    const allowedOrigins = getAllowedOrigins();
     const { sameSite, secure } = getCookieSettings();
 
     app.use(
@@ -38,7 +39,7 @@ async function bootstrap() {
 
     // CORS
     app.enableCors({
-        origin: frontendOrigin,
+        origin: allowedOrigins,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],

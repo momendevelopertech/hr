@@ -1,17 +1,19 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import BrandLogo from '@/components/BrandLogo';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Languages, Moon, Sun } from 'lucide-react';
 import { AppApiError } from '@/lib/api';
+import Link from 'next/link';
 
 export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } }) {
     const t = useTranslations('auth');
     const router = useRouter();
+    const pathname = usePathname();
     const { setUser } = useAuthStore();
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
@@ -19,24 +21,66 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<{ identifier?: string; password?: string; form?: string }>({});
+    const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+    useEffect(() => {
+        const stored = typeof window !== 'undefined' ? window.localStorage.getItem('theme') : null;
+        const next = stored === 'dark' ? 'dark' : 'light';
+        setTheme(next);
+        if (typeof document !== 'undefined') {
+            document.documentElement.dataset.theme = next;
+        }
+    }, []);
+
+    const toggleTheme = () => {
+        const next = theme === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+        if (typeof document !== 'undefined') {
+            document.documentElement.dataset.theme = next;
+        }
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem('theme', next);
+        }
+    };
+
+    const switchLocale = (nextLocale: string) => {
+        const segments = pathname.split('/');
+        segments[1] = nextLocale;
+        router.push(segments.join('/'));
+    };
 
     const validate = () => {
         const nextErrors: { identifier?: string; password?: string } = {};
         if (!identifier.trim()) {
-            nextErrors.identifier = params.locale === 'ar' ? 'يرجى إدخال البريد الإلكتروني أو اسم المستخدم' : 'Please enter your email or username';
+            nextErrors.identifier = t('loginEmailRequired');
         }
         if (!password.trim()) {
-            nextErrors.password = params.locale === 'ar' ? 'يرجى إدخال كلمة المرور' : 'Please enter your password';
+            nextErrors.password = t('loginPasswordRequired');
         } else if (password.trim().length < 6) {
-            nextErrors.password = params.locale === 'ar' ? 'كلمة المرور قصيرة جدًا' : 'Password must be at least 6 characters';
+            nextErrors.password = t('loginPasswordShort');
         }
 
         setErrors(nextErrors);
         return Object.keys(nextErrors).length === 0;
     };
 
-    const submit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const formatLoginError = (error: unknown) => {
+        const err = error as AppApiError;
+
+        if (!err?.status) return t('loginNetworkError');
+        if (err.status === 401) return t('loginInvalid');
+        if (err.status === 403) {
+            if (err.message?.toLowerCase().includes('locked')) return t('loginLocked');
+            if (err.message?.toLowerCase().includes('deactivated')) return t('loginDeactivated');
+            return t('loginForbidden');
+        }
+        if (err.status === 429) return t('loginTooMany');
+        if (err.status >= 500) return t('loginServerError');
+
+        return err.message || t('loginUnknownError');
+    };
+
+    const submit = async () => {
         if (loading || !validate()) return;
         setLoading(true);
         setErrors({});
@@ -44,28 +88,57 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
             await api.get('/auth/csrf');
             const res = await api.post('/auth/login', { identifier: identifier.trim(), password, rememberMe });
             setUser(res.data.user);
-            router.push(`/${params.locale}`);
+            const target = `/${params.locale}`;
+            router.push(target);
+            setTimeout(() => {
+                if (typeof window !== 'undefined' && window.location.pathname.includes('/login')) {
+                    window.location.href = target;
+                }
+            }, 600);
         } catch (error) {
-            const err = error as AppApiError;
-            setErrors({ form: err.message });
+            setErrors({ form: formatLoginError(error) });
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 py-8 sm:px-6">
+        <div className="relative min-h-screen flex items-center justify-center px-4 py-8 sm:px-6">
+            <div className="absolute end-4 top-4 flex items-center gap-2">
+                <button
+                    className="btn-outline text-xs sm:text-sm"
+                    onClick={() => switchLocale(params.locale === 'ar' ? 'en' : 'ar')}
+                    title={params.locale === 'ar' ? 'English' : 'Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©'}
+                    aria-label={params.locale === 'ar' ? 'Switch to English' : 'Ø§Ù„ØªØ¨Ø¯ÙŠÙ„ Ø¥Ù„Ù‰ Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©'}
+                >
+                    <Languages size={16} />
+                </button>
+                <button
+                    className="btn-outline text-xs sm:text-sm"
+                    onClick={toggleTheme}
+                    title={theme === 'dark' ? 'Light' : 'Dark'}
+                    aria-label={theme === 'dark' ? 'Light' : 'Dark'}
+                >
+                    {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                </button>
+            </div>
             <div className="card w-full max-w-md p-5 sm:p-8">
                 <div className="mb-6 text-center">
                     <div className="mx-auto mb-4 flex justify-center">
                         <BrandLogo locale={params.locale} />
                     </div>
                     <h1 className="text-xl font-semibold sm:text-2xl">{t('welcome')}</h1>
-                    <p className="text-sm text-ink/60">{t('changePassword')}</p>
+                    <p className="text-sm text-ink/60">{t('loginHint')}</p>
                 </div>
-                <form onSubmit={submit} className="space-y-4">
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        submit();
+                    }}
+                    className="space-y-4"
+                >
                     <label className="text-sm">
-                        {params.locale === 'ar' ? 'البريد الإلكتروني / اسم المستخدم' : 'Email / Username'}
+                        {params.locale === 'ar' ? 'Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ / Ø§Ø³Ù… Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…' : 'Email / Username'}
                         <input
                             type="text"
                             className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
@@ -106,12 +179,23 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                         />
                         {t('rememberMe')}
                     </label>
-                    <button className="btn-primary w-full" type="submit" disabled={loading}>
-                        {loading ? (params.locale === 'ar' ? 'جارٍ تسجيل الدخول...' : 'Signing in...') : t('login')}
+                    <button
+                        className="btn-primary w-full"
+                        type="button"
+                        disabled={loading}
+                        onClick={submit}
+                    >
+                        {loading ? (params.locale === 'ar' ? 'Ø¬Ø§Ø±Ù ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„...' : 'Signing in...') : t('login')}
                     </button>
+                    <div className="flex items-center justify-between text-sm">
+                        <Link className="text-ink/70 hover:text-ink" href={`/${params.locale}/forgot-password`}>
+                            {t('reset')}
+                        </Link>
+                    </div>
                     {errors.form && <p className="text-sm text-red-600">{errors.form}</p>}
                 </form>
             </div>
         </div>
     );
 }
+

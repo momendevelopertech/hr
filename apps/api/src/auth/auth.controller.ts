@@ -133,7 +133,7 @@ export class AuthController {
     @UseGuards(ThrottlerGuard)
     @HttpCode(HttpStatus.OK)
     async forgotPassword(@Body() dto: ResetPasswordRequestDto) {
-        await this.authService.requestPasswordReset(dto.email);
+        await this.authService.requestPasswordReset(dto.email, dto.locale);
         return { message: 'If the email exists, a reset link has been sent.' };
     }
 

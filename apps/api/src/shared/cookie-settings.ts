@@ -15,6 +15,25 @@ const normalizeOrigin = (value?: string) => {
 
 export const getFrontendOrigin = () => normalizeOrigin(process.env.FRONTEND_URL);
 
+export const getAllowedOrigins = () => {
+    const primary = getFrontendOrigin();
+    const origins = new Set([primary]);
+
+    if (isLocalhost(primary)) {
+        try {
+            const url = new URL(primary);
+            const port = url.port || (url.protocol === 'https:' ? '443' : '80');
+            origins.add(`${url.protocol}//localhost:${port}`);
+            origins.add(`${url.protocol}//127.0.0.1:${port}`);
+            origins.add(`${url.protocol}//[::1]:${port}`);
+        } catch {
+            // ignore malformed URL
+        }
+    }
+
+    return Array.from(origins);
+};
+
 export const getCookieSettings = () => {
     const frontendOrigin = getFrontendOrigin();
     const isLocal = isLocalhost(frontendOrigin);

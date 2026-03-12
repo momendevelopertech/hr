@@ -21,6 +21,11 @@ export class PermissionsController {
         return this.permissionsService.findAll(req.user.id, req.user.role);
     }
 
+    @Get(':id')
+    findOne(@Param('id') id: string) {
+        return this.permissionsService.findOne(id);
+    }
+
     @Post()
     create(@Body() body: any, @Req() req: any) {
         return this.permissionsService.createRequest(req.user.id, body);

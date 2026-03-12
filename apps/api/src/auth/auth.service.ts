@@ -181,7 +181,7 @@ export class AuthService {
         await this.auditService.log({ userId, action: 'PASSWORD_CHANGED' });
     }
 
-    async requestPasswordReset(email: string) {
+    async requestPasswordReset(email: string, locale = 'en') {
         const user = await this.prisma.user.findUnique({ where: { email } });
         if (!user) return; // Don't reveal user existence
 
@@ -195,7 +195,8 @@ export class AuthService {
             },
         });
 
-        const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+        const safeLocale = ['en', 'ar'].includes(locale) ? locale : 'en';
+        const resetUrl = `${process.env.FRONTEND_URL}/${safeLocale}/reset-password?token=${resetToken}`;
 
         await this.notificationsService.sendEmail({
             to: user.email,
