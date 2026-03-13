@@ -12,9 +12,9 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "db:push": "cd apps/api && npx prisma db push",
-    "db:generate": "cd apps/api && npx prisma generate",
-    "db:seed": "cd apps/api && npx ts-node prisma/seed.ts"
+    "db:push": "cd apps/api && ../../node_modules/.bin/prisma db push",
+    "db:generate": "cd apps/api && ../../node_modules/.bin/prisma generate",
+    "db:seed": "cd apps/api && ../../node_modules/.bin/ts-node prisma/seed.ts"
   },
   "devDependencies": {
     "turbo": "^1.13.0"
