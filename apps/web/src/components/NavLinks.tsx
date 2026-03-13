@@ -24,6 +24,7 @@ export default function NavLinks({ locale }: { locale: string }) {
     const pathname = usePathname();
     const { user } = useAuthStore();
     const isAdmin = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
+    const canViewReports = isAdmin || user?.role === 'MANAGER' || user?.role === 'BRANCH_SECRETARY';
     const canManageEmployees = isAdmin || user?.role === 'MANAGER' || user?.role === 'BRANCH_SECRETARY';
     const [unreadNotifications, setUnreadNotifications] = useState(0);
     const [unreadChats, setUnreadChats] = useState(0);
@@ -65,10 +66,10 @@ export default function NavLinks({ locale }: { locale: string }) {
             ? [
                 { href: `/${locale}/departments`, label: t('departments'), icon: Building2 },
                 { href: `/${locale}/forms`, label: t('forms'), icon: FileText },
-                { href: `/${locale}/reports`, label: t('reports'), icon: BarChart3 },
-                { href: `/${locale}/settings`, label: t('settings'), icon: Settings },
             ]
             : []),
+        ...(canViewReports ? [{ href: `/${locale}/reports`, label: t('reports'), icon: BarChart3 }] : []),
+        ...(isAdmin ? [{ href: `/${locale}/settings`, label: t('settings'), icon: Settings }] : []),
         { href: `/${locale}/notifications`, label: t('notifications'), badge: unreadNotifications, icon: Bell },
     ];
 

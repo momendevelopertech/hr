@@ -23,7 +23,7 @@ const labels = {
             CANCELLED: 'ملغي',
         },
         leaveType: {
-            ANNUAL: 'سنوية',
+            ANNUAL: 'اعتيادية',
             CASUAL: 'عارضة',
             EMERGENCY: 'طارئة',
             MISSION: 'مأمورية',

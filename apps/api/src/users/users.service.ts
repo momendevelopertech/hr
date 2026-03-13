@@ -5,6 +5,7 @@ import {
     ForbiddenException,
     BadRequestException,
 } from '@nestjs/common';
+import { endOfDay, startOfDay } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
@@ -293,6 +294,32 @@ export class UsersService {
         });
     }
 
+    private async ensureCanViewEmployee(targetUserId: string, requesterId: string, requesterRole: string) {
+        if (requesterRole === 'HR_ADMIN' || requesterRole === 'SUPER_ADMIN') return;
+
+        if (requesterRole === 'MANAGER') {
+            const manager = await this.prisma.user.findUnique({ where: { id: requesterId } });
+            const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+            if (!manager || !target || manager.departmentId !== target.departmentId) {
+                throw new ForbiddenException();
+            }
+            return;
+        }
+
+        if (requesterRole === 'BRANCH_SECRETARY') {
+            const secretary = await this.prisma.user.findUnique({ where: { id: requesterId } });
+            const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+            if (!secretary || !target || secretary.governorate !== target.governorate) {
+                throw new ForbiddenException();
+            }
+            return;
+        }
+
+        if (requesterRole === 'EMPLOYEE' && requesterId !== targetUserId) {
+            throw new ForbiddenException();
+        }
+    }
+
     async resetEmployeeData(targetUserId: string, adminId: string) {
         const user = await this.prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true } });
         if (!user) throw new NotFoundException('Employee not found');
@@ -342,21 +369,7 @@ export class UsersService {
     }
 
     async getStats(targetUserId: string, requesterId: string, requesterRole: string) {
-        if (requesterRole === 'MANAGER') {
-            const manager = await this.prisma.user.findUnique({ where: { id: requesterId } });
-            const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
-            if (!manager || !target || manager.departmentId !== target.departmentId) {
-                throw new ForbiddenException();
-            }
-        } else if (requesterRole === 'BRANCH_SECRETARY') {
-            const secretary = await this.prisma.user.findUnique({ where: { id: requesterId } });
-            const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
-            if (!secretary || !target || secretary.governorate !== target.governorate) {
-                throw new ForbiddenException();
-            }
-        } else if (requesterRole === 'EMPLOYEE' && requesterId !== targetUserId) {
-            throw new ForbiddenException();
-        }
+        await this.ensureCanViewEmployee(targetUserId, requesterId, requesterRole);
 
         const year = new Date().getFullYear();
         const [balances, leaves, permissions] = await Promise.all([
@@ -396,6 +409,208 @@ export class UsersService {
                 leaves,
                 permissions,
             },
+        };
+    }
+
+    async getRequestHistory(
+        targetUserId: string,
+        requesterId: string,
+        requesterRole: string,
+        options?: { from?: string; to?: string; includeDetails?: boolean },
+    ) {
+        await this.ensureCanViewEmployee(targetUserId, requesterId, requesterRole);
+
+        const parseDate = (value?: string) => {
+            if (!value) return undefined;
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) {
+                throw new BadRequestException('Invalid date range');
+            }
+            return parsed;
+        };
+
+        const fromDate = parseDate(options?.from);
+        const toDate = parseDate(options?.to);
+
+        const leaveWhere: any = {
+            userId: targetUserId,
+            status: 'HR_APPROVED',
+            ...(fromDate || toDate
+                ? {
+                    startDate: {
+                        ...(fromDate ? { gte: startOfDay(fromDate) } : {}),
+                        ...(toDate ? { lte: endOfDay(toDate) } : {}),
+                    },
+                }
+                : {}),
+        };
+
+        const permissionWhere: any = {
+            userId: targetUserId,
+            status: 'HR_APPROVED',
+            ...(fromDate || toDate
+                ? {
+                    requestDate: {
+                        ...(fromDate ? { gte: startOfDay(fromDate) } : {}),
+                        ...(toDate ? { lte: endOfDay(toDate) } : {}),
+                    },
+                }
+                : {}),
+        };
+
+        const [leaves, permissions] = await Promise.all([
+            this.prisma.leaveRequest.findMany({
+                where: leaveWhere,
+                orderBy: { startDate: 'desc' },
+                select: {
+                    id: true,
+                    leaveType: true,
+                    startDate: true,
+                    endDate: true,
+                    totalDays: true,
+                    createdAt: true,
+                },
+            }),
+            this.prisma.permissionRequest.findMany({
+                where: permissionWhere,
+                orderBy: { requestDate: 'desc' },
+                select: {
+                    id: true,
+                    permissionType: true,
+                    requestDate: true,
+                    hoursUsed: true,
+                    createdAt: true,
+                },
+            }),
+        ]);
+
+        const leaveTypeToKey: Record<string, string> = {
+            ANNUAL: 'annual',
+            CASUAL: 'casual',
+            MISSION: 'mission',
+            ABSENCE_WITH_PERMISSION: 'absence',
+            EMERGENCY: 'emergency',
+        };
+
+        const ensureCycle = (cycles: Map<string, any>, date: Date) => {
+            const year = date.getFullYear();
+            const monthIndex = date.getMonth();
+            const key = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+            if (cycles.has(key)) return cycles.get(key);
+
+            const cycleStart = new Date(year, monthIndex, 1);
+            const cycleEnd = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
+            const entry = {
+                key,
+                start: cycleStart,
+                end: cycleEnd,
+                totals: {
+                    annual: 0,
+                    casual: 0,
+                    mission: 0,
+                    absence: 0,
+                    emergency: 0,
+                    permissions: 0,
+                    other: 0,
+                },
+                details: options?.includeDetails
+                    ? {
+                        annual: [] as any[],
+                        casual: [] as any[],
+                        mission: [] as any[],
+                        absence: [] as any[],
+                        emergency: [] as any[],
+                        permissions: [] as any[],
+                        other: [] as any[],
+                    }
+                    : undefined,
+            };
+            cycles.set(key, entry);
+            return entry;
+        };
+
+        const cycles = new Map<string, any>();
+
+        leaves.forEach((leave) => {
+            const cycle = ensureCycle(cycles, new Date(leave.startDate));
+            const key = leaveTypeToKey[leave.leaveType] || 'other';
+            cycle.totals[key] = (cycle.totals[key] || 0) + 1;
+            if (cycle.details) {
+                cycle.details[key] = cycle.details[key] || [];
+                cycle.details[key].push({
+                    id: leave.id,
+                    leaveType: leave.leaveType,
+                    startDate: leave.startDate,
+                    endDate: leave.endDate,
+                    totalDays: leave.totalDays,
+                    createdAt: leave.createdAt,
+                });
+            }
+        });
+
+        permissions.forEach((permission) => {
+            const cycle = ensureCycle(cycles, new Date(permission.requestDate));
+            cycle.totals.permissions += 1;
+            if (cycle.details) {
+                cycle.details.permissions.push({
+                    id: permission.id,
+                    permissionType: permission.permissionType,
+                    requestDate: permission.requestDate,
+                    hoursUsed: permission.hoursUsed,
+                    createdAt: permission.createdAt,
+                });
+            }
+        });
+
+        const now = new Date();
+        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const currentCycle = cycles.get(currentKey)
+            || ensureCycle(cycles, now);
+
+        const items = Array.from(cycles.values())
+            .sort((a, b) => b.start.getTime() - a.start.getTime())
+            .map((cycle) => ({
+                key: cycle.key,
+                start: cycle.start.toISOString(),
+                end: cycle.end.toISOString(),
+                totals: cycle.totals,
+                details: cycle.details
+                    ? {
+                        annual: cycle.details.annual || [],
+                        casual: cycle.details.casual || [],
+                        mission: cycle.details.mission || [],
+                        absence: cycle.details.absence || [],
+                        emergency: cycle.details.emergency || [],
+                        permissions: cycle.details.permissions || [],
+                        other: cycle.details.other || [],
+                    }
+                    : undefined,
+            }));
+
+        return {
+            userId: targetUserId,
+            range: {
+                from: fromDate ? startOfDay(fromDate).toISOString() : null,
+                to: toDate ? endOfDay(toDate).toISOString() : null,
+            },
+            currentCycle: {
+                key: currentCycle.key,
+                start: currentCycle.start.toISOString(),
+                end: currentCycle.end.toISOString(),
+                totals: currentCycle.totals,
+                details: currentCycle.details
+                    ? {
+                        annual: currentCycle.details.annual || [],
+                        casual: currentCycle.details.casual || [],
+                        mission: currentCycle.details.mission || [],
+                        absence: currentCycle.details.absence || [],
+                        emergency: currentCycle.details.emergency || [],
+                        permissions: currentCycle.details.permissions || [],
+                        other: currentCycle.details.other || [],
+                    }
+                    : undefined,
+            },
+            cycles: items,
         };
     }
 }

@@ -60,6 +60,23 @@ export class UsersController {
         return this.usersService.getStats(id, req.user.id, req.user.role);
     }
 
+    @Get(':id/history')
+    @UseGuards(RolesGuard)
+    @Roles('SUPER_ADMIN', 'HR_ADMIN', 'MANAGER', 'BRANCH_SECRETARY', 'EMPLOYEE')
+    getHistory(
+        @Param('id') id: string,
+        @Req() req: any,
+        @Query('from') from?: string,
+        @Query('to') to?: string,
+        @Query('includeDetails') includeDetails?: string,
+    ) {
+        return this.usersService.getRequestHistory(id, req.user.id, req.user.role, {
+            from,
+            to,
+            includeDetails: includeDetails === '1' || includeDetails === 'true',
+        });
+    }
+
     @Patch(':id')
     @UseGuards(RolesGuard)
     @Roles('SUPER_ADMIN', 'HR_ADMIN')

@@ -8,6 +8,7 @@ import { useRequireAuth } from '@/lib/use-auth';
 import { enumLabels } from '@/lib/enum-labels';
 import { usePusherChannel } from '@/lib/use-pusher-channel';
 import PageLoader from './PageLoader';
+import EmployeeHistoryModal from './EmployeeHistoryModal';
 
 type Department = { id: string; name: string; nameAr?: string | null };
 type RequestUser = {
@@ -110,6 +111,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
         departmentId: '',
     });
     const [salary, setSalary] = useState('');
+    const [historyOpen, setHistoryOpen] = useState(false);
 
     const dateLocale = useMemo(() => (locale === 'ar' ? 'ar-EG' : 'en-US'), [locale]);
 
@@ -412,18 +414,23 @@ export default function RequestsClient({ locale }: { locale: string }) {
             <section className="card p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-lg font-semibold">{t('title')}</h2>
-                    <label className="text-sm">
-                        {t('rowsPerPage')}
-                        <select
-                            className="ms-2 rounded-lg border border-ink/20 px-2 py-1"
-                            value={limit}
-                            onChange={(e) => setLimit(parseInt(e.target.value, 10))}
-                        >
-                            <option value={20}>20</option>
-                            <option value={50}>50</option>
-                            <option value={100}>100</option>
-                        </select>
-                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button className="btn-outline" onClick={() => setHistoryOpen(true)}>
+                            {tEmployees('history')}
+                        </button>
+                        <label className="text-sm">
+                            {t('rowsPerPage')}
+                            <select
+                                className="ms-2 rounded-lg border border-ink/20 px-2 py-1"
+                                value={limit}
+                                onChange={(e) => setLimit(parseInt(e.target.value, 10))}
+                            >
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                        </label>
+                    </div>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -714,6 +721,13 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     </div>
                 )}
             </section>
+
+            <EmployeeHistoryModal
+                open={historyOpen}
+                user={user ? { id: user.id, fullName: user.fullName, fullNameAr: user.fullNameAr } : null}
+                locale={locale}
+                onClose={() => setHistoryOpen(false)}
+            />
         </main>
     );
 }

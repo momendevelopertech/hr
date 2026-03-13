@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { useRequireAuth } from '@/lib/use-auth';
 import { enumLabels } from '@/lib/enum-labels';
 import PageLoader from './PageLoader';
+import EmployeeHistoryModal from './EmployeeHistoryModal';
 
 type Department = { id: string; name: string };
 type User = {
@@ -14,6 +15,7 @@ type User = {
     employeeNumber: string;
     username?: string | null;
     fullName: string;
+    fullNameAr?: string | null;
     email: string;
     phone?: string;
     role: string;
@@ -52,6 +54,8 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     const [statsLoading, setStatsLoading] = useState(false);
     const [statsUser, setStatsUser] = useState<User | null>(null);
     const [statsData, setStatsData] = useState<any | null>(null);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [historyUser, setHistoryUser] = useState<User | null>(null);
     const [createOpen, setCreateOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -217,6 +221,11 @@ export default function EmployeesClient({ locale }: { locale: string }) {
         }
     };
 
+    const openHistory = (emp: User) => {
+        setHistoryUser(emp);
+        setHistoryOpen(true);
+    };
+
     const toggleActive = async (emp: User) => {
         await api.patch(`/users/${emp.id}`, { isActive: !emp.isActive });
         fetchAll();
@@ -314,6 +323,9 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                             <div className="flex flex-wrap gap-2">
                                                 <button className="btn-outline" onClick={() => openStats(emp)}>
                                                     {locale === 'ar' ? 'عرض' : 'View'}
+                                                </button>
+                                                <button className="btn-outline" onClick={() => openHistory(emp)}>
+                                                    {t('history')}
                                                 </button>
                                                 {canAdmin && (
                                                     <button className="btn-outline" onClick={() => openEdit(emp)}>
@@ -468,7 +480,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                 type="number"
                                 min={0}
                                 className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                placeholder={locale === 'ar' ? 'رصيد الإجازات السنوية' : 'Annual leave balance'}
+                                placeholder={locale === 'ar' ? 'رصيد الإجازات الاعتيادية' : 'Annual leave balance'}
                                 value={editForm.annualLeaveDays ?? ''}
                                 onChange={(e) => setEditForm((p: any) => ({ ...p, annualLeaveDays: e.target.value }))}
                             />
@@ -525,6 +537,13 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                     </div>
                 </div>
             )}
+
+            <EmployeeHistoryModal
+                open={historyOpen}
+                user={historyUser}
+                locale={locale}
+                onClose={() => { setHistoryOpen(false); setHistoryUser(null); }}
+            />
         </main>
     );
 }
