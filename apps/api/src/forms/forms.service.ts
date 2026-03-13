@@ -115,9 +115,9 @@ export class FormsService {
                     senderId: userId,
                     type: 'FORM_SUBMISSION',
                     title: `New Form: ${form.name}`,
-                    titleAr: `نموذج جديد: ${form.nameAr}`,
+                    titleAr: `نموذج جديد: ${form.nameAr || form.name}`,
                     body: `${submission.user.fullName} submitted "${form.name}".`,
-                    bodyAr: `قدّم ${submission.user.fullName} "${form.nameAr}".`,
+                    bodyAr: `قدّم ${submission.user.fullNameAr || submission.user.fullName} "${form.nameAr || form.name}".`,
                     metadata: { submissionId: submission.id, formId },
                 });
             }

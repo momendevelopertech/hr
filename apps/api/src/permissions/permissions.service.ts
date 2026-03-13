@@ -141,8 +141,8 @@ export class PermissionsService {
         return result._sum.hoursUsed ?? 0;
     }
 
-    async getOrCreateCycle(userId: string) {
-        const { start, end } = this.getCycleForDate(new Date());
+    async getOrCreateCycle(userId: string, date: Date = new Date()) {
+        const { start, end } = this.getCycleForDate(date);
 
         let cycle = await this.prisma.permissionCycle.findUnique({
             where: { userId_cycleStart: { userId, cycleStart: start } },
@@ -165,7 +165,7 @@ export class PermissionsService {
     }
 
     async getCurrentCycle(userId: string) {
-        return this.getOrCreateCycle(userId);
+        return this.getOrCreateCycle(userId, new Date());
     }
 
     async createRequest(userId: string, data: {
@@ -177,7 +177,8 @@ export class PermissionsService {
         durationMinutes?: number;
         reason?: string;
     }) {
-        const cycle = await this.getOrCreateCycle(userId);
+        const requestDate = new Date(data.requestDate);
+        const cycle = await this.getOrCreateCycle(userId, requestDate);
 
         let hoursUsed = this.parseHours(data.arrivalTime, data.leaveTime);
         let arrivalTime = data.arrivalTime;
@@ -215,7 +216,7 @@ export class PermissionsService {
                 userId,
                 cycleId: cycle.id,
                 permissionType,
-                requestDate: new Date(data.requestDate),
+                requestDate,
                 arrivalTime,
                 leaveTime,
                 hoursUsed,
@@ -445,7 +446,8 @@ export class PermissionsService {
             if (request.status !== 'PENDING') throw new BadRequestException('Can only edit pending requests');
         }
 
-        const cycle = await this.getOrCreateCycle(request.userId);
+        const nextRequestDate = data.requestDate ? new Date(data.requestDate) : request.requestDate;
+        const cycle = await this.getOrCreateCycle(request.userId, nextRequestDate);
         let arrivalTime = data.arrivalTime ?? request.arrivalTime;
         let leaveTime = data.leaveTime ?? request.leaveTime;
         let permissionType = data.permissionType ?? request.permissionType;
@@ -481,7 +483,8 @@ export class PermissionsService {
             where: { id },
             data: {
                 permissionType,
-                requestDate: data.requestDate ? new Date(data.requestDate) : request.requestDate,
+                requestDate: nextRequestDate,
+                cycleId: cycle.id,
                 arrivalTime,
                 leaveTime,
                 hoursUsed,
