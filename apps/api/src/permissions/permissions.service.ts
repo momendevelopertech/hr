@@ -217,22 +217,24 @@ export class PermissionsService {
 
     async findAll(userId: string, role: string) {
         const where: any = {};
+        const secretaryStatuses = ['PENDING', 'MANAGER_APPROVED', 'HR_APPROVED'];
+        const managerStatuses = ['MANAGER_APPROVED', 'HR_APPROVED'];
+        const hrStatuses = ['MANAGER_APPROVED', 'HR_APPROVED'];
         if (role === 'EMPLOYEE') where.userId = userId;
         else if (role === 'BRANCH_SECRETARY') {
             const secretary = await this.prisma.user.findUnique({ where: { id: userId } });
             if (secretary?.governorate) {
                 const employees = await this.prisma.user.findMany({ where: { governorate: secretary.governorate }, select: { id: true } });
                 where.userId = { in: employees.map((e) => e.id) };
-                where.status = 'PENDING';
+                where.status = { in: secretaryStatuses };
             }
         } else if (role === 'MANAGER') {
             const manager = await this.prisma.user.findUnique({ where: { id: userId } });
             const employees = await this.prisma.user.findMany({ where: { departmentId: manager.departmentId }, select: { id: true } });
             where.userId = { in: employees.map((e) => e.id) };
-            where.status = 'MANAGER_APPROVED';
-            where.approvedByMgrId = null;
+            where.status = { in: managerStatuses };
         } else if (role === 'HR_ADMIN' || role === 'SUPER_ADMIN') {
-            where.status = 'MANAGER_APPROVED';
+            where.status = { in: hrStatuses };
             where.approvedByMgrId = { not: null };
         }
         if (!where.userId && !(role === 'HR_ADMIN' || role === 'SUPER_ADMIN')) {
