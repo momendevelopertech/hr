@@ -207,9 +207,9 @@ export class LeavesService {
                     senderId: userId,
                     type: 'LEAVE_REQUEST',
                     title: 'New Leave Request',
-                    titleAr: 'New Leave Request',
+                    titleAr: 'طلب إجازة جديد',
                     body: `${request.user.fullName} submitted a ${request.leaveType} leave request.`,
-                    bodyAr: `${request.user.fullName} submitted a leave request.`,
+                    bodyAr: 'تم تقديم طلب إجازة جديد.',
                     metadata: { leaveRequestId: request.id },
                 });
             }
@@ -383,9 +383,9 @@ export class LeavesService {
                         senderId: actorId,
                         type: 'LEAVE_REQUEST',
                         title: 'Leave Request Needs Approval',
-                        titleAr: 'Leave Request Needs Approval',
+                        titleAr: 'طلب إجازة يحتاج موافقتك',
                         body: `${request.user.fullName} has a leave request verified by the secretary.`,
-                        bodyAr: `${request.user.fullName} has a leave request verified by the secretary.`,
+                        bodyAr: 'تم التحقق من طلب الإجازة وبانتظار موافقتك.',
                         metadata: { leaveRequestId: id },
                     });
                 }
@@ -401,9 +401,9 @@ export class LeavesService {
                     receiverId: hr.id,
                     type: 'LEAVE_REQUEST',
                     title: 'Leave Pending HR Approval',
-                    titleAr: 'Leave Pending HR Approval',
+                    titleAr: 'طلب إجازة بانتظار موافقة الموارد البشرية',
                     body: `${request.user.fullName}'s leave has been approved by manager. Awaiting HR decision.`,
-                    bodyAr: `${request.user.fullName} leave approved by manager. Awaiting HR decision.`,
+                    bodyAr: 'تمت موافقة المدير على طلب الإجازة وبانتظار الموارد البشرية.',
                     metadata: { leaveRequestId: id },
                 });
             }

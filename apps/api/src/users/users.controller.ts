@@ -77,6 +77,13 @@ export class UsersController {
         return this.usersService.updateLeaveBalance(id, body.leaveType, body.year, body.totalDays);
     }
 
+    @Post(':id/reset-data')
+    @UseGuards(RolesGuard)
+    @Roles('SUPER_ADMIN', 'HR_ADMIN')
+    resetEmployeeData(@Param('id') id: string, @Req() req: any) {
+        return this.usersService.resetEmployeeData(id, req.user.id);
+    }
+
     @Delete(':id')
     @UseGuards(RolesGuard)
     @Roles('SUPER_ADMIN', 'HR_ADMIN')

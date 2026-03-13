@@ -68,6 +68,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     });
 
     const cancelLabel = locale === 'ar' ? 'إلغاء' : 'Cancel';
+    const resetLabel = locale === 'ar' ? 'مسح البيانات' : 'Reset Data';
     const canAdmin = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
     const canViewEmployees = canAdmin || user?.role === 'MANAGER' || user?.role === 'BRANCH_SECRETARY';
 
@@ -220,6 +221,15 @@ export default function EmployeesClient({ locale }: { locale: string }) {
         await api.patch(`/users/${emp.id}`, { isActive: !emp.isActive });
         fetchAll();
     };
+    const resetEmployeeData = async (emp: User) => {
+        const confirmText = locale === 'ar'
+            ? 'هل أنت متأكد من مسح جميع بيانات الموظف؟ سيتم حذف الإجازات والأذونات والطلبات والسجلات.'
+            : 'Are you sure you want to delete all employee data? This will remove leaves, permissions, requests, and records.';
+        if (!window.confirm(confirmText)) return;
+        await api.post(`/users/${emp.id}/reset-data`);
+        alert(locale === 'ar' ? 'تم مسح بيانات الموظف بنجاح.' : 'Employee data has been reset.');
+        fetchAll();
+    };
 
     return (
         <main className="px-4 pb-12 sm:px-6 space-y-6">
@@ -313,6 +323,11 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                                 {canAdmin && (
                                                     <button className="btn-outline" onClick={() => toggleActive(emp)}>
                                                         {emp.isActive ? t('deactivate') : t('activate')}
+                                                    </button>
+                                                )}
+                                                {canAdmin && (
+                                                    <button className="btn-outline text-red-600" onClick={() => resetEmployeeData(emp)}>
+                                                        {resetLabel}
                                                     </button>
                                                 )}
                                             </div>

@@ -115,9 +115,9 @@ export class UsersService {
             receiverId: user.id,
             type: 'ACCOUNT_CREATED',
             title: 'Welcome to SPHINX HR',
-            titleAr: '?????? ?? ?? SPHINX HR',
+            titleAr: 'مرحبًا بك في SPHINX HR',
             body: `Your account has been created. Employee #${user.employeeNumber}. Please change your password on first login.`,
-            bodyAr: `?? ????? ?????. ??? ??????: ${user.employeeNumber}. ???? ????? ???? ?????? ??? ??? ????? ????.`,
+            bodyAr: `تم إنشاء حسابك. رقم الموظف: ${user.employeeNumber}. يرجى تغيير كلمة المرور عند أول تسجيل دخول.`,
         });
 
         if (user.phone) {
@@ -291,6 +291,54 @@ export class UsersService {
                 remainingDays: totalDays,
             },
         });
+    }
+
+    async resetEmployeeData(targetUserId: string, adminId: string) {
+        const user = await this.prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true } });
+        if (!user) throw new NotFoundException('Employee not found');
+
+        const year = new Date().getFullYear();
+        const defaults = [
+            { leaveType: 'ANNUAL', totalDays: 21 },
+            { leaveType: 'CASUAL', totalDays: 7 },
+            { leaveType: 'EMERGENCY', totalDays: 3 },
+            { leaveType: 'MISSION', totalDays: 10 },
+        ];
+
+        await this.prisma.$transaction(async (tx) => {
+            await tx.notification.deleteMany({
+                where: {
+                    OR: [{ receiverId: targetUserId }, { senderId: targetUserId }],
+                },
+            });
+            await tx.note.deleteMany({ where: { userId: targetUserId } });
+            await tx.lateness.deleteMany({ where: { userId: targetUserId } });
+            await tx.permissionRequest.deleteMany({ where: { userId: targetUserId } });
+            await tx.leaveRequest.deleteMany({ where: { userId: targetUserId } });
+            await tx.formSubmission.deleteMany({ where: { userId: targetUserId } });
+            await tx.permissionCycle.deleteMany({ where: { userId: targetUserId } });
+            await tx.leaveBalance.deleteMany({ where: { userId: targetUserId } });
+            await tx.leaveBalance.createMany({
+                data: defaults.map((item) => ({
+                    userId: targetUserId,
+                    year,
+                    leaveType: item.leaveType as any,
+                    totalDays: item.totalDays,
+                    usedDays: 0,
+                    remainingDays: item.totalDays,
+                })),
+            });
+        });
+
+        await this.auditService.log({
+            userId: adminId,
+            action: 'EMPLOYEE_UPDATED',
+            entity: 'User',
+            entityId: targetUserId,
+            details: { reset: true },
+        });
+
+        return { message: 'Employee data reset.' };
     }
 
     async getStats(targetUserId: string, requesterId: string, requesterRole: string) {

@@ -248,9 +248,9 @@ export class PermissionsService {
                     senderId: userId,
                     type: 'PERMISSION_REQUEST',
                     title: 'New Permission Request',
-                    titleAr: 'New Permission Request',
+                    titleAr: 'طلب إذن جديد',
                     body: `${request.user.fullName} requested ${hoursUsed}h permission on ${new Date(data.requestDate).toLocaleDateString()}.`,
-                    bodyAr: `${request.user.fullName} requested ${hoursUsed}h permission.`,
+                    bodyAr: 'تم تقديم طلب إذن جديد.',
                     metadata: { permissionRequestId: request.id },
                 });
             }
@@ -403,9 +403,9 @@ export class PermissionsService {
                         senderId: actorId,
                         type: 'PERMISSION_REQUEST',
                         title: 'Permission Request Needs Approval',
-                        titleAr: 'Permission Request Needs Approval',
+                        titleAr: 'طلب إذن يحتاج موافقتك',
                         body: `${request.user.fullName} has a permission request verified by the secretary.`,
-                        bodyAr: `${request.user.fullName} has a permission request verified by the secretary.`,
+                        bodyAr: 'تم التحقق من طلب الإذن وبانتظار موافقتك.',
                         metadata: { permissionRequestId: id },
                     });
                 }
@@ -422,9 +422,9 @@ export class PermissionsService {
                     receiverId: hr.id,
                     type: 'PERMISSION_REQUEST',
                     title: 'Permission Pending HR Approval',
-                    titleAr: 'Permission Pending HR Approval',
+                    titleAr: 'طلب إذن بانتظار موافقة الموارد البشرية',
                     body: `${request.user.fullName}'s permission has been approved by manager. Awaiting HR decision.`,
-                    bodyAr: `${request.user.fullName} permission approved by manager. Awaiting HR decision.`,
+                    bodyAr: 'تمت موافقة المدير على طلب الإذن وبانتظار الموارد البشرية.',
                     metadata: { permissionRequestId: id },
                 });
             }

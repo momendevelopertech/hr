@@ -45,6 +45,48 @@ export default function NotificationsClient({ locale }: { locale: string }) {
         });
         return map;
     }, [t]);
+    const hasArabic = (value?: string | null) => !!value && /[\u0600-\u06FF]/.test(value);
+    const hasMojibake = (value?: string | null) => !!value && /\?{2,}/.test(value);
+    const getArabicTitleFallback = (title: string) => {
+        if (!title) return '';
+        if (title.startsWith('Form Approved: ')) {
+            return `تمت الموافقة على النموذج: ${title.replace('Form Approved: ', '')}`;
+        }
+        if (title.startsWith('Form Rejected: ')) {
+            return `تم رفض النموذج: ${title.replace('Form Rejected: ', '')}`;
+        }
+        if (title.startsWith('New Form: ')) {
+            return `نموذج جديد: ${title.replace('New Form: ', '')}`;
+        }
+        const map: Record<string, string> = {
+            'New Leave Request': 'طلب إجازة جديد',
+            'Leave Request Needs Approval': 'طلب إجازة يحتاج موافقتك',
+            'Leave Pending HR Approval': 'طلب إجازة بانتظار موافقة الموارد البشرية',
+            'Leave Request Submitted': 'تم تقديم طلب إجازة',
+            'Leave Request Verified': 'تم التحقق من طلب الإجازة',
+            'Leave Approved by Manager': 'موافقة المدير على طلب الإجازة',
+            'Leave Request Approved': 'تمت الموافقة على طلب الإجازة',
+            'Leave Request Rejected': 'تم رفض طلب الإجازة',
+            'New Permission Request': 'طلب إذن جديد',
+            'Permission Request Needs Approval': 'طلب إذن يحتاج موافقتك',
+            'Permission Pending HR Approval': 'طلب إذن بانتظار موافقة الموارد البشرية',
+            'Permission Request Submitted': 'تم تقديم طلب إذن',
+            'Permission Request Verified': 'تم التحقق من طلب الإذن',
+            'Permission Approved by Manager': 'موافقة المدير على طلب الإذن',
+            'Permission Approved': 'تمت الموافقة على طلب الإذن',
+            'Permission Rejected': 'تم رفض طلب الإذن',
+            'Payroll Released': 'تم صرف الرواتب',
+        };
+        return map[title] || '';
+    };
+    const getDisplayTitle = (item: NotificationItem) => {
+        if (locale !== 'ar') return item.title || item.titleAr || '';
+        if (hasArabic(item.titleAr) && !hasMojibake(item.titleAr)) return item.titleAr || '';
+        if (hasArabic(item.title)) return item.title || '';
+        const fallback = getArabicTitleFallback(item.title || '');
+        if (fallback) return fallback;
+        return typeLabels[item.type] || item.titleAr || item.title || '';
+    };
 
     const params = useMemo(() => ({
         page,
@@ -160,7 +202,7 @@ export default function NotificationsClient({ locale }: { locale: string }) {
                         <tbody className={tableAlignClass}>
                             {items.map((item) => (
                                 <tr key={item.id} className="border-b border-ink/5">
-                                    <td className="py-2">{locale === 'ar' ? item.titleAr || item.title : item.title}</td>
+                                    <td className="py-2">{getDisplayTitle(item)}</td>
                                     <td className="py-2">{typeLabels[item.type] || item.type}</td>
                                     <td className="py-2">{new Date(item.createdAt).toLocaleString(dateLocale)}</td>
                                     <td className="py-2">{item.isRead ? t('read') : t('unread')}</td>

@@ -74,9 +74,9 @@ export class NotificationsController {
             senderId: req.user.id,
             type: 'ANNOUNCEMENT',
             title: 'Payroll Released',
-            titleAr: '?? ??? ???????',
+            titleAr: 'تم صرف الرواتب',
             body: 'Your salary has been released. Thank you for your work!',
-            bodyAr: '?? ??? ?????. ????? ???????!',
+            bodyAr: 'تم صرف الرواتب. شكرًا لجهودكم!',
             metadata: { kind: 'PAYROLL' },
         });
     }

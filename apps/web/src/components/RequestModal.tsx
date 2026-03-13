@@ -154,6 +154,16 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
     if (!open) return null;
 
     const update = (key: string, value: any) => setFormData((prev) => ({ ...prev, [key]: value }));
+    const resolveErrorMessage = (error: any) => {
+        const raw = error?.message || (locale === 'ar' ? 'تعذر تنفيذ الطلب.' : 'Unable to complete your request.');
+        if (typeof raw === 'string' && locale === 'ar') {
+            const match = raw.match(/Insufficient permission hours\. Available: ([0-9.]+)h, Requested: ([0-9.]+)h/);
+            if (match) {
+                return `لا توجد ساعات إذن متاحة. المتاح: ${match[1]} ساعة، المطلوب: ${match[2]} ساعة.`;
+            }
+        }
+        return raw;
+    };
 
     const submit = async () => {
         if (!date || !type) return;
@@ -244,6 +254,8 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
             } else {
                 toast.success(tm('pendingToast'));
             }
+        } catch (error: any) {
+            toast.error(resolveErrorMessage(error));
         } finally {
             setLoading(false);
         }
