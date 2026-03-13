@@ -378,7 +378,8 @@
     "latenessConverted": "تم التحويل",
     "latenessNotConverted": "غير محول",
     "latenessEmpty": "لا توجد تأخيرات في هذه الدورة.",
-    "latenessLoading": "جاري تحميل التأخيرات..."
+    "latenessLoading": "جاري تحميل التأخيرات...",
+    "confirmDelete": "تأكيد حذف الطلب؟"
   },
   "workSchedule": {
     "title": "مواعيد العمل",

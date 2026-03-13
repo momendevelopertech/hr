@@ -88,7 +88,7 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
             await api.get('/auth/csrf');
             const res = await api.post('/auth/login', { identifier: identifier.trim(), password, rememberMe });
             setUser(res.data.user);
-            const target = `/${params.locale}`;
+            const target = res.data?.user?.role === 'MANAGER' ? `/${params.locale}/requests` : `/${params.locale}`;
             router.push(target);
             setTimeout(() => {
                 if (typeof window !== 'undefined' && window.location.pathname.includes('/login')) {

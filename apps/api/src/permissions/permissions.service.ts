@@ -190,11 +190,11 @@ export class PermissionsService {
             entityId: request.id,
         });
 
-        if (request.user.departmentId) {
+        if (request.user.governorate) {
             const managers = await this.prisma.user.findMany({
                 where: {
-                    departmentId: request.user.departmentId,
-                    role: { in: ['MANAGER', 'HR_ADMIN', 'SUPER_ADMIN'] },
+                    governorate: request.user.governorate,
+                    role: 'BRANCH_SECRETARY',
                 },
             });
 
@@ -218,16 +218,22 @@ export class PermissionsService {
     async findAll(userId: string, role: string) {
         const where: any = {};
         if (role === 'EMPLOYEE') where.userId = userId;
-        else if (role === 'MANAGER') {
-            const manager = await this.prisma.user.findUnique({ where: { id: userId } });
-            const employees = await this.prisma.user.findMany({ where: { departmentId: manager.departmentId }, select: { id: true } });
-            where.userId = { in: employees.map((e) => e.id) };
-        } else if (role === 'BRANCH_SECRETARY') {
+        else if (role === 'BRANCH_SECRETARY') {
             const secretary = await this.prisma.user.findUnique({ where: { id: userId } });
             if (secretary?.governorate) {
                 const employees = await this.prisma.user.findMany({ where: { governorate: secretary.governorate }, select: { id: true } });
                 where.userId = { in: employees.map((e) => e.id) };
+                where.status = 'PENDING';
             }
+        } else if (role === 'MANAGER') {
+            const manager = await this.prisma.user.findUnique({ where: { id: userId } });
+            const employees = await this.prisma.user.findMany({ where: { departmentId: manager.departmentId }, select: { id: true } });
+            where.userId = { in: employees.map((e) => e.id) };
+            where.status = 'MANAGER_APPROVED';
+            where.approvedByMgrId = null;
+        } else if (role === 'HR_ADMIN' || role === 'SUPER_ADMIN') {
+            where.status = 'MANAGER_APPROVED';
+            where.approvedByMgrId = { not: null };
         }
         if (!where.userId && !(role === 'HR_ADMIN' || role === 'SUPER_ADMIN')) {
             where.userId = userId;
@@ -261,7 +267,16 @@ export class PermissionsService {
         let newStatus: any;
         const updateData: any = {};
 
-        if (role === 'MANAGER') {
+        if (role === 'BRANCH_SECRETARY') {
+            if (request.status !== 'PENDING') {
+                throw new BadRequestException('Secretary can only process pending requests');
+            }
+            newStatus = action === 'approve' ? 'MANAGER_APPROVED' : 'REJECTED';
+            updateData.managerComment = comment;
+        } else if (role === 'MANAGER') {
+            if (request.status !== 'MANAGER_APPROVED' || request.approvedByMgrId) {
+                throw new BadRequestException('Manager can only process secretary-approved requests');
+            }
             newStatus = action === 'approve' ? 'MANAGER_APPROVED' : 'REJECTED';
             updateData.managerComment = comment;
             if (action === 'approve') {
@@ -269,6 +284,9 @@ export class PermissionsService {
                 updateData.approvedByMgrAt = new Date();
             }
         } else {
+            if (request.status !== 'MANAGER_APPROVED' || !request.approvedByMgrId) {
+                throw new BadRequestException('HR can only process manager-approved requests');
+            }
             newStatus = action === 'approve' ? 'HR_APPROVED' : 'REJECTED';
             updateData.hrComment = comment;
             if (action === 'approve') {

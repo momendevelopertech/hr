@@ -151,11 +151,11 @@ export class LeavesService {
 
         await this.notificationsService.notifyLeaveAction(request, 'submitted');
 
-        if (request.user.departmentId) {
+        if (request.user.governorate) {
             const managers = await this.prisma.user.findMany({
                 where: {
-                    departmentId: request.user.departmentId,
-                    role: { in: ['MANAGER', 'HR_ADMIN', 'SUPER_ADMIN'] },
+                    governorate: request.user.governorate,
+                    role: 'BRANCH_SECRETARY',
                 },
             });
 
@@ -181,13 +181,6 @@ export class LeavesService {
 
         if (role === 'EMPLOYEE') {
             where.userId = userId;
-        } else if (role === 'MANAGER') {
-            const manager = await this.prisma.user.findUnique({ where: { id: userId } });
-            const employees = await this.prisma.user.findMany({
-                where: { departmentId: manager.departmentId },
-                select: { id: true },
-            });
-            where.userId = { in: employees.map((e) => e.id) };
         } else if (role === 'BRANCH_SECRETARY') {
             const secretary = await this.prisma.user.findUnique({ where: { id: userId } });
             if (secretary?.governorate) {
@@ -196,10 +189,23 @@ export class LeavesService {
                     select: { id: true },
                 });
                 where.userId = { in: employees.map((e) => e.id) };
+                where.status = 'PENDING';
             }
+        } else if (role === 'MANAGER') {
+            const manager = await this.prisma.user.findUnique({ where: { id: userId } });
+            const employees = await this.prisma.user.findMany({
+                where: { departmentId: manager.departmentId },
+                select: { id: true },
+            });
+            where.userId = { in: employees.map((e) => e.id) };
+            where.status = 'MANAGER_APPROVED';
+            where.approvedByMgrId = null;
+        } else if (role === 'HR_ADMIN' || role === 'SUPER_ADMIN') {
+            where.status = 'MANAGER_APPROVED';
+            where.approvedByMgrId = { not: null };
         }
 
-        if (filters?.status) where.status = filters.status;
+        if (filters?.status && (role === 'HR_ADMIN' || role === 'SUPER_ADMIN')) where.status = filters.status;
         if (filters?.userId && (role === 'HR_ADMIN' || role === 'SUPER_ADMIN')) {
             where.userId = filters.userId;
         }
@@ -236,7 +242,16 @@ export class LeavesService {
         let newStatus: any;
         const updateData: any = { updatedAt: new Date() };
 
-        if (role === 'MANAGER') {
+        if (role === 'BRANCH_SECRETARY') {
+            if (request.status !== 'PENDING') {
+                throw new BadRequestException('Secretary can only process pending requests');
+            }
+            newStatus = action === 'approve' ? 'MANAGER_APPROVED' : 'REJECTED';
+            updateData.managerComment = comment;
+        } else if (role === 'MANAGER') {
+            if (request.status !== 'MANAGER_APPROVED' || request.approvedByMgrId) {
+                throw new BadRequestException('Manager can only process secretary-approved requests');
+            }
             if (action === 'approve') {
                 newStatus = 'MANAGER_APPROVED';
                 updateData.approvedByMgrId = actorId;
@@ -246,6 +261,9 @@ export class LeavesService {
             }
             updateData.managerComment = comment;
         } else if (role === 'HR_ADMIN' || role === 'SUPER_ADMIN') {
+            if (request.status !== 'MANAGER_APPROVED' || !request.approvedByMgrId) {
+                throw new BadRequestException('HR can only process manager-approved requests');
+            }
             if (action === 'approve') {
                 newStatus = 'HR_APPROVED';
                 updateData.approvedByHrId = actorId;
@@ -288,7 +306,7 @@ export class LeavesService {
 
         await this.notificationsService.notifyLeaveAction(request, action === 'approve' ? 'approved' : 'rejected');
 
-        if (newStatus === 'MANAGER_APPROVED') {
+        if (newStatus === 'MANAGER_APPROVED' && updateData.approvedByMgrId) {
             const hrAdmins = await this.prisma.user.findMany({
                 where: { role: { in: ['HR_ADMIN', 'SUPER_ADMIN'] } },
             });
