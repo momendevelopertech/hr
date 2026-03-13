@@ -405,6 +405,11 @@ export class PermissionsService {
 
     async deleteRequest(id: string, actorId: string, role: string) {
         if (!(role === 'HR_ADMIN' || role === 'SUPER_ADMIN')) throw new ForbiddenException();
+        const request = await this.prisma.permissionRequest.findUnique({ where: { id }, select: { status: true } });
+        if (!request) throw new NotFoundException('Not found');
+        if (['MANAGER_APPROVED', 'HR_APPROVED'].includes(request.status)) {
+            throw new BadRequestException('Cannot delete an approved request');
+        }
         await this.prisma.permissionRequest.delete({ where: { id } });
         await this.auditService.log({ userId: actorId, action: 'REQUEST_DELETED', entity: 'PermissionRequest', entityId: id });
         return { message: 'Deleted' };

@@ -349,6 +349,7 @@
     "printPdf": "Print Preview",
     "cancel": "Cancel",
     "approve": "Approve",
+    "verify": "Verify",
     "reject": "Reject",
     "delete": "Delete",
     "noResults": "No requests found",

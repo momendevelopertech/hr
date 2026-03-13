@@ -160,8 +160,12 @@ export default function RequestsClient({ locale }: { locale: string }) {
         await fetchLateness();
     };
 
-    const canManage = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGER' || user?.role === 'BRANCH_SECRETARY';
-    const canAdmin = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
+    const role = user?.role;
+    const isSecretary = role === 'BRANCH_SECRETARY';
+    const isManager = role === 'MANAGER';
+    const isHr = role === 'HR_ADMIN' || role === 'SUPER_ADMIN';
+    const canManage = isHr || isManager || isSecretary;
+    const canAdmin = isHr;
 
     const approveLeave = (id: string) => api.patch(`/leaves/${id}/approve`).then(fetchAll);
     const rejectLeave = (id: string) => api.patch(`/leaves/${id}/reject`).then(fetchAll);
@@ -421,13 +425,14 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                         <td className="py-2">
                                             <div className="flex flex-wrap gap-2">
                                                 <a
-                                                    className="btn-outline"
+                                                    className={`btn-outline ${row.status === 'HR_APPROVED' ? '' : 'opacity-50 cursor-not-allowed'}`}
                                                     href={row.printUrl}
                                                     target="_blank"
                                                     rel="noreferrer noopener"
-                                                    aria-disabled={!['MANAGER_APPROVED', 'HR_APPROVED'].includes(row.status)}
+                                                    aria-disabled={row.status !== 'HR_APPROVED'}
+                                                    tabIndex={row.status === 'HR_APPROVED' ? undefined : -1}
                                                     onClick={(event) => {
-                                                        if (!['MANAGER_APPROVED', 'HR_APPROVED'].includes(row.status)) {
+                                                        if (row.status !== 'HR_APPROVED') {
                                                             event.preventDefault();
                                                         }
                                                     }}
@@ -439,17 +444,23 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                                         {t('cancel')}
                                                     </button>
                                                 )}
-                                                {canManage && row.status === 'PENDING' && (
+                                                {canManage && (
                                                     <>
-                                                        <button className="btn-primary" onClick={() => onApprove(row)}>
-                                                            {t('approve')}
-                                                        </button>
-                                                        <button className="btn-secondary" onClick={() => onReject(row)}>
-                                                            {t('reject')}
-                                                        </button>
+                                                        {((isSecretary && row.status === 'PENDING') ||
+                                                            ((isManager || isHr) && row.status === 'MANAGER_APPROVED')) && (
+                                                            <button className="btn-primary" onClick={() => onApprove(row)}>
+                                                                {isSecretary ? t('verify') : t('approve')}
+                                                            </button>
+                                                        )}
+                                                        {((isSecretary && row.status === 'PENDING') ||
+                                                            ((isManager || isHr) && row.status === 'MANAGER_APPROVED')) && (
+                                                            <button className="btn-secondary" onClick={() => onReject(row)}>
+                                                                {t('reject')}
+                                                            </button>
+                                                        )}
                                                     </>
                                                 )}
-                                                {canAdmin && (
+                                                {canAdmin && ['PENDING', 'REJECTED', 'CANCELLED'].includes(row.status) && (
                                                     <button className="btn-outline" onClick={() => onDelete(row)}>
                                                         {t('delete')}
                                                     </button>
