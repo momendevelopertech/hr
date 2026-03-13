@@ -95,7 +95,8 @@
     "payrollProcessing": "جارٍ الصرف...",
     "close": "إغلاق",
     "cancel": "إلغاء",
-    "sending": "جارٍ الإرسال..."
+    "sending": "جارٍ الإرسال...",
+    "permissionHours": "ساعات الإذن"
   },
   "calendar": {
     "title": "تقويم الفريق",

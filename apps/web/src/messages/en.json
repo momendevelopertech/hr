@@ -95,7 +95,8 @@
     "payrollProcessing": "Processing...",
     "close": "Close",
     "cancel": "Cancel",
-    "sending": "Sending..."
+    "sending": "Sending...",
+    "permissionHours": "Permission Hours"
   },
   "calendar": {
     "title": "Team Calendar",

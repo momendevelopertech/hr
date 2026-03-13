@@ -132,11 +132,17 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         const annual = balances.find((b) => b.leaveType === 'ANNUAL');
         const totalRemaining = annual?.remainingDays ?? 0;
         const usedPermissions = permissionCycle?.usedHours ?? 0;
+        const remainingPermissions = permissionCycle?.remainingHours ?? 4;
         const pending = [...leaves, ...permissions, ...forms].filter((r) => r.status === 'PENDING').length;
         return [
             { label: 'leaveBalance', value: `${totalRemaining} ${t('days')}` },
-            { label: 'permissionUsed', value: `${usedPermissions}h` },
-            { label: 'permissionRemaining', value: `${permissionCycle?.remainingHours ?? 4}h` },
+            {
+                label: 'permissionHours',
+                rows: [
+                    { label: 'permissionUsed', value: `${usedPermissions}h`, valueClassName: 'text-rose-600' },
+                    { label: 'permissionRemaining', value: `${remainingPermissions}h`, valueClassName: 'text-emerald-600' },
+                ],
+            },
             { label: 'pendingApprovals', value: `${pending}` },
             { label: 'absenceDeduction', value: `${absenceDeduction?.deductedDays ?? 0} ${t('days')}` },
         ];
@@ -179,7 +185,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             if (leave.leaveType === 'MISSION') key = 'mission';
 
             return {
-                title: `${leave.user.fullName} - ${enumLabels.leaveType(leave.leaveType, locale)}`,
+                title: enumLabels.leaveType(leave.leaveType, locale),
                 start: new Date(leave.startDate),
                 end: new Date(leave.endDate),
                 allDay: true,
@@ -188,7 +194,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         });
 
         const permissionEvents = permissions.map((permission) => ({
-            title: `${permission.user.fullName} - ${enumLabels.permissionType(permission.permissionType, locale)}`,
+            title: enumLabels.permissionType(permission.permissionType, locale),
             start: new Date(permission.requestDate),
             end: new Date(permission.requestDate),
             allDay: true,
@@ -196,7 +202,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         }));
 
         const formEvents = forms.map((submission) => ({
-            title: `${submission.user.fullName} - ${submission.form.name}`,
+            title: submission.form.name,
             start: new Date(submission.createdAt),
             end: new Date(submission.createdAt),
             allDay: true,
@@ -204,7 +210,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         }));
 
         const noteEvents = notes.map((note) => ({
-            title: `${note.user.fullName} - ${note.title}`,
+            title: note.title,
             start: new Date(note.date),
             end: new Date(note.date),
             allDay: true,
@@ -212,7 +218,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         }));
 
         const latenessEvents = latenessItems.map((item) => ({
-            title: `${user?.fullName || (locale === 'ar' ? 'الموظف' : 'Employee')} - ${tm('latenessRequest')}`,
+            title: tm('latenessRequest'),
             start: new Date(item.date),
             end: new Date(item.date),
             allDay: true,
