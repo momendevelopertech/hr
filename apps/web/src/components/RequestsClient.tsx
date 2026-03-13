@@ -160,7 +160,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
         await fetchLateness();
     };
 
-    const canManage = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGER';
+    const canManage = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGER' || user?.role === 'BRANCH_SECRETARY';
     const canAdmin = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
 
     const approveLeave = (id: string) => api.patch(`/leaves/${id}/approve`).then(fetchAll);
@@ -281,9 +281,17 @@ export default function RequestsClient({ locale }: { locale: string }) {
     };
 
     const onDelete = (row: RequestRow) => {
+        const confirmed = window.confirm(t('confirmDelete'));
+        if (!confirmed) return;
         if (row.requestType === 'leave') return deleteLeave(row.id);
         return deletePermission(row.id);
     };
+
+    useEffect(() => {
+        if (!ready || user?.role !== 'MANAGER') return;
+        setActiveTab('all');
+        setFilters((prev) => ({ ...prev, status: 'MANAGER_APPROVED' }));
+    }, [ready, user?.role]);
 
     const isCurrentCycle = useMemo(() => {
         const current = getCycleRange(new Date());
@@ -303,6 +311,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
         { key: 'mission', label: t('tabMission'), count: missionRows.length },
         { key: 'lateness', label: t('tabLateness'), count: latenessSummary.totalCount },
     ];
+
 
     const tableAlignClass = locale === 'ar' ? 'text-right' : 'text-left';
     const cycleLabel = latenessSummary.cycleStart && latenessSummary.cycleEnd
@@ -411,7 +420,18 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                         </td>
                                         <td className="py-2">
                                             <div className="flex flex-wrap gap-2">
-                                                <a className="btn-outline" href={row.printUrl} target="_blank" rel="noreferrer noopener">
+                                                <a
+                                                    className="btn-outline"
+                                                    href={row.printUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer noopener"
+                                                    aria-disabled={!['MANAGER_APPROVED', 'HR_APPROVED'].includes(row.status)}
+                                                    onClick={(event) => {
+                                                        if (!['MANAGER_APPROVED', 'HR_APPROVED'].includes(row.status)) {
+                                                            event.preventDefault();
+                                                        }
+                                                    }}
+                                                >
                                                     {t('printPdf')}
                                                 </a>
                                                 {row.status === 'PENDING' && (

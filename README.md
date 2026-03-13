@@ -42,12 +42,30 @@ Required Vercel environment variables:
 
 The NestJS API (`apps/api`) should be deployed as a separate service (for example Render/Railway/Fly.io) because it needs a long-running Node server, PostgreSQL, and Redis.
 
-## Default Logins (Seed)
 
-Super Admin: `superadmin@sphinx.com` / `Admin@123456`  
-HR Admin: `hradmin@sphinx.com` / `HrAdmin@123`  
-Manager: `manager@sphinx.com` / `Manager@123`  
-Employee: `employee@sphinx.com` / `Emp@123456`  
+## Test Accounts
+
+| Role | Email | Username | Password |
+|---|---|---|---|
+| SUPER_ADMIN | `superadmin@sphinx.com` | `super-admin` | `Admin@123456` |
+| HR_ADMIN | `hradmin@sphinx.com` | `hr-admin` | `HrAdmin@123` |
+| SECRETARY (Alexandria) | `secretary.alex@sphinx.com` | `secretary-alex` | `Sec@123` |
+| SECRETARY (Cairo) | `secretary.cairo@sphinx.com` | `secretary-cairo` | `Sec@123` |
+| MANAGER (Alexandria ERC) | `manager.alex.erc@sphinx.com` | `manager-alex-erc` | `Manager@123` |
+| MANAGER (Alexandria SPHINX) | `manager.alex.sphinx@sphinx.com` | `manager-alex-sphinx` | `Manager@123` |
+| MANAGER (Cairo ERC) | `manager.cairo.erc@sphinx.com` | `manager-cairo-erc` | `Manager@123` |
+| MANAGER (Cairo SPHINX) | `manager.cairo.sphinx@sphinx.com` | `manager-cairo-sphinx` | `Manager@123` |
+| EMPLOYEE (Alexandria ERC) | `momen.alex.erc@sphinx.com` | `momen-alex-erc` | `Emp@123456` |
+| EMPLOYEE (Alexandria ERC) | `ahmed.alex.erc@sphinx.com` | `ahmed-alex-erc` | `Emp@123456` |
+| EMPLOYEE (Alexandria ERC) | `sara.alex.erc@sphinx.com` | `sara-alex-erc` | `Emp@123456` |
+| EMPLOYEE (Alexandria SPHINX) | `ali.alex.sphinx@sphinx.com` | `ali-alex-sphinx` | `Emp@123456` |
+| EMPLOYEE (Alexandria SPHINX) | `nada.alex.sphinx@sphinx.com` | `nada-alex-sphinx` | `Emp@123456` |
+| EMPLOYEE (Cairo ERC) | `khaled.cairo.erc@sphinx.com` | `khaled-cairo-erc` | `Emp@123456` |
+| EMPLOYEE (Cairo ERC) | `mariam.cairo.erc@sphinx.com` | `mariam-cairo-erc` | `Emp@123456` |
+| EMPLOYEE (Cairo SPHINX) | `omar.cairo.sphinx@sphinx.com` | `omar-cairo-sphinx` | `Emp@123456` |
+
+> Note: database enum uses `BRANCH_SECRETARY` as the internal role for Secretary accounts.
+
 
 ## Notes
 
