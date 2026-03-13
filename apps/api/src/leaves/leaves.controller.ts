@@ -38,14 +38,14 @@ export class LeavesController {
 
     @Patch(':id/approve')
     @UseGuards(RolesGuard)
-    @Roles('MANAGER', 'HR_ADMIN', 'SUPER_ADMIN')
+    @Roles('BRANCH_SECRETARY', 'MANAGER', 'HR_ADMIN', 'SUPER_ADMIN')
     approve(@Param('id') id: string, @Body('comment') comment: string, @Req() req: any) {
         return this.leavesService.updateStatus(id, req.user.id, req.user.role, 'approve', comment);
     }
 
     @Patch(':id/reject')
     @UseGuards(RolesGuard)
-    @Roles('MANAGER', 'HR_ADMIN', 'SUPER_ADMIN')
+    @Roles('BRANCH_SECRETARY', 'MANAGER', 'HR_ADMIN', 'SUPER_ADMIN')
     reject(@Param('id') id: string, @Body('comment') comment: string, @Req() req: any) {
         return this.leavesService.updateStatus(id, req.user.id, req.user.role, 'reject', comment);
     }

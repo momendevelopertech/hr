@@ -378,7 +378,8 @@
     "latenessConverted": "Converted",
     "latenessNotConverted": "Not converted",
     "latenessEmpty": "No lateness records in this cycle.",
-    "latenessLoading": "Loading lateness..."
+    "latenessLoading": "Loading lateness...",
+    "confirmDelete": "Confirm delete?"
   },
   "workSchedule": {
     "title": "Work Schedule",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { usePusherChannel } from '@/lib/use-pusher-channel';
@@ -56,6 +57,7 @@ type LatenessItem = {
 
 export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const t = useTranslations('dashboard');
+    const router = useRouter();
     const tm = useTranslations('requestModal');
     const { user, ready } = useRequireAuth(locale);
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -110,8 +112,12 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
 
     useEffect(() => {
         if (!ready) return;
+        if (user?.role === 'MANAGER') {
+            router.replace(`/${locale}/requests`);
+            return;
+        }
         fetchAll();
-    }, [ready, fetchAll]);
+    }, [ready, fetchAll, locale, router, user?.role]);
 
     const notificationHandlers = useMemo(
         () => ({
