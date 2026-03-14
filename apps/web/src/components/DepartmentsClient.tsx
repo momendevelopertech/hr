@@ -8,7 +8,7 @@ import { useRequireAuth } from '@/lib/use-auth';
 import PageLoader from './PageLoader';
 import ConfirmDialog from './ConfirmDialog';
 
-type Branch = { id: number; name: string; nameAr?: string | null };
+type Branch = { id: number; name: string; nameAr?: string | null; departmentCount?: number; employeeCount?: number };
 type DepartmentBranchCount = { branchId: number; count: number };
 type Department = {
     id: string;
@@ -38,6 +38,12 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
     const [branchForm, setBranchForm] = useState({ name: '', nameAr: '' });
     const [branchCreateOpen, setBranchCreateOpen] = useState(false);
     const [branchSaving, setBranchSaving] = useState(false);
+    const [branchEditOpen, setBranchEditOpen] = useState(false);
+    const [branchEditSaving, setBranchEditSaving] = useState(false);
+    const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+    const [branchEditForm, setBranchEditForm] = useState({ name: '', nameAr: '' });
+    const [pendingBranchDelete, setPendingBranchDelete] = useState<Branch | null>(null);
+    const [branchDeleteBusy, setBranchDeleteBusy] = useState(false);
     const [createOpen, setCreateOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [editingDept, setEditingDept] = useState<Department | null>(null);
@@ -60,6 +66,16 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
         });
         return counts;
     }, [departments]);
+
+    const getBranchDepartmentCount = (branch: Branch) => (
+        typeof branch.departmentCount === 'number'
+            ? branch.departmentCount
+            : (branchDepartmentCounts.get(branch.id) || 0)
+    );
+
+    const getBranchEmployeeCount = (branch: Branch) => (
+        typeof branch.employeeCount === 'number' ? branch.employeeCount : 0
+    );
 
     const fetchAll = async () => {
         setLoading(true);
@@ -127,6 +143,7 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
 
     const resetForm = () => setForm({ name: '', nameAr: '', description: '', branchIds: [] });
     const resetBranchForm = () => setBranchForm({ name: '', nameAr: '' });
+    const resetBranchEditForm = () => setBranchEditForm({ name: '', nameAr: '' });
 
     const createDepartment = async () => {
         if (!form.name.trim()) {
@@ -169,6 +186,58 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
             alert(message);
         } finally {
             setBranchSaving(false);
+        }
+    };
+
+    const openBranchEdit = (branch: Branch) => {
+        setEditingBranch(branch);
+        setBranchEditForm({ name: branch.name, nameAr: branch.nameAr || '' });
+        setBranchEditOpen(true);
+    };
+
+    const saveBranchEdit = async () => {
+        if (!editingBranch) return;
+        if (!branchEditForm.name.trim()) {
+            alert(locale === 'ar' ? 'اسم الفرع مطلوب.' : 'Branch name is required.');
+            return;
+        }
+        setBranchEditSaving(true);
+        try {
+            await api.patch(`/branches/${editingBranch.id}`, {
+                name: branchEditForm.name.trim(),
+                nameAr: branchEditForm.nameAr?.trim() || undefined,
+            });
+            resetBranchEditForm();
+            setBranchEditOpen(false);
+            setEditingBranch(null);
+            await fetchAll();
+        } catch (error: any) {
+            const message = error?.message || (locale === 'ar' ? 'تعذر تحديث الفرع.' : 'Unable to update branch.');
+            alert(message);
+        } finally {
+            setBranchEditSaving(false);
+        }
+    };
+
+    const requestDeleteBranch = (branch: Branch) => {
+        const departmentCount = getBranchDepartmentCount(branch);
+        const employeeCount = getBranchEmployeeCount(branch);
+        if (departmentCount > 0 || employeeCount > 0) return;
+        setPendingBranchDelete(branch);
+    };
+
+    const confirmDeleteBranch = async () => {
+        if (!pendingBranchDelete || branchDeleteBusy) return;
+        setBranchDeleteBusy(true);
+        try {
+            await api.delete(`/branches/${pendingBranchDelete.id}`);
+            await fetchAll();
+        } catch (error: any) {
+            const message = error?.message || (locale === 'ar' ? 'تعذر حذف الفرع.' : 'Unable to delete branch.');
+            alert(message);
+        } finally {
+            setBranchDeleteBusy(false);
+            setPendingBranchDelete(null);
         }
     };
 
@@ -243,13 +312,34 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
                         <p className="text-sm text-ink/60">{t('branchListEmpty')}</p>
                     )}
                     {branches.map((branch) => {
-                        const departmentCount = branchDepartmentCounts.get(branch.id) || 0;
+                        const departmentCount = getBranchDepartmentCount(branch);
+                        const employeeCount = getBranchEmployeeCount(branch);
+                        const deleteBlocked = departmentCount > 0 || employeeCount > 0;
                         return (
                             <div key={branch.id} className="rounded-2xl border border-ink/10 bg-white/70 px-4 py-3">
                                 <p className="text-sm font-semibold">
                                     {locale === 'ar' ? (branch.nameAr || branch.name) : branch.name}
                                 </p>
                                 <p className="text-xs text-ink/60">{t('branchDepartmentsCount', { count: departmentCount })}</p>
+                                <p className="text-xs text-ink/60">{t('branchEmployeesCount', { count: employeeCount })}</p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    <button className="btn-outline text-xs" onClick={() => openBranchEdit(branch)}>
+                                        {t('edit')}
+                                    </button>
+                                    <button
+                                        className={`btn-outline text-xs text-red-600 ${deleteBlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        onClick={() => requestDeleteBranch(branch)}
+                                        disabled={deleteBlocked}
+                                    >
+                                        {t('delete')}
+                                    </button>
+                                </div>
+                                {departmentCount > 0 && (
+                                    <p className="mt-1 text-xs text-rose-600">{t('branchDeleteBlockedDepartments')}</p>
+                                )}
+                                {departmentCount === 0 && employeeCount > 0 && (
+                                    <p className="mt-1 text-xs text-rose-600">{t('branchDeleteBlockedEmployees')}</p>
+                                )}
                             </div>
                         );
                     })}
@@ -438,6 +528,55 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
                 </div>
             )}
 
+            {branchEditOpen && editingBranch && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+                    <div className="card w-full max-w-lg p-6">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold">{t('branchEditTitle')}</h3>
+                            <button
+                                className="btn-outline"
+                                onClick={() => {
+                                    setBranchEditOpen(false);
+                                    setEditingBranch(null);
+                                    resetBranchEditForm();
+                                }}
+                            >
+                                Ã—
+                            </button>
+                        </div>
+                        <div className="mt-4 grid gap-3">
+                            <input
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                placeholder={t('branchName')}
+                                value={branchEditForm.name}
+                                onChange={(e) => setBranchEditForm((p) => ({ ...p, name: e.target.value }))}
+                            />
+                            <input
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                placeholder={t('branchNameAr')}
+                                value={branchEditForm.nameAr}
+                                onChange={(e) => setBranchEditForm((p) => ({ ...p, nameAr: e.target.value }))}
+                            />
+                        </div>
+                        <div className="mt-4 flex justify-end gap-2">
+                            <button
+                                className="btn-outline"
+                                onClick={() => {
+                                    setBranchEditOpen(false);
+                                    setEditingBranch(null);
+                                    resetBranchEditForm();
+                                }}
+                            >
+                                {cancelLabel}
+                            </button>
+                            <button className="btn-primary" onClick={saveBranchEdit} disabled={branchEditSaving}>
+                                {branchEditSaving ? t('saving') : t('save')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {editOpen && editingDept && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
                     <div className="card w-full max-w-2xl p-6">
@@ -518,6 +657,15 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
                 confirmDisabled={deleteBusy}
                 onConfirm={confirmDeleteDepartment}
                 onCancel={() => setPendingDelete(null)}
+            />
+            <ConfirmDialog
+                open={!!pendingBranchDelete}
+                message={t('branchConfirmDelete')}
+                confirmLabel={tCommon('confirm')}
+                cancelLabel={tCommon('cancel')}
+                confirmDisabled={branchDeleteBusy}
+                onConfirm={confirmDeleteBranch}
+                onCancel={() => setPendingBranchDelete(null)}
             />
         </main>
     );

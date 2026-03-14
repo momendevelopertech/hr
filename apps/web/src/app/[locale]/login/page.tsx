@@ -53,6 +53,17 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
         }
     }, [rememberMe]);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if (!rememberMe) return;
+        const trimmed = identifier.trim();
+        if (!trimmed) {
+            window.localStorage.removeItem(IDENTIFIER_KEY);
+            return;
+        }
+        window.localStorage.setItem(IDENTIFIER_KEY, trimmed);
+    }, [identifier, rememberMe]);
+
     const toggleTheme = () => {
         const next = theme === 'dark' ? 'light' : 'dark';
         setTheme(next);
@@ -251,9 +262,8 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                     </label>
                     <button
                         className="btn-primary w-full"
-                        type="button"
+                        type="submit"
                         disabled={loading || checkingSession}
-                        onClick={submit}
                     >
                         {loading
                             ? (params.locale === 'ar' ? 'جارٍ تسجيل الدخول...' : 'Signing in...')
