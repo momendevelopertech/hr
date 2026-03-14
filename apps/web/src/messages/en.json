@@ -293,6 +293,8 @@
     "historyAbsence": "Absence with permission",
     "historyEmergency": "Emergency Leave",
     "historyOther": "Other",
+    "searchNamePlaceholder": "Search by name",
+    "searchPhonePlaceholder": "Search by phone",
     "roles": {
       "employee": "Employee",
       "manager": "Manager",
@@ -371,6 +373,7 @@
     "reportTypeFilter": "Report type",
     "leaveTypeFilter": "Leave type",
     "permissionTypeFilter": "Permission type",
+    "employeeSearchPlaceholder": "Search by employee name or #",
     "governorateFilter": "Branch",
     "departmentFilter": "Department",
     "status": "Status",

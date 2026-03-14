@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { useRequireAuth } from '@/lib/use-auth';
 import { enumLabels } from '@/lib/enum-labels';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import PageLoader from './PageLoader';
 import EmployeeHistoryModal from './EmployeeHistoryModal';
 import DateRangeFilter from './DateRangeFilter';
@@ -75,6 +76,9 @@ export default function EmployeesClient({ locale }: { locale: string }) {
         to: '',
     });
 
+    const debouncedName = useDebouncedValue(filters.name, 400);
+    const debouncedPhone = useDebouncedValue(filters.phone, 400);
+
     const cancelLabel = locale === 'ar' ? 'إلغاء' : 'Cancel';
     const resetLabel = locale === 'ar' ? 'مسح البيانات' : 'Reset Data';
     const canAdmin = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
@@ -86,13 +90,13 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     const queryParams = useMemo(() => ({
         page,
         limit,
-        ...(filters.name ? { name: filters.name } : {}),
-        ...(filters.phone ? { phone: filters.phone } : {}),
+        ...(debouncedName ? { name: debouncedName } : {}),
+        ...(debouncedPhone ? { phone: debouncedPhone } : {}),
         ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
         ...(filters.status ? { status: filters.status } : {}),
         ...(filters.from ? { from: filters.from } : {}),
         ...(filters.to ? { to: filters.to } : {}),
-    }), [filters.departmentId, filters.from, filters.name, filters.phone, filters.status, filters.to, limit, page]);
+    }), [debouncedName, debouncedPhone, filters.departmentId, filters.from, filters.status, filters.to, limit, page]);
 
     const availableDepartments = useMemo(() => {
         if (!form.branchId) return [];
@@ -294,8 +298,18 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                 <h2 className="text-lg font-semibold">{t('title')}</h2>
 
                 <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
-                    <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('fullName')} value={filters.name} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, name: e.target.value })); }} />
-                    <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('phone')} value={filters.phone} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, phone: e.target.value })); }} />
+                    <input
+                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                        placeholder={t('searchNamePlaceholder')}
+                        value={filters.name}
+                        onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, name: e.target.value })); }}
+                    />
+                    <input
+                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                        placeholder={t('searchPhonePlaceholder')}
+                        value={filters.phone}
+                        onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, phone: e.target.value })); }}
+                    />
                     <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.departmentId} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, departmentId: e.target.value })); }}>
                         <option value="">{t('department')}</option>
                         {departments.map((d) => (

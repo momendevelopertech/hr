@@ -293,6 +293,8 @@
     "historyAbsence": "غياب بإذن",
     "historyEmergency": "طارئة",
     "historyOther": "أخرى",
+    "searchNamePlaceholder": "ابحث بالاسم",
+    "searchPhonePlaceholder": "ابحث برقم الهاتف",
     "roles": {
       "employee": "موظف",
       "manager": "مدير",
@@ -371,6 +373,7 @@
     "reportTypeFilter": "نوع التقرير",
     "leaveTypeFilter": "نوع الإجازة",
     "permissionTypeFilter": "نوع الإذن",
+    "employeeSearchPlaceholder": "ابحث باسم الموظف أو الرقم",
     "governorateFilter": "الفرع",
     "departmentFilter": "القسم",
     "status": "الحالة",

@@ -8,6 +8,7 @@ import { useRequireAuth } from '@/lib/use-auth';
 import { enumLabels } from '@/lib/enum-labels';
 import { getPublicApiUrl } from '@/lib/public-urls';
 import { usePusherChannel } from '@/lib/use-pusher-channel';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import PageLoader from './PageLoader';
 import DateRangeFilter from './DateRangeFilter';
 
@@ -64,6 +65,8 @@ export default function ReportsClient({ locale }: { locale: string }) {
         permissionType: '',
     });
 
+    const debouncedEmployee = useDebouncedValue(filters.employee, 400);
+
     const refreshInFlight = useRef(false);
 
     const endpoint = useMemo(() => {
@@ -86,14 +89,14 @@ export default function ReportsClient({ locale }: { locale: string }) {
             limit: rows,
             ...(filters.from ? { from: filters.from } : {}),
             ...(filters.to ? { to: filters.to } : {}),
-            ...(filters.employee ? { employee: filters.employee } : {}),
+            ...(debouncedEmployee ? { employee: debouncedEmployee } : {}),
             ...(filters.status ? { status: filters.status } : {}),
             ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
             ...(filters.governorate ? { governorate: filters.governorate } : {}),
             ...(filters.permissionType && tab === 'permissions' ? { permissionType: filters.permissionType } : {}),
             ...(effectiveLeaveType ? { leaveType: effectiveLeaveType } : {}),
         };
-    }, [filters.departmentId, filters.employee, filters.from, filters.governorate, filters.leaveType, filters.permissionType, filters.status, filters.to, page, rows, tab]);
+    }, [debouncedEmployee, filters.departmentId, filters.from, filters.governorate, filters.leaveType, filters.permissionType, filters.status, filters.to, page, rows, tab]);
 
     const fetchSummary = useCallback(async () => {
         if (!canViewReports) return;
@@ -173,7 +176,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
 
     useEffect(() => {
         setPage(1);
-    }, [tab, filters.departmentId, filters.employee, filters.from, filters.governorate, filters.leaveType, filters.permissionType, filters.status, filters.to, rows]);
+    }, [tab, debouncedEmployee, filters.departmentId, filters.from, filters.governorate, filters.leaveType, filters.permissionType, filters.status, filters.to, rows]);
 
     const tableAlignClass = locale === 'ar' ? 'text-right' : 'text-left';
     const showEmergency = useMemo(
@@ -290,7 +293,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
                     />
                     <input
                         className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                        placeholder={t('employeeFilter')}
+                        placeholder={t('employeeSearchPlaceholder')}
                         value={filters.employee}
                         onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, employee: e.target.value })); }}
                     />
