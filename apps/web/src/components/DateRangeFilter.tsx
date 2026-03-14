@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 
 type DateRangeFilterProps = {
@@ -16,6 +16,38 @@ const toYmd = (value: Date) => format(value, 'yyyy-MM-dd');
 export default function DateRangeFilter({ locale, from = '', to = '', onChange, className = '' }: DateRangeFilterProps) {
     const [open, setOpen] = useState(false);
     const [mode, setMode] = useState<'single' | 'range'>(from && to && from === to ? 'single' : 'range');
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const panelId = useId();
+
+    useEffect(() => {
+        if (from && to && from === to) {
+            setMode('single');
+            return;
+        }
+        setMode('range');
+    }, [from, to]);
+
+    useEffect(() => {
+        if (!open) return;
+
+        const handlePointerDown = (event: MouseEvent) => {
+            if (!rootRef.current?.contains(event.target as Node)) {
+                setOpen(false);
+            }
+        };
+
+        const handleEsc = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setOpen(false);
+        };
+
+        document.addEventListener('mousedown', handlePointerDown);
+        document.addEventListener('keydown', handleEsc);
+
+        return () => {
+            document.removeEventListener('mousedown', handlePointerDown);
+            document.removeEventListener('keydown', handleEsc);
+        };
+    }, [open]);
 
     const label = useMemo(() => {
         const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-US';
@@ -44,17 +76,20 @@ export default function DateRangeFilter({ locale, from = '', to = '', onChange, 
     const clear = () => onChange({ from: '', to: '' });
 
     return (
-        <div className={`relative ${className}`}>
+        <div ref={rootRef} className={`relative ${className}`}>
             <button
                 type="button"
                 className="w-full rounded-xl border border-ink/20 bg-white px-3 py-2 text-start"
                 onClick={() => setOpen((prev) => !prev)}
+                aria-expanded={open}
+                aria-haspopup="dialog"
+                aria-controls={panelId}
             >
                 {label}
             </button>
 
             {open && (
-                <div className="absolute z-30 mt-2 w-full min-w-[280px] rounded-2xl border border-ink/10 bg-white p-3 shadow-lg">
+                <div id={panelId} className="absolute z-30 mt-2 w-full min-w-[280px] max-w-[min(92vw,420px)] rounded-2xl border border-ink/10 bg-white p-3 shadow-lg">
                     <div className="mb-3 flex items-center gap-2">
                         <button
                             type="button"
@@ -96,7 +131,14 @@ export default function DateRangeFilter({ locale, from = '', to = '', onChange, 
                                 className="w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
                                 value={to}
                                 min={from || undefined}
-                                onChange={(e) => onChange({ from, to: e.target.value })}
+                                onChange={(e) => {
+                                    const nextTo = e.target.value;
+                                    if (from && nextTo && nextTo < from) {
+                                        onChange({ from, to: from });
+                                        return;
+                                    }
+                                    onChange({ from, to: nextTo });
+                                }}
                             />
                         )}
                     </div>
