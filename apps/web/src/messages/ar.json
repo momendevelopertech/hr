@@ -295,6 +295,7 @@
     "historyOther": "أخرى",
     "searchNamePlaceholder": "ابحث بالاسم",
     "searchPhonePlaceholder": "ابحث برقم الهاتف",
+    "searchPlaceholder": "ابحث بالاسم أو رقم الهاتف",
     "roles": {
       "employee": "موظف",
       "manager": "مدير",

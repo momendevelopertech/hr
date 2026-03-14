@@ -295,6 +295,7 @@
     "historyOther": "Other",
     "searchNamePlaceholder": "Search by name",
     "searchPhonePlaceholder": "Search by phone",
+    "searchPlaceholder": "Search by name or phone",
     "roles": {
       "employee": "Employee",
       "manager": "Manager",

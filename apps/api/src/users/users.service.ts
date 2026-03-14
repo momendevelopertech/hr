@@ -221,6 +221,11 @@ export class UsersService {
         const page = Math.max(1, params?.page || 1);
         const limit = Math.min(100, Math.max(1, params?.limit || 20));
         const skip = (page - 1) * limit;
+        const rawSearch = params?.search?.trim() || params?.name?.trim() || '';
+        const searchQuery = rawSearch.trim();
+        const phoneDigits = searchQuery.replace(/\D/g, '');
+        const isPhoneLike = phoneDigits.length >= 7;
+        const hasArabic = /[\u0600-\u06FF]/.test(searchQuery);
 
         if (requesterRole === 'MANAGER') {
             const manager = await this.prisma.user.findUnique({ where: { id: requesterId } });
@@ -235,7 +240,9 @@ export class UsersService {
             if (params?.governorate) where.governorate = params.governorate as any;
         }
 
-        if (params?.phone) where.phone = { contains: params.phone, mode: 'insensitive' };
+        if (!searchQuery && params?.phone) {
+            where.phone = { contains: params.phone, mode: 'insensitive' };
+        }
         if (params?.status === 'active') where.isActive = true;
         if (params?.status === 'inactive') where.isActive = false;
         if (params?.from || params?.to) {
@@ -246,13 +253,10 @@ export class UsersService {
                 ...(toDate ? { lte: toDate } : {}),
             };
         }
-        if (params?.search) {
+        if (searchQuery && isPhoneLike) {
             where.OR = [
-                { fullName: { contains: params.search, mode: 'insensitive' } },
-                { email: { contains: params.search, mode: 'insensitive' } },
-                { employeeNumber: { contains: params.search, mode: 'insensitive' } },
-                { username: { contains: params.search, mode: 'insensitive' } },
-                { phone: { contains: params.search, mode: 'insensitive' } },
+                { phone: { contains: phoneDigits, mode: 'insensitive' } },
+                { employeeNumber: { contains: searchQuery, mode: 'insensitive' } },
             ];
         }
 
@@ -260,10 +264,19 @@ export class UsersService {
         const cached = await this.redisService.getJSON<any>(cacheKey);
         if (cached) return cached;
 
-        const nameQuery = params?.name?.trim();
-        if (nameQuery) {
+        if (searchQuery && !isPhoneLike) {
+            const candidateWhere = hasArabic
+                ? where
+                : {
+                    ...where,
+                    OR: [
+                        { fullName: { contains: searchQuery, mode: 'insensitive' } },
+                        { fullNameAr: { contains: searchQuery, mode: 'insensitive' } },
+                        { employeeNumber: { contains: searchQuery, mode: 'insensitive' } },
+                    ],
+                };
             const candidates = await this.prisma.user.findMany({
-                where,
+                where: candidateWhere,
                 orderBy: { createdAt: 'desc' },
                 select: {
                     id: true,
@@ -285,7 +298,13 @@ export class UsersService {
                     createdAt: true,
                 },
             });
-            const filtered = candidates.filter((user) => matchesEmployeeSearch(nameQuery, user));
+            const filtered = candidates.filter((user) => {
+                if (matchesEmployeeSearch(searchQuery, user)) return true;
+                if (phoneDigits && user.phone) {
+                    return user.phone.includes(phoneDigits);
+                }
+                return false;
+            });
             const items = filtered.slice(skip, skip + limit);
             const total = filtered.length;
             const payload = { items, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) };

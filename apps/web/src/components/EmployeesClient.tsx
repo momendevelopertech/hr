@@ -68,16 +68,14 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const [filters, setFilters] = useState<any>({
-        name: '',
-        phone: '',
+        search: '',
         departmentId: '',
         status: '',
         from: '',
         to: '',
     });
 
-    const debouncedName = useDebouncedValue(filters.name, 400);
-    const debouncedPhone = useDebouncedValue(filters.phone, 400);
+    const debouncedSearch = useDebouncedValue(filters.search, 400);
     const initialLoadRef = useRef(true);
 
     const cancelLabel = locale === 'ar' ? 'إلغاء' : 'Cancel';
@@ -91,13 +89,12 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     const queryParams = useMemo(() => ({
         page,
         limit,
-        ...(debouncedName ? { name: debouncedName } : {}),
-        ...(debouncedPhone ? { phone: debouncedPhone } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
         ...(filters.status ? { status: filters.status } : {}),
         ...(filters.from ? { from: filters.from } : {}),
         ...(filters.to ? { to: filters.to } : {}),
-    }), [debouncedName, debouncedPhone, filters.departmentId, filters.from, filters.status, filters.to, limit, page]);
+    }), [debouncedSearch, filters.departmentId, filters.from, filters.status, filters.to, limit, page]);
 
     const availableDepartments = useMemo(() => {
         if (!form.branchId) return [];
@@ -142,7 +139,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
 
     useEffect(() => {
         setPage(1);
-    }, [debouncedName, debouncedPhone]);
+    }, [debouncedSearch]);
 
     if (!ready || loading) {
         return <PageLoader text={locale === 'ar' ? 'جاري تحميل الموظفين...' : 'Loading employees...'} />;
@@ -306,18 +303,12 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             <section className="card p-5">
                 <h2 className="text-lg font-semibold">{t('title')}</h2>
 
-                <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+                <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-5">
                     <input
                         className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                        placeholder={t('searchNamePlaceholder')}
-                        value={filters.name}
-                        onChange={(e) => setFilters((p: any) => ({ ...p, name: e.target.value }))}
-                    />
-                    <input
-                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                        placeholder={t('searchPhonePlaceholder')}
-                        value={filters.phone}
-                        onChange={(e) => setFilters((p: any) => ({ ...p, phone: e.target.value }))}
+                        placeholder={t('searchPlaceholder')}
+                        value={filters.search}
+                        onChange={(e) => setFilters((p: any) => ({ ...p, search: e.target.value }))}
                     />
                     <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.departmentId} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, departmentId: e.target.value })); }}>
                         <option value="">{t('department')}</option>
