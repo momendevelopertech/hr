@@ -274,7 +274,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         if (!hrNotice || markingNotice) return;
         setMarkingNotice(true);
         try {
-            await api.patch(`/notifications/${hrNotice.id}/read`);
+            await api.patch('/notifications/read-type/ANNOUNCEMENT');
             setHrNotice(null);
         } finally {
             setMarkingNotice(false);

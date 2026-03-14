@@ -48,6 +48,12 @@ export class NotificationsController {
         return this.notificationsService.markAllRead(req.user.id);
     }
 
+
+    @Patch('read-type/:type')
+    markAllReadByType(@Param('type') type: string, @Req() req: any) {
+        return this.notificationsService.markAllReadByType(req.user.id, type);
+    }
+
     @Post('announcement')
     @UseGuards(RolesGuard)
     @Roles('SUPER_ADMIN', 'HR_ADMIN', 'BRANCH_SECRETARY')

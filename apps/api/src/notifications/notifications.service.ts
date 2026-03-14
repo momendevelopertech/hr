@@ -179,6 +179,13 @@ export class NotificationsService {
         });
     }
 
+    async markAllReadByType(userId: string, type: string) {
+        return this.prisma.notification.updateMany({
+            where: { receiverId: userId, type: type as any },
+            data: { isRead: true },
+        });
+    }
+
     async sendWhatsApp(phone: string, message: string) {
         if (!phone || !process.env.WHAPI_TOKEN) {
             this.logger.warn('WhatsApp not configured or phone missing');
