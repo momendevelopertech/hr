@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { addMonths } from 'date-fns';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import api, { isAuthError } from '@/lib/api';
 import { useRequireAuth } from '@/lib/use-auth';
@@ -53,13 +53,16 @@ type RequestRow = {
     employeeNameAlt?: string | null;
     employeeNumber: string;
     requestDate: string;
+    requestDateTs: number;
     createdAt: string;
+    createdAtTs: number;
     status: string;
     details: string;
     printUrl: string;
     approvedByMgrId?: string | null;
     employeeGovernorate?: 'CAIRO' | 'ALEXANDRIA' | null;
     employeeDepartmentId?: string | null;
+    searchKey: string;
 };
 
 type LatenessItem = {
@@ -117,10 +120,12 @@ export default function RequestsClient({ locale }: { locale: string }) {
         governorate: '',
         departmentId: '',
     });
+    const deferredSearch = useDeferredValue(filters.search);
     const [pendingDelete, setPendingDelete] = useState<RequestRow | null>(null);
     const [deleteBusy, setDeleteBusy] = useState(false);
     const [salary, setSalary] = useState('');
     const [historyOpen, setHistoryOpen] = useState(false);
+    const [, startTabTransition] = useTransition();
 
     const dateLocale = useMemo(() => (locale === 'ar' ? 'ar-EG' : 'en-US'), [locale]);
 
@@ -288,22 +293,29 @@ export default function RequestsClient({ locale }: { locale: string }) {
             leaves.map((leave) => {
                 const primaryName = locale === 'ar' ? leave.user.fullNameAr || leave.user.fullName : leave.user.fullName;
                 const altName = locale === 'ar' ? leave.user.fullName : leave.user.fullNameAr || '';
+                const subtype = enumLabels.leaveType(leave.leaveType, locale as 'en' | 'ar');
+                const searchKey = normalizeSearchText(`${primaryName} ${altName || ''} ${leave.user.employeeNumber} ${subtype}`);
+                const requestDateTs = new Date(leave.startDate).getTime();
+                const createdAtTs = new Date(leave.createdAt).getTime();
                 return {
                     id: leave.id,
                     requestType: 'leave',
                     leaveType: leave.leaveType,
-                    subtype: enumLabels.leaveType(leave.leaveType, locale as 'en' | 'ar'),
+                    subtype,
                     employeeName: primaryName,
                     employeeNameAlt: altName || null,
                     employeeNumber: leave.user.employeeNumber,
                     requestDate: leave.startDate,
+                    requestDateTs,
                     createdAt: leave.createdAt,
+                    createdAtTs,
                     status: leave.status,
                     details: `${new Date(leave.startDate).toLocaleDateString(dateLocale)} - ${new Date(leave.endDate).toLocaleDateString(dateLocale)}`,
                     printUrl: `/${locale}/requests/print/leave/${leave.id}`,
                     approvedByMgrId: leave.approvedByMgrId,
                     employeeGovernorate: leave.user.governorate ?? null,
                     employeeDepartmentId: leave.user.department?.id ?? null,
+                    searchKey,
                 };
             }),
         [dateLocale, leaves, locale],
@@ -314,21 +326,28 @@ export default function RequestsClient({ locale }: { locale: string }) {
             permissions.map((perm) => {
                 const primaryName = locale === 'ar' ? perm.user.fullNameAr || perm.user.fullName : perm.user.fullName;
                 const altName = locale === 'ar' ? perm.user.fullName : perm.user.fullNameAr || '';
+                const subtype = enumLabels.permissionType(perm.permissionType, locale as 'en' | 'ar');
+                const searchKey = normalizeSearchText(`${primaryName} ${altName || ''} ${perm.user.employeeNumber} ${subtype}`);
+                const requestDateTs = new Date(perm.requestDate).getTime();
+                const createdAtTs = new Date(perm.createdAt).getTime();
                 return {
                     id: perm.id,
                     requestType: 'permission',
-                    subtype: enumLabels.permissionType(perm.permissionType, locale as 'en' | 'ar'),
+                    subtype,
                     employeeName: primaryName,
                     employeeNameAlt: altName || null,
                     employeeNumber: perm.user.employeeNumber,
                     requestDate: perm.requestDate,
+                    requestDateTs,
                     createdAt: perm.createdAt,
+                    createdAtTs,
                     status: perm.status,
                     details: `${perm.hoursUsed}h`,
                     printUrl: `/${locale}/requests/print/permission/${perm.id}`,
                     approvedByMgrId: perm.approvedByMgrId,
                     employeeGovernorate: perm.user.governorate ?? null,
                     employeeDepartmentId: perm.user.department?.id ?? null,
+                    searchKey,
                 };
             }),
         [locale, permissions],
@@ -359,25 +378,43 @@ export default function RequestsClient({ locale }: { locale: string }) {
         [absenceRows, leaveOnlyRows, missionRows, permissionRows],
     );
 
+    const sortedRowsByTab = useMemo(() => {
+        const sortByCreatedAt = (rows: RequestRow[]) => rows.slice().sort((a, b) => b.createdAtTs - a.createdAtTs);
+        return {
+            all: sortByCreatedAt([...permissionRows, ...leaveOnlyRows, ...absenceRows, ...missionRows]),
+            leave: sortByCreatedAt(leaveOnlyRows),
+            absence: sortByCreatedAt(absenceRows),
+            mission: sortByCreatedAt(missionRows),
+            permission: sortByCreatedAt(permissionRows),
+            lateness: [] as RequestRow[],
+        };
+    }, [absenceRows, leaveOnlyRows, missionRows, permissionRows]);
+
     const applyFilters = useCallback((rows: RequestRow[]) => {
-        const normalizedQuery = normalizeSearchText(filters.search);
+        const normalizedQuery = deferredSearch ? normalizeSearchText(deferredSearch) : '';
+        const fromTs = filters.from ? new Date(filters.from).getTime() : null;
+        const toTs = filters.to ? new Date(`${filters.to}T23:59:59`).getTime() : null;
         return rows.filter((row) => {
-            const searchValue = `${row.employeeName} ${row.employeeNameAlt || ''} ${row.employeeNumber} ${row.subtype}`;
-            const normalizedValue = normalizeSearchText(searchValue);
             const statusOk = !filters.status || row.status === filters.status;
-            const searchOk = !normalizedQuery || normalizedValue.includes(normalizedQuery);
-            const fromOk = !filters.from || new Date(row.requestDate) >= new Date(filters.from);
-            const toOk = !filters.to || new Date(row.requestDate) <= new Date(`${filters.to}T23:59:59`);
+            const searchOk = !normalizedQuery || row.searchKey.includes(normalizedQuery);
+            const fromOk = !fromTs || row.requestDateTs >= fromTs;
+            const toOk = !toTs || row.requestDateTs <= toTs;
             const governorateOk = !filters.governorate || row.employeeGovernorate === filters.governorate;
             const departmentOk = !filters.departmentId || row.employeeDepartmentId === filters.departmentId;
             return statusOk && searchOk && fromOk && toOk && governorateOk && departmentOk;
         });
-    }, [filters.departmentId, filters.from, filters.governorate, filters.search, filters.status, filters.to]);
+    }, [deferredSearch, filters.departmentId, filters.from, filters.governorate, filters.status, filters.to]);
 
-    const filteredRows = useMemo(() => {
-        const rows = applyFilters(rowsByTab[activeTab] || []);
-        return rows.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [activeTab, applyFilters, rowsByTab]);
+    const filteredRowsByTab = useMemo(() => ({
+        all: applyFilters(sortedRowsByTab.all),
+        leave: applyFilters(sortedRowsByTab.leave),
+        absence: applyFilters(sortedRowsByTab.absence),
+        mission: applyFilters(sortedRowsByTab.mission),
+        permission: applyFilters(sortedRowsByTab.permission),
+        lateness: [] as RequestRow[],
+    }), [applyFilters, sortedRowsByTab]);
+
+    const filteredRows = filteredRowsByTab[activeTab] || [];
 
     const total = filteredRows.length;
     const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -498,7 +535,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                         <button
                             key={tab.key}
                             className={`btn-outline ${activeTab === tab.key ? 'bg-ink/10' : ''}`}
-                            onClick={() => setActiveTab(tab.key)}
+                            onClick={() => startTabTransition(() => setActiveTab(tab.key))}
                         >
                             {tab.label} ({tab.count})
                         </button>

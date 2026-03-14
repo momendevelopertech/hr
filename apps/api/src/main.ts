@@ -8,10 +8,12 @@ import helmet from 'helmet';
 import csurf = require('csurf');
 import { HttpExceptionFilter } from './shared/http-exception.filter';
 import { getAllowedOrigins, getCookieSettings, getFrontendOrigin } from './shared/cookie-settings';
+import { assertSecurityEnv } from './shared/env-check';
 
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
     const isProd = process.env.NODE_ENV === 'production';
+    assertSecurityEnv(isProd);
     app.disable('x-powered-by');
     app.getHttpAdapter().getInstance().set('trust proxy', 1);
 

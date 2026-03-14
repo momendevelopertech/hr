@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import api, { isAuthError } from '@/lib/api';
@@ -66,6 +66,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
         leaveType: '',
         permissionType: '',
     });
+    const [, startTabTransition] = useTransition();
 
     const debouncedEmployee = useDebouncedValue(filters.employee, 400);
     const initialLoadRef = useRef(true);
@@ -293,8 +294,10 @@ export default function ReportsClient({ locale }: { locale: string }) {
                                 key={item.key}
                                 className={`btn-outline ${tab === item.key ? 'bg-ink/10' : ''}`}
                                 onClick={() => {
-                                    setTab(item.key);
-                                    setPage(1);
+                                    startTabTransition(() => {
+                                        setTab(item.key);
+                                        setPage(1);
+                                    });
                                 }}
                             >
                                 {item.label}
