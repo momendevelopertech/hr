@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -9,7 +10,7 @@ import { HttpExceptionFilter } from './shared/http-exception.filter';
 import { getAllowedOrigins, getCookieSettings, getFrontendOrigin } from './shared/cookie-settings';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create<NestExpressApplication>(AppModule);
     const isProd = process.env.NODE_ENV === 'production';
     app.disable('x-powered-by');
     app.getHttpAdapter().getInstance().set('trust proxy', 1);

@@ -83,6 +83,10 @@ export class UsersService {
         const phoneLast4 = (normalizedPhone || '').slice(-4) || '0000';
         const baseName = (data.fullName || 'user').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12) || 'user';
         const generatedUsername = `${baseName}${phoneLast4}`.toLowerCase();
+        const jobTitle = data.jobTitle?.trim();
+        if (!jobTitle) {
+            throw new BadRequestException('Job title is required');
+        }
 
         const role = data.role || 'EMPLOYEE';
         const branchIdInput = this.parseBranchId(data.branchId);
@@ -93,16 +97,14 @@ export class UsersService {
         if (branchId) {
             branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
             if (!branch) throw new BadRequestException('Invalid branch selection');
-            if (!governorate) {
-                governorate = this.inferGovernorateFromBranchName(branch.name);
-            }
+            const inferred = this.inferGovernorateFromBranchName(branch.name);
+            if (inferred) governorate = inferred;
         } else if (governorate) {
             branch = await this.resolveBranchByGovernorate(governorate);
             branchId = branch?.id;
         }
 
-        const branchRequired = !['SUPER_ADMIN', 'HR_ADMIN'].includes(role);
-        if (branchRequired && !branchId) {
+        if (!branchId) {
             throw new BadRequestException('Branch is required');
         }
 
@@ -146,7 +148,7 @@ export class UsersService {
                 governorate,
                 branchId,
                 departmentId: data.departmentId,
-                jobTitle: data.jobTitle,
+                jobTitle,
                 jobTitleAr: data.jobTitleAr,
                 fingerprintId: data.fingerprintId || data.employeeNumber,
                 mustChangePass: true,
@@ -387,15 +389,18 @@ export class UsersService {
             if (branchId) {
                 const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
                 if (!branch) throw new BadRequestException('Invalid branch selection');
-                if (data.governorate === undefined) {
-                    governorate = this.inferGovernorateFromBranchName(branch.name);
+                const inferred = this.inferGovernorateFromBranchName(branch.name);
+                if (inferred) {
+                    governorate = inferred;
+                } else if (data.governorate !== undefined) {
+                    governorate = data.governorate || null;
                 }
             } else if (data.governorate === undefined) {
                 governorate = null;
             }
         }
 
-        if (data.governorate !== undefined) {
+        if (data.governorate !== undefined && branchIdInput === undefined) {
             governorate = data.governorate || null;
             if (branchIdInput === undefined) {
                 const branchFromGov = await this.resolveBranchByGovernorate(governorate);
@@ -403,8 +408,7 @@ export class UsersService {
             }
         }
 
-        const branchRequired = !['SUPER_ADMIN', 'HR_ADMIN'].includes(role);
-        if (branchRequired && !branchId) {
+        if (!branchId) {
             throw new BadRequestException('Branch is required');
         }
 

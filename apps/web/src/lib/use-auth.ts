@@ -12,7 +12,8 @@ export function useRequireAuth(locale: string) {
     const attemptedRef = useRef(false);
 
     useEffect(() => {
-        if (bootstrapped && user) {
+        const hasRequiredProfile = !!(user?.jobTitle && user?.governorate && user?.branchId);
+        if (bootstrapped && user && hasRequiredProfile) {
             setReady(true);
             setLoading(false);
             return;

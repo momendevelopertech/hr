@@ -5,6 +5,7 @@ import {
     IsEmail,
     IsEnum,
     IsInt,
+    IsNotEmpty,
     IsOptional,
     IsString,
     Max,
@@ -45,7 +46,6 @@ export class CreateUserDto {
     @IsEnum(Governorate)
     governorate?: Governorate;
 
-    @IsOptional()
     @Transform(({ value }) => (value === '' || value === null ? undefined : value))
     @Type(() => Number)
     @IsInt()
@@ -57,8 +57,8 @@ export class CreateUserDto {
     @IsString()
     departmentId?: string;
 
-    @IsOptional()
     @IsString()
+    @IsNotEmpty()
     jobTitle?: string;
 
     @IsOptional()
@@ -105,6 +105,7 @@ export class UpdateUserDto {
 
     @IsOptional()
     @IsString()
+    @IsNotEmpty()
     jobTitle?: string;
 
     @IsOptional()

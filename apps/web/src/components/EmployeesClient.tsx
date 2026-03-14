@@ -152,14 +152,17 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             return;
         }
         const role = form.role || 'EMPLOYEE';
-        const branchRequired = role !== 'SUPER_ADMIN' && role !== 'HR_ADMIN';
-        if (branchRequired && !form.branchId) {
+        if (!form.branchId) {
             alert(locale === 'ar' ? 'يجب اختيار الفرع.' : 'Branch is required.');
             return;
         }
         const departmentRequired = role === 'EMPLOYEE' || role === 'MANAGER';
         if (departmentRequired && !form.departmentId) {
             alert(locale === 'ar' ? 'يجب اختيار القسم.' : 'Department is required.');
+            return;
+        }
+        if (!form.jobTitle) {
+            alert(locale === 'ar' ? 'يجب إدخال المسمى الوظيفي.' : 'Job title is required.');
             return;
         }
         const res = await api.post('/users', {
@@ -217,14 +220,17 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             return;
         }
         const role = editForm.role || 'EMPLOYEE';
-        const branchRequired = role !== 'SUPER_ADMIN' && role !== 'HR_ADMIN';
-        if (branchRequired && !editForm.branchId) {
+        if (!editForm.branchId) {
             alert(locale === 'ar' ? 'يجب اختيار الفرع.' : 'Branch is required.');
             return;
         }
         const departmentRequired = role === 'EMPLOYEE' || role === 'MANAGER';
         if (departmentRequired && !editForm.departmentId) {
             alert(locale === 'ar' ? 'يجب اختيار القسم.' : 'Department is required.');
+            return;
+        }
+        if (!editForm.jobTitle) {
+            alert(locale === 'ar' ? 'يجب إدخال المسمى الوظيفي.' : 'Job title is required.');
             return;
         }
         setSavingEdit(true);
