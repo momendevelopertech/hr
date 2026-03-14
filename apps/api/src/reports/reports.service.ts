@@ -17,7 +17,7 @@ export class ReportsService {
     ) { }
 
     private getCacheTtlSeconds() {
-        const raw = parseInt(process.env.REPORTS_CACHE_TTL || '30', 10);
+        const raw = parseInt(process.env.REPORTS_CACHE_TTL || '60', 10);
         if (Number.isNaN(raw)) return 30;
         return Math.max(5, raw);
     }

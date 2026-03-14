@@ -510,8 +510,8 @@ export class LeavesService {
 
         return this.createRequest(request.userId, {
             leaveType: request.leaveType,
-            startDate: request.startDate,
-            endDate: request.endDate,
+            startDate: request.startDate.toISOString().slice(0, 10),
+            endDate: request.endDate.toISOString().slice(0, 10),
             reason: request.reason,
             attachmentUrl: request.attachmentUrl,
         });

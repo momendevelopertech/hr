@@ -429,19 +429,55 @@ body {
 }
 
 :root[data-theme='dark'] .text-ink\/60 {
-    color: rgba(226, 232, 240, 0.6) !important;
+    color: rgba(226, 232, 240, 0.72) !important;
 }
 
 :root[data-theme='dark'] .text-ink\/50 {
-    color: rgba(226, 232, 240, 0.5) !important;
+    color: rgba(226, 232, 240, 0.64) !important;
 }
 
 :root[data-theme='dark'] .text-ink\/40 {
-    color: rgba(226, 232, 240, 0.4) !important;
+    color: rgba(226, 232, 240, 0.55) !important;
 }
 
 :root[data-theme='dark'] .text-ink\/70 {
-    color: rgba(226, 232, 240, 0.7) !important;
+    color: rgba(226, 232, 240, 0.82) !important;
+}
+
+:root[data-theme='dark'] .text-ink\/80 {
+    color: rgba(226, 232, 240, 0.9) !important;
+}
+
+:root[data-theme='dark'] .border-ink\/5 {
+    border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+:root[data-theme='dark'] .border-ink\/10 {
+    border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+:root[data-theme='dark'] .border-ink\/15 {
+    border-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+:root[data-theme='dark'] .border-ink\/20 {
+    border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+:root[data-theme='dark'] .border-ink\/30 {
+    border-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+:root[data-theme='dark'] .border-ink\/40 {
+    border-color: rgba(148, 163, 184, 0.55) !important;
+}
+
+:root[data-theme='dark'] .bg-ink\/5 {
+    background-color: rgba(148, 163, 184, 0.08) !important;
+}
+
+:root[data-theme='dark'] .bg-ink\/10 {
+    background-color: rgba(148, 163, 184, 0.14) !important;
 }
 
 :root[data-theme='dark'] .nav-icon--dashboard {

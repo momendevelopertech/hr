@@ -104,7 +104,7 @@ export class LatenessService {
 
         const permission = await this.permissionsService.createRequest(userId, {
             permissionType: 'LATE_ARRIVAL',
-            requestDate: lateness.date,
+            requestDate: lateness.date.toISOString().slice(0, 10),
             permissionScope: 'ARRIVAL',
             durationMinutes: lateness.minutesLate,
             reason: 'Converted from lateness entry',

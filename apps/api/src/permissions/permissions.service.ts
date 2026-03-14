@@ -505,7 +505,7 @@ export class PermissionsService {
 
         return this.createRequest(request.userId, {
             permissionType: request.permissionType,
-            requestDate: request.requestDate,
+            requestDate: request.requestDate.toISOString().slice(0, 10),
             arrivalTime: request.arrivalTime,
             leaveTime: request.leaveTime,
             reason: request.reason,
