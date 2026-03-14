@@ -131,6 +131,8 @@ type CachedResponse = {
 const CACHE_TTL_MS = 30000;
 const responseCache = new Map<string, CachedResponse>();
 
+const isAuthEndpoint = (url?: string) => !!url && url.includes('/auth/');
+
 const getCacheKey = (config: any) => {
     const base = config.baseURL ? config.baseURL.replace(/\/$/, '') : '';
     const url = config.url || '';
@@ -173,8 +175,15 @@ const defaultAdapter = axios.getAdapter(axios.defaults.adapter);
 api.defaults.adapter = async (config) => {
     const method = (config.method || 'get').toLowerCase();
     const skipCache = config.headers?.['x-no-cache'];
-    const allowCache = config.headers?.['x-allow-cache'];
-    const shouldUseCache = method === 'get' && !skipCache && allowCache === '1';
+    const allowCacheHeader = config.headers?.['x-allow-cache'];
+    const forceDisableCache = allowCacheHeader === '0';
+    const explicitAllowCache = allowCacheHeader === '1';
+    const shouldUseCache =
+        method === 'get' &&
+        !skipCache &&
+        !forceDisableCache &&
+        !isAuthEndpoint(config.url) &&
+        (explicitAllowCache || allowCacheHeader === undefined);
 
     if (shouldUseCache) {
         const key = getCacheKey(config);

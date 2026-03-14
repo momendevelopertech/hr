@@ -196,7 +196,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
             if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
             refreshData(true);
             fetchSummary(true);
-        }, 30000);
+        }, 60000);
         return () => clearInterval(interval);
     }, [canViewReports, fetchSummary, ready, refreshData]);
 
