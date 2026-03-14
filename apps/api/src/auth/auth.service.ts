@@ -16,6 +16,7 @@ import { createHmac } from 'crypto';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MINUTES = 30;
+const REFRESH_TOKEN_DAYS = 7;
 
 @Injectable()
 export class AuthService {
@@ -291,8 +292,7 @@ export class AuthService {
     }
 
     private getRememberMeRefreshDays() {
-        const rememberDays = parseInt(process.env.REMEMBER_ME_REFRESH_DAYS || '30', 10);
-        return Number.isNaN(rememberDays) ? 30 : rememberDays;
+        return REFRESH_TOKEN_DAYS;
     }
 
     private async generateTokens(
@@ -313,8 +313,8 @@ export class AuthService {
 
         const refreshToken = uuidv4();
         const refreshHash = this.hashToken(refreshToken, 'refresh');
-        const refreshDays = refreshDaysOverride ?? parseInt((process.env.JWT_REFRESH_EXPIRES || '7d').replace('d', ''), 10);
-        const expiresAt = addDays(new Date(), Number.isNaN(refreshDays) ? 7 : refreshDays);
+        const refreshDays = refreshDaysOverride ?? REFRESH_TOKEN_DAYS;
+        const expiresAt = addDays(new Date(), refreshDays);
 
         const createToken = () => this.prisma.refreshToken.create({
             data: {

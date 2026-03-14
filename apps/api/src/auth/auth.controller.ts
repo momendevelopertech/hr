@@ -24,13 +24,11 @@ export class AuthController {
 
     private getCookieAges(rememberMe = false) {
         const accessMs = 15 * 60 * 1000; // 15m
-        const rememberDays = parseInt(process.env.REMEMBER_ME_REFRESH_DAYS || '30', 10);
-        const rememberMs = (Number.isNaN(rememberDays) ? 30 : rememberDays) * 24 * 60 * 60 * 1000;
-        const defaultRefreshMs = 7 * 24 * 60 * 60 * 1000;
+        const refreshMs = 7 * 24 * 60 * 60 * 1000;
 
         return {
             accessMs,
-            refreshMs: rememberMe ? rememberMs : defaultRefreshMs,
+            refreshMs,
         };
     }
 
@@ -83,7 +81,7 @@ export class AuthController {
             res.clearCookie('remember_me', this.getClearCookieOptions());
         }
 
-        return { user: result.user };
+        return { user: result.user, accessToken: result.accessToken };
     }
 
     @Post('logout')
@@ -116,7 +114,7 @@ export class AuthController {
         res.cookie('access_token', tokens.accessToken, this.getHttpOnlyCookieOptions(ages.accessMs));
         res.cookie('refresh_token', tokens.refreshToken, this.getHttpOnlyCookieOptions(ages.refreshMs));
 
-        return { success: true };
+        return { accessToken: tokens.accessToken };
     }
 
     @Post('change-password')

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth-store';
 let csrfToken: string | null = null;
 let refreshPromise: Promise<void> | null = null;
 let refreshDisabled = false;
+let accessToken: string | null = null;
 
 export class AppApiError extends Error {
     constructor(
@@ -31,6 +32,10 @@ export const isAuthError = (error: unknown): boolean => {
 
 export const setCsrfToken = (token: string) => {
     csrfToken = token;
+};
+
+export const setAccessToken = (token: string | null) => {
+    accessToken = token;
 };
 
 const resetRefreshState = () => {
@@ -85,6 +90,7 @@ const handleSessionExpired = () => {
     disableRefreshState();
     clearApiCache();
     clearAuthState();
+    setAccessToken(null);
     markLoggedOut();
     redirectToLogin();
 };
@@ -122,6 +128,7 @@ export const clearApiCache = () => {
 export const clearBrowserRuntimeCache = async () => {
     clearApiCache();
     csrfToken = null;
+    accessToken = null;
 
     if (typeof window === 'undefined') return;
 
@@ -213,6 +220,12 @@ api.interceptors.request.use((config) => {
         config.headers = config.headers || {};
         config.headers['X-CSRF-Token'] = csrfToken;
     }
+    if (accessToken) {
+        config.headers = config.headers || {};
+        if (!config.headers.Authorization) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
+        }
+    }
     return config;
 });
 
@@ -225,17 +238,24 @@ api.interceptors.response.use((response) => {
         resetRefreshState();
         clearApiCache();
         clearLoggedOut();
+        if (response.data?.accessToken) {
+            setAccessToken(response.data.accessToken);
+        }
     }
 
     if (response.config.url?.includes('/auth/logout')) {
         disableRefreshState();
         clearApiCache();
         markLoggedOut();
+        setAccessToken(null);
     }
 
     if (response.config.url?.includes('/auth/refresh')) {
         resetRefreshState();
         clearLoggedOut();
+        if (response.data?.accessToken) {
+            setAccessToken(response.data.accessToken);
+        }
     }
 
     return response;
