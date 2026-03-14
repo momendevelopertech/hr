@@ -50,19 +50,38 @@ export class NotificationsController {
 
     @Post('announcement')
     @UseGuards(RolesGuard)
-    @Roles('SUPER_ADMIN', 'HR_ADMIN')
+    @Roles('SUPER_ADMIN', 'HR_ADMIN', 'BRANCH_SECRETARY')
     createAnnouncement(
         @Req() req: any,
-        @Body() body: { title: string; titleAr?: string; body: string; bodyAr?: string },
+        @Body() body: {
+            title: string;
+            titleAr?: string;
+            body: string;
+            bodyAr?: string;
+            targetScope?: 'ALL' | 'DEPARTMENT' | 'GOVERNORATE' | 'USERS';
+            departmentId?: string;
+            governorate?: string;
+            userIds?: string[];
+        },
     ) {
-        return this.notificationsService.broadcastToAll({
+        const targetScope = body.targetScope || 'ALL';
+        const governorate = req.user.role === 'BRANCH_SECRETARY' ? req.user.governorate : body.governorate;
+
+        return this.notificationsService.broadcastToUsers({
             senderId: req.user.id,
             type: 'ANNOUNCEMENT',
             title: body.title,
             titleAr: body.titleAr || body.title,
             body: body.body,
             bodyAr: body.bodyAr || body.body,
-            metadata: { kind: 'ANNOUNCEMENT' },
+            metadata: {
+                kind: 'ANNOUNCEMENT',
+                targetScope,
+            },
+            ...(targetScope === 'DEPARTMENT' ? { departmentId: body.departmentId, ...(req.user.role === 'BRANCH_SECRETARY' ? { governorate } : {}) } : {}),
+            ...(targetScope === 'GOVERNORATE' ? { governorate } : {}),
+            ...(targetScope === 'USERS' ? { userIds: body.userIds || [], ...(req.user.role === 'BRANCH_SECRETARY' ? { governorate } : {}) } : {}),
+            ...(req.user.role === 'BRANCH_SECRETARY' && targetScope === 'ALL' ? { governorate } : {}),
         });
     }
 
@@ -70,7 +89,7 @@ export class NotificationsController {
     @UseGuards(RolesGuard)
     @Roles('SUPER_ADMIN', 'HR_ADMIN')
     triggerPayroll(@Req() req: any) {
-        return this.notificationsService.broadcastToAll({
+        return this.notificationsService.broadcastToUsers({
             senderId: req.user.id,
             type: 'ANNOUNCEMENT',
             title: 'Payroll Released',

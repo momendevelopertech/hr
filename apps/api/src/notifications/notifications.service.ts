@@ -48,7 +48,7 @@ export class NotificationsService {
         );
     }
 
-    async broadcastToAll(data: {
+    async broadcastToUsers(data: {
         senderId?: string;
         type: any;
         title: string;
@@ -56,12 +56,16 @@ export class NotificationsService {
         body: string;
         bodyAr: string;
         metadata?: any;
+        userIds?: string[];
+        departmentId?: string;
+        governorate?: string;
     }) {
-        const users = await this.prisma.user.findMany({
-            where: { isActive: true },
-            select: { id: true },
-        });
+        const where: any = { isActive: true };
+        if (data.userIds?.length) where.id = { in: data.userIds };
+        if (data.departmentId) where.departmentId = data.departmentId;
+        if (data.governorate) where.governorate = data.governorate as any;
 
+        const users = await this.prisma.user.findMany({ where, select: { id: true } });
         if (users.length === 0) return { sent: 0 };
 
         await this.prisma.notification.createMany({
@@ -77,13 +81,20 @@ export class NotificationsService {
             })),
         });
 
-        await Promise.all(
-            users.map((user) =>
-                this.pusher.triggerToUser(user.id, 'notification', { type: data.type }),
-            ),
-        );
-
+        await Promise.all(users.map((user) => this.pusher.triggerToUser(user.id, 'notification', { type: data.type })));
         return { sent: users.length };
+    }
+
+    async broadcastToAll(data: {
+        senderId?: string;
+        type: any;
+        title: string;
+        titleAr: string;
+        body: string;
+        bodyAr: string;
+        metadata?: any;
+    }) {
+        return this.broadcastToUsers(data);
     }
 
     async getUnread(userId: string) {

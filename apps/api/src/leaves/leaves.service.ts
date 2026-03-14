@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
-import { differenceInBusinessDays, startOfMonth, endOfMonth } from 'date-fns';
+import { addMonths, differenceInBusinessDays, endOfDay, setDate, startOfDay } from 'date-fns';
 
 @Injectable()
 export class LeavesService {
@@ -99,13 +99,14 @@ export class LeavesService {
 
     async getMonthlyAbsenceDeduction(userId: string, role: string, month?: string) {
         const now = month ? new Date(`${month}-01`) : new Date();
-        const monthStart = startOfMonth(now);
-        const monthEnd = endOfMonth(now);
+        const day = now.getDate();
+        const cycleStart = day >= 11 ? startOfDay(setDate(now, 11)) : startOfDay(setDate(addMonths(now, -1), 11));
+        const cycleEnd = day >= 11 ? endOfDay(setDate(addMonths(now, 1), 10)) : endOfDay(setDate(now, 10));
 
         const where: any = {
             leaveType: 'ABSENCE_WITH_PERMISSION',
             status: 'HR_APPROVED',
-            startDate: { gte: monthStart, lte: monthEnd },
+            startDate: { gte: cycleStart, lte: cycleEnd },
         };
         if (role === 'EMPLOYEE') {
             where.userId = userId;
@@ -132,9 +133,25 @@ export class LeavesService {
             select: { totalDays: true },
         });
 
+        const latenessEntries = await this.prisma.lateness.findMany({
+            where: {
+                ...(where.userId ? { userId: where.userId } : {}),
+                date: { gte: cycleStart, lte: cycleEnd },
+            },
+            select: { id: true },
+        });
+
+        const latenessCount = latenessEntries.length;
+        const latenessDeductionDays = latenessCount >= 3 ? 1 : latenessCount === 2 ? 0.5 : latenessCount === 1 ? 0.25 : 0;
+        const absenceDays = requests.reduce((sum, req) => sum + req.totalDays, 0);
+
         return {
-            month: `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`,
-            deductedDays: requests.reduce((sum, req) => sum + req.totalDays, 0),
+            cycleStart,
+            cycleEnd,
+            deductedDays: absenceDays + latenessDeductionDays,
+            absenceDays,
+            latenessDeductionDays,
+            latenessCount,
         };
     }
 

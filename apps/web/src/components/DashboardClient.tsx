@@ -15,6 +15,9 @@ import { enumLabels } from '@/lib/enum-labels';
 import PageLoader from './PageLoader';
 import { Megaphone, Wallet } from 'lucide-react';
 
+type Department = { id: string; name: string; nameAr?: string | null };
+type EmployeeOption = { id: string; fullName: string; fullNameAr?: string | null };
+
 type LeaveRequest = {
     id: string;
     leaveType: string;
@@ -85,6 +88,14 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const [permissionCycle, setPermissionCycle] = useState<any | null>(null);
     const [absenceDeduction, setAbsenceDeduction] = useState<any | null>(null);
     const [announcement, setAnnouncement] = useState({ title: '', body: '' });
+    const [departments, setDepartments] = useState<Department[]>([]);
+    const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+    const [announcementTarget, setAnnouncementTarget] = useState<{
+        scope: 'ALL' | 'DEPARTMENT' | 'GOVERNORATE' | 'USERS';
+        departmentId: string;
+        governorate: string;
+        userIds: string[];
+    }>({ scope: 'ALL', departmentId: '', governorate: '', userIds: [] });
     const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
     const [sendingPayroll, setSendingPayroll] = useState(false);
     const [announcementOpen, setAnnouncementOpen] = useState(false);
@@ -170,8 +181,12 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         const usedPermissions = permissionCycle?.usedHours ?? 0;
         const remainingPermissions = permissionCycle?.remainingHours ?? 4;
         const pending = [...leaves, ...permissions, ...forms].filter((r) => r.status === 'PENDING').length;
+        const cycleHint = absenceDeduction?.cycleStart && absenceDeduction?.cycleEnd
+            ? `${new Date(absenceDeduction.cycleStart).toLocaleDateString(locale)} - ${new Date(absenceDeduction.cycleEnd).toLocaleDateString(locale)}`
+            : undefined;
+
         return [
-            { label: 'leaveBalance', value: `${totalRemaining} ${t('days')}` },
+            { label: 'leaveBalance', value: `${totalRemaining} ${t('days')}`, hint: t('leaveBalanceHint', { year: new Date().getFullYear() }) },
             {
                 label: 'permissionHours',
                 rows: [
@@ -180,11 +195,31 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                 ],
             },
             { label: 'pendingApprovals', value: `${pending}` },
-            { label: 'absenceDeduction', value: `${absenceDeduction?.deductedDays ?? 0} ${t('days')}` },
+            {
+                label: 'absenceDeduction',
+                rows: [
+                    { label: 'absenceOnly', value: `${absenceDeduction?.absenceDays ?? 0} ${t('days')}`, valueClassName: 'text-rose-700' },
+                    { label: 'latenessOnly', value: `${absenceDeduction?.latenessDeductionDays ?? 0} ${t('days')}`, valueClassName: 'text-amber-700' },
+                ],
+                hint: cycleHint,
+            },
         ];
-    }, [absenceDeduction?.deductedDays, balances, leaves, permissions, forms, permissionCycle?.remainingHours, permissionCycle?.usedHours, t]);
+    }, [absenceDeduction?.absenceDays, absenceDeduction?.cycleEnd, absenceDeduction?.cycleStart, absenceDeduction?.latenessDeductionDays, balances, leaves, locale, permissions, forms, permissionCycle?.remainingHours, permissionCycle?.usedHours, t]);
 
-    const canBroadcast = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
+    const canBroadcast = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'BRANCH_SECRETARY';
+
+    useEffect(() => {
+        if (!ready || !canBroadcast) return;
+        const loadRecipients = async () => {
+            const [deptRes, usersRes] = await Promise.all([
+                api.get('/departments'),
+                api.get('/users', { params: { limit: 1000, status: 'active' } }),
+            ]);
+            setDepartments(deptRes.data || []);
+            setEmployees(usersRes.data?.items || []);
+        };
+        loadRecipients();
+    }, [ready, canBroadcast]);
     const noticeContent = useMemo(() => {
         if (!hrNotice) return null;
         const isPayroll = hrNotice.metadata?.kind === 'PAYROLL';
@@ -211,8 +246,13 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                 titleAr: announcement.title.trim(),
                 body: announcement.body.trim(),
                 bodyAr: announcement.body.trim(),
+                targetScope: announcementTarget.scope,
+                departmentId: announcementTarget.departmentId || undefined,
+                governorate: announcementTarget.governorate || undefined,
+                userIds: announcementTarget.userIds,
             });
             setAnnouncement({ title: '', body: '' });
+            setAnnouncementTarget({ scope: 'ALL', departmentId: '', governorate: '', userIds: [] });
             setAnnouncementOpen(false);
             toast.success(t('announcementSent'));
         } finally {
@@ -370,6 +410,53 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                                 value={announcement.body}
                                 onChange={(e) => setAnnouncement((prev) => ({ ...prev, body: e.target.value }))}
                             />
+                        </div>
+                        <div className="mt-3 grid gap-3 md:grid-cols-3">
+                            <select
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                value={announcementTarget.scope}
+                                onChange={(e) => setAnnouncementTarget((prev) => ({ ...prev, scope: e.target.value as any, departmentId: '', governorate: '', userIds: [] }))}
+                            >
+                                <option value="ALL">{t('targetAll')}</option>
+                                <option value="GOVERNORATE">{t('targetGovernorate')}</option>
+                                <option value="DEPARTMENT">{t('targetDepartment')}</option>
+                                <option value="USERS">{t('targetEmployees')}</option>
+                            </select>
+                            {announcementTarget.scope === 'GOVERNORATE' && (
+                                <select
+                                    className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-2"
+                                    value={announcementTarget.governorate}
+                                    onChange={(e) => setAnnouncementTarget((prev) => ({ ...prev, governorate: e.target.value }))}
+                                >
+                                    <option value="">{t('selectGovernorate')}</option>
+                                    <option value="CAIRO">{locale === 'ar' ? 'القاهرة' : 'Cairo'}</option>
+                                    <option value="ALEXANDRIA">{locale === 'ar' ? 'الإسكندرية' : 'Alexandria'}</option>
+                                </select>
+                            )}
+                            {announcementTarget.scope === 'DEPARTMENT' && (
+                                <select
+                                    className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-2"
+                                    value={announcementTarget.departmentId}
+                                    onChange={(e) => setAnnouncementTarget((prev) => ({ ...prev, departmentId: e.target.value }))}
+                                >
+                                    <option value="">{t('selectDepartment')}</option>
+                                    {departments.map((dept) => (
+                                        <option key={dept.id} value={dept.id}>{locale === 'ar' ? dept.nameAr || dept.name : dept.name}</option>
+                                    ))}
+                                </select>
+                            )}
+                            {announcementTarget.scope === 'USERS' && (
+                                <select
+                                    multiple
+                                    className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-2 min-h-[110px]"
+                                    value={announcementTarget.userIds}
+                                    onChange={(e) => setAnnouncementTarget((prev) => ({ ...prev, userIds: Array.from(e.target.selectedOptions).map((o) => o.value) }))}
+                                >
+                                    {employees.map((emp) => (
+                                        <option key={emp.id} value={emp.id}>{locale === 'ar' ? emp.fullNameAr || emp.fullName : emp.fullName}</option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                         <div className="mt-4 flex justify-end gap-2">
                             <button className="btn-outline" onClick={() => setAnnouncementOpen(false)}>

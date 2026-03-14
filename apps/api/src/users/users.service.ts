@@ -152,6 +152,7 @@ export class UsersService {
         from?: string;
         to?: string;
         search?: string;
+        governorate?: string;
     }) {
         const where: any = {};
         const page = Math.max(1, params?.page || 1);
@@ -166,8 +167,9 @@ export class UsersService {
             if (secretary?.governorate) {
                 where.governorate = secretary.governorate;
             }
-        } else if (params?.departmentId) {
-            where.departmentId = params.departmentId;
+        } else {
+            if (params?.departmentId) where.departmentId = params.departmentId;
+            if (params?.governorate) where.governorate = params.governorate as any;
         }
 
         if (params?.phone) where.phone = { contains: params.phone, mode: 'insensitive' };

@@ -34,6 +34,7 @@ export class UsersController {
         @Query('from') from?: string,
         @Query('to') to?: string,
         @Query('search') search?: string,
+        @Query('governorate') governorate?: string,
     ) {
         return this.usersService.findAll(req.user.id, req.user.role, {
             departmentId,
@@ -45,6 +46,7 @@ export class UsersController {
             from,
             to,
             search,
+            governorate,
         });
     }
 
