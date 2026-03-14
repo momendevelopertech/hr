@@ -188,7 +188,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         const interval = setInterval(() => {
             if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
             refreshAll(true);
-        }, 30000);
+        }, 60000);
         return () => clearInterval(interval);
     }, [ready, refreshAll]);
 

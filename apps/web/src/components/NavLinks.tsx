@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import api, { isAuthError } from '@/lib/api';
 import { usePusherChannel } from '@/lib/use-pusher-channel';
@@ -22,6 +22,7 @@ import {
 export default function NavLinks({ locale }: { locale: string }) {
     const t = useTranslations('nav');
     const pathname = usePathname();
+    const router = useRouter();
     const { user, loading, bootstrapped } = useAuthStore();
     const isAdmin = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
     const canViewReports = isAdmin || user?.role === 'MANAGER' || user?.role === 'BRANCH_SECRETARY';
@@ -32,7 +33,7 @@ export default function NavLinks({ locale }: { locale: string }) {
     const countsInFlight = useRef(false);
     const backgroundConfig = useMemo(() => ({
         headers: {
-            'x-no-cache': '1',
+            'x-allow-cache': '1',
             'x-skip-activity': '1',
         },
     }), []);
@@ -72,7 +73,7 @@ export default function NavLinks({ locale }: { locale: string }) {
 
     usePusherChannel(user ? `user-${user.id}` : null, pusherHandlers);
 
-    const links = [
+    const links = useMemo(() => [
         { href: `/${locale}`, label: t('dashboard'), icon: LayoutDashboard, iconClass: 'nav-icon nav-icon--dashboard' },
         { href: `/${locale}/requests`, label: t('requests'), icon: ClipboardList, iconClass: 'nav-icon nav-icon--requests' },
         { href: `/${locale}/chat`, label: t('chat'), badge: unreadChats, icon: MessageCircle, iconClass: 'nav-icon nav-icon--chat' },
@@ -86,7 +87,23 @@ export default function NavLinks({ locale }: { locale: string }) {
         ...(canViewReports ? [{ href: `/${locale}/reports`, label: t('reports'), icon: BarChart3, iconClass: 'nav-icon nav-icon--reports' }] : []),
         ...(isAdmin ? [{ href: `/${locale}/settings`, label: t('settings'), icon: Settings, iconClass: 'nav-icon nav-icon--settings' }] : []),
         { href: `/${locale}/notifications`, label: t('notifications'), badge: unreadNotifications, icon: Bell, iconClass: 'nav-icon nav-icon--notifications' },
-    ];
+    ], [
+        canManageEmployees,
+        isAdmin,
+        canViewReports,
+        locale,
+        t,
+        unreadChats,
+        unreadNotifications,
+    ]);
+
+
+    useEffect(() => {
+        if (!authReady) return;
+        links.forEach((link) => {
+            router.prefetch(link.href);
+        });
+    }, [authReady, links, router]);
 
     if (!authReady) {
         return (

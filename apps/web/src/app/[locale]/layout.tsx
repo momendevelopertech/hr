@@ -10,6 +10,7 @@ import ClientCacheManager from '@/components/ClientCacheManager';
 import PwaRegistrar from '@/components/PwaRegistrar';
 import { AuthProvider } from '@/context/AuthContext';
 import SessionTimeoutManager from '@/components/SessionTimeoutManager';
+import ReactQueryProvider from '@/components/ReactQueryProvider';
 
 const notoKufiArabic = Noto_Kufi_Arabic({
     subsets: ['arabic'],
@@ -54,13 +55,15 @@ export default async function LocaleLayout({
         <html lang={locale} dir={dir} className={fontClass}>
             <body className={`bg-atmosphere text-ink ${locale === 'ar' ? 'font-ar' : 'font-base'}`}>
                 <NextIntlClientProvider messages={messages}>
-                    <AuthProvider locale={locale}>
-                        <ClientCacheManager />
-                        <PwaRegistrar />
-                        <SessionTimeoutManager />
-                        {children}
-                        <Toaster position={locale === 'ar' ? 'top-left' : 'top-right'} />
-                    </AuthProvider>
+                    <ReactQueryProvider>
+                        <AuthProvider locale={locale}>
+                            <ClientCacheManager />
+                            <PwaRegistrar />
+                            <SessionTimeoutManager />
+                            {children}
+                            <Toaster position={locale === 'ar' ? 'top-left' : 'top-right'} />
+                        </AuthProvider>
+                    </ReactQueryProvider>
                 </NextIntlClientProvider>
             </body>
         </html>

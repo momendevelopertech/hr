@@ -162,7 +162,7 @@ export default function NotificationsClient({ locale }: { locale: string }) {
         const interval = setInterval(() => {
             if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
             refreshAll(true);
-        }, 30000);
+        }, 60000);
         return () => clearInterval(interval);
     }, [ready, refreshAll]);
 
