@@ -65,6 +65,46 @@ body {
     @apply btn border border-ink/20 text-ink hover:bg-ink/5;
 }
 
+.nav-icon {
+    flex-shrink: 0;
+}
+
+.nav-icon--dashboard {
+    color: #2f6b5f;
+}
+
+.nav-icon--requests {
+    color: #d86f45;
+}
+
+.nav-icon--chat {
+    color: #38bdf8;
+}
+
+.nav-icon--employees {
+    color: #6366f1;
+}
+
+.nav-icon--departments {
+    color: #f59e0b;
+}
+
+.nav-icon--forms {
+    color: #10b981;
+}
+
+.nav-icon--reports {
+    color: #f43f5e;
+}
+
+.nav-icon--settings {
+    color: #64748b;
+}
+
+.nav-icon--notifications {
+    color: #8b5cf6;
+}
+
 .pill {
     @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
 }
@@ -318,4 +358,96 @@ body {
 
 :root[data-theme='dark'] .text-ink\/70 {
     color: rgba(226, 232, 240, 0.7) !important;
+}
+
+:root[data-theme='dark'] .nav-icon--dashboard {
+    color: #5eead4;
+}
+
+:root[data-theme='dark'] .nav-icon--requests {
+    color: #fdba74;
+}
+
+:root[data-theme='dark'] .nav-icon--chat {
+    color: #7dd3fc;
+}
+
+:root[data-theme='dark'] .nav-icon--employees {
+    color: #a5b4fc;
+}
+
+:root[data-theme='dark'] .nav-icon--departments {
+    color: #fcd34d;
+}
+
+:root[data-theme='dark'] .nav-icon--forms {
+    color: #6ee7b7;
+}
+
+:root[data-theme='dark'] .nav-icon--reports {
+    color: #fda4af;
+}
+
+:root[data-theme='dark'] .nav-icon--settings {
+    color: #cbd5f5;
+}
+
+:root[data-theme='dark'] .nav-icon--notifications {
+    color: #c4b5fd;
+}
+
+:root[data-theme='dark'] .text-cactus {
+    color: #5eead4 !important;
+}
+
+:root[data-theme='dark'] .text-ember {
+    color: #fdba74 !important;
+}
+
+:root[data-theme='dark'] .text-amber-900\/70 {
+    color: rgba(253, 230, 138, 0.8) !important;
+}
+
+:root[data-theme='dark'] .text-sky-700 {
+    color: #7dd3fc !important;
+}
+
+:root[data-theme='dark'] .text-indigo-700 {
+    color: #a5b4fc !important;
+}
+
+:root[data-theme='dark'] .text-amber-700 {
+    color: #fcd34d !important;
+}
+
+:root[data-theme='dark'] .text-orange-700 {
+    color: #fdba74 !important;
+}
+
+:root[data-theme='dark'] .text-emerald-700 {
+    color: #6ee7b7 !important;
+}
+
+:root[data-theme='dark'] .text-rose-700 {
+    color: #fda4af !important;
+}
+
+:root[data-theme='dark'] .text-cyan-700 {
+    color: #67e8f9 !important;
+}
+
+:root[data-theme='dark'] .text-violet-700 {
+    color: #c4b5fd !important;
+}
+
+:root[data-theme='dark'] .text-rose-600 {
+    color: #fda4af !important;
+}
+
+:root[data-theme='dark'] .text-emerald-600 {
+    color: #6ee7b7 !important;
+}
+
+:root[data-theme='dark'] .text-red-600 {
+    color: #fca5a5 !important;
 }

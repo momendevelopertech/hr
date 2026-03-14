@@ -59,19 +59,19 @@ export default function NavLinks({ locale }: { locale: string }) {
     usePusherChannel(user ? `user-${user.id}` : null, pusherHandlers);
 
     const links = [
-        { href: `/${locale}`, label: t('dashboard'), icon: LayoutDashboard },
-        { href: `/${locale}/requests`, label: t('requests'), icon: ClipboardList },
-        { href: `/${locale}/chat`, label: t('chat'), badge: unreadChats, icon: MessageCircle },
-        ...(canManageEmployees ? [{ href: `/${locale}/employees`, label: t('employees'), icon: Users }] : []),
+        { href: `/${locale}`, label: t('dashboard'), icon: LayoutDashboard, iconClass: 'nav-icon nav-icon--dashboard' },
+        { href: `/${locale}/requests`, label: t('requests'), icon: ClipboardList, iconClass: 'nav-icon nav-icon--requests' },
+        { href: `/${locale}/chat`, label: t('chat'), badge: unreadChats, icon: MessageCircle, iconClass: 'nav-icon nav-icon--chat' },
+        ...(canManageEmployees ? [{ href: `/${locale}/employees`, label: t('employees'), icon: Users, iconClass: 'nav-icon nav-icon--employees' }] : []),
         ...(isAdmin
             ? [
-                { href: `/${locale}/departments`, label: t('departments'), icon: Building2 },
-                { href: `/${locale}/forms`, label: t('forms'), icon: FileText },
+                { href: `/${locale}/departments`, label: t('departments'), icon: Building2, iconClass: 'nav-icon nav-icon--departments' },
+                { href: `/${locale}/forms`, label: t('forms'), icon: FileText, iconClass: 'nav-icon nav-icon--forms' },
             ]
             : []),
-        ...(canViewReports ? [{ href: `/${locale}/reports`, label: t('reports'), icon: BarChart3 }] : []),
-        ...(isAdmin ? [{ href: `/${locale}/settings`, label: t('settings'), icon: Settings }] : []),
-        { href: `/${locale}/notifications`, label: t('notifications'), badge: unreadNotifications, icon: Bell },
+        ...(canViewReports ? [{ href: `/${locale}/reports`, label: t('reports'), icon: BarChart3, iconClass: 'nav-icon nav-icon--reports' }] : []),
+        ...(isAdmin ? [{ href: `/${locale}/settings`, label: t('settings'), icon: Settings, iconClass: 'nav-icon nav-icon--settings' }] : []),
+        { href: `/${locale}/notifications`, label: t('notifications'), badge: unreadNotifications, icon: Bell, iconClass: 'nav-icon nav-icon--notifications' },
     ];
 
     if (!authReady) {
@@ -98,7 +98,7 @@ export default function NavLinks({ locale }: { locale: string }) {
                         className={`btn-outline ${active ? 'bg-ink/10' : ''}`}
                     >
                         <span className="inline-flex items-center gap-2">
-                            {link.icon && <link.icon size={16} />}
+                            {link.icon && <link.icon size={16} className={link.iconClass} />}
                             {link.label}
                             {!!link.badge && (
                                 <span className="min-w-[20px] rounded-full bg-cactus px-2 py-0.5 text-center text-xs font-semibold text-white">

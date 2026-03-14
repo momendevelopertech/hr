@@ -6,6 +6,23 @@ import * as path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const prisma = new PrismaClient();
+const cycleSeed = {
+    start: new Date(2026, 1, 11),
+    end: new Date(2026, 2, 10),
+    endOfDay: new Date(2026, 2, 10, 23, 59, 59),
+};
+
+const addDays = (date: Date, days: number) => {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+};
+
+const withTime = (date: Date, hours: number, minutes: number) => {
+    const next = new Date(date);
+    next.setHours(hours, minutes, 0, 0);
+    return next;
+};
 
 type SeedUser = {
     employeeNumber: string;
@@ -315,6 +332,89 @@ async function upsertUserWithoutDuplicates(
     return prisma.user.create({ data: payload });
 }
 
+async function pruneUsersNotInList(keepUserIds: string[]) {
+    const removeUsers = await prisma.user.findMany({
+        where: { id: { notIn: keepUserIds } },
+        select: { id: true },
+    });
+    const removeIds = removeUsers.map((u) => u.id);
+    if (!removeIds.length) return;
+
+    await prisma.department.updateMany({
+        where: { managerId: { in: removeIds } },
+        data: { managerId: null },
+    });
+
+    await prisma.permissionRequest.updateMany({
+        where: { approvedByMgrId: { in: removeIds } },
+        data: { approvedByMgrId: null, approvedByMgrAt: null },
+    });
+    await prisma.permissionRequest.updateMany({
+        where: { approvedByHrId: { in: removeIds } },
+        data: { approvedByHrId: null, approvedByHrAt: null },
+    });
+    await prisma.leaveRequest.updateMany({
+        where: { approvedByMgrId: { in: removeIds } },
+        data: { approvedByMgrId: null, approvedByMgrAt: null },
+    });
+    await prisma.leaveRequest.updateMany({
+        where: { approvedByHrId: { in: removeIds } },
+        data: { approvedByHrId: null, approvedByHrAt: null },
+    });
+    await prisma.notification.updateMany({
+        where: { senderId: { in: removeIds } },
+        data: { senderId: null },
+    });
+
+    await prisma.permissionRequest.deleteMany({ where: { userId: { in: removeIds } } });
+    await prisma.permissionCycle.deleteMany({ where: { userId: { in: removeIds } } });
+    await prisma.leaveRequest.deleteMany({ where: { userId: { in: removeIds } } });
+    await prisma.leaveBalance.deleteMany({ where: { userId: { in: removeIds } } });
+    await prisma.formSubmission.deleteMany({ where: { userId: { in: removeIds } } });
+    await prisma.notification.deleteMany({ where: { receiverId: { in: removeIds } } });
+    await prisma.auditLog.deleteMany({ where: { userId: { in: removeIds } } });
+    await prisma.refreshToken.deleteMany({ where: { userId: { in: removeIds } } });
+    await prisma.note.deleteMany({ where: { userId: { in: removeIds } } });
+    await prisma.lateness.deleteMany({ where: { userId: { in: removeIds } } });
+    await prisma.message.deleteMany({
+        where: {
+            OR: [{ senderId: { in: removeIds } }, { receiverId: { in: removeIds } }],
+        },
+    });
+
+    await prisma.user.deleteMany({ where: { id: { in: removeIds } } });
+}
+
+async function resetLeaveBalances(userIds: string[], year: number) {
+    const defaults = [
+        { leaveType: 'ANNUAL', totalDays: 21 },
+        { leaveType: 'CASUAL', totalDays: 7 },
+        { leaveType: 'EMERGENCY', totalDays: 3 },
+        { leaveType: 'MISSION', totalDays: 10 },
+    ] as const;
+
+    for (const userId of userIds) {
+        for (const item of defaults) {
+            await prisma.leaveBalance.upsert({
+                where: { userId_year_leaveType: { userId, year, leaveType: item.leaveType } },
+                update: {
+                    totalDays: item.totalDays,
+                    usedDays: 0,
+                    remainingDays: item.totalDays,
+                },
+                create: {
+                    userId,
+                    year,
+                    leaveType: item.leaveType,
+                    totalDays: item.totalDays,
+                    usedDays: 0,
+                    remainingDays: item.totalDays,
+                },
+            });
+        }
+    }
+}
+
 async function main() {
     console.log('Seeding SPHINX HR database (deduplicated)...');
 
@@ -381,29 +481,167 @@ async function main() {
         });
     }
 
-    const year = new Date().getFullYear();
+    const year = cycleSeed.start.getFullYear();
     const seededUsers = await prisma.user.findMany({
         where: { employeeNumber: { in: requiredUsers.map((u) => u.employeeNumber) } },
-        select: { id: true },
+        select: { id: true, role: true, departmentId: true, governorate: true, employeeNumber: true },
     });
 
-    for (const user of seededUsers) {
-        for (const [leaveType, days] of [
-            ['ANNUAL', 21],
-            ['CASUAL', 7],
-            ['EMERGENCY', 3],
-            ['MISSION', 10],
-        ] as const) {
-            await prisma.leaveBalance.upsert({
-                where: { userId_year_leaveType: { userId: user.id, year, leaveType } },
-                update: {},
-                create: {
-                    userId: user.id,
-                    year,
-                    leaveType,
-                    totalDays: days,
-                    usedDays: 0,
-                    remainingDays: days,
+    const keepUserIds = seededUsers.map((u) => u.id);
+    await pruneUsersNotInList(keepUserIds);
+
+    await prisma.permissionRequest.deleteMany({
+        where: { userId: { in: keepUserIds }, requestDate: { gte: cycleSeed.start, lte: cycleSeed.endOfDay } },
+    });
+    await prisma.permissionCycle.deleteMany({
+        where: { userId: { in: keepUserIds }, cycleStart: cycleSeed.start },
+    });
+    await prisma.leaveRequest.deleteMany({
+        where: { userId: { in: keepUserIds }, startDate: { gte: cycleSeed.start, lte: cycleSeed.endOfDay } },
+    });
+    await prisma.lateness.deleteMany({
+        where: { userId: { in: keepUserIds }, date: { gte: cycleSeed.start, lte: cycleSeed.endOfDay } },
+    });
+
+    await resetLeaveBalances(keepUserIds, year);
+
+    const hrApprover = seededUsers.find((u) => u.role === 'HR_ADMIN') ?? seededUsers.find((u) => u.role === 'SUPER_ADMIN') ?? null;
+    const managers = seededUsers.filter((u) => u.role === 'MANAGER');
+    const employees = seededUsers.filter((u) => u.role === 'EMPLOYEE');
+
+    const permissionTemplates = [
+        {
+            offsetDays: 2,
+            permissionType: 'PERSONAL' as const,
+            arrivalTime: '11:00',
+            leaveTime: '12:30',
+            hoursUsed: 1.5,
+            reason: 'Personal errand',
+        },
+        {
+            offsetDays: 14,
+            permissionType: 'PERSONAL' as const,
+            arrivalTime: '14:00',
+            leaveTime: '15:30',
+            hoursUsed: 1.5,
+            reason: 'Medical appointment',
+        },
+    ];
+
+    const leaveTemplates = [
+        { offsetDays: 5, leaveType: 'ANNUAL' as const, days: 1, reason: 'Annual leave' },
+        { offsetDays: 16, leaveType: 'MISSION' as const, days: 1, reason: 'Client visit' },
+        { offsetDays: 23, leaveType: 'ABSENCE_WITH_PERMISSION' as const, days: 1, reason: 'Permissioned absence' },
+    ];
+
+    const latenessTemplates = [
+        { offsetDays: 3, minutesLate: 15 },
+        { offsetDays: 19, minutesLate: 25 },
+    ];
+
+    for (const employee of employees) {
+        const manager =
+            managers.find((m) => m.departmentId === employee.departmentId && m.governorate === employee.governorate) ??
+            managers.find((m) => m.departmentId === employee.departmentId) ??
+            managers[0] ??
+            null;
+        const managerId = manager?.id ?? null;
+        const hrId = hrApprover?.id ?? null;
+
+        const totalPermissionHours = permissionTemplates.reduce((sum, item) => sum + item.hoursUsed, 0);
+        const cycle = await prisma.permissionCycle.create({
+            data: {
+                userId: employee.id,
+                cycleStart: cycleSeed.start,
+                cycleEnd: cycleSeed.end,
+                totalHours: 4,
+                usedHours: totalPermissionHours,
+                remainingHours: Math.max(0, 4 - totalPermissionHours),
+            },
+        });
+
+        for (const template of permissionTemplates) {
+            const baseDate = addDays(cycleSeed.start, template.offsetDays);
+            const requestDate = withTime(baseDate, 9, 0);
+            const createdAt = withTime(baseDate, 8, 30);
+            const approvedByMgrAt = managerId ? withTime(addDays(baseDate, 1), 11, 0) : null;
+            const approvedByHrAt = hrId ? withTime(addDays(baseDate, 2), 14, 0) : null;
+
+            await prisma.permissionRequest.create({
+                data: {
+                    userId: employee.id,
+                    cycleId: cycle.id,
+                    permissionType: template.permissionType,
+                    requestDate,
+                    arrivalTime: template.arrivalTime,
+                    leaveTime: template.leaveTime,
+                    hoursUsed: template.hoursUsed,
+                    reason: template.reason,
+                    status: 'HR_APPROVED',
+                    approvedByMgrId: managerId,
+                    approvedByMgrAt,
+                    approvedByHrId: hrId,
+                    approvedByHrAt,
+                    createdAt,
+                    updatedAt: approvedByHrAt ?? createdAt,
+                },
+            });
+        }
+
+        for (const template of leaveTemplates) {
+            const baseDate = addDays(cycleSeed.start, template.offsetDays);
+            const startDate = withTime(baseDate, 9, 0);
+            const endDate = withTime(addDays(baseDate, template.days - 1), 17, 0);
+            const createdAt = withTime(baseDate, 8, 0);
+            const approvedByMgrAt = managerId ? withTime(addDays(baseDate, 1), 11, 30) : null;
+            const approvedByHrAt = hrId ? withTime(addDays(baseDate, 2), 14, 30) : null;
+
+            await prisma.leaveRequest.create({
+                data: {
+                    userId: employee.id,
+                    leaveType: template.leaveType,
+                    startDate,
+                    endDate,
+                    totalDays: template.days,
+                    reason: template.reason,
+                    status: 'HR_APPROVED',
+                    approvedByMgrId: managerId,
+                    approvedByMgrAt,
+                    approvedByHrId: hrId,
+                    approvedByHrAt,
+                    createdAt,
+                    updatedAt: approvedByHrAt ?? createdAt,
+                },
+            });
+
+            if (template.leaveType !== 'ABSENCE_WITH_PERMISSION') {
+                await prisma.leaveBalance.update({
+                    where: {
+                        userId_year_leaveType: {
+                            userId: employee.id,
+                            year,
+                            leaveType: template.leaveType,
+                        },
+                    },
+                    data: {
+                        usedDays: { increment: template.days },
+                        remainingDays: { decrement: template.days },
+                    },
+                });
+            }
+        }
+
+        for (const template of latenessTemplates) {
+            const baseDate = addDays(cycleSeed.start, template.offsetDays);
+            const date = withTime(baseDate, 9, 15);
+            await prisma.lateness.create({
+                data: {
+                    userId: employee.id,
+                    date,
+                    minutesLate: template.minutesLate,
+                    convertedToPermission: false,
+                    createdAt: date,
+                    updatedAt: date,
                 },
             });
         }
