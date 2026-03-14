@@ -53,6 +53,24 @@ const clearAuthState = () => {
     }
 };
 
+const markLoggedOut = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        window.sessionStorage.setItem('sphinx-logged-out', '1');
+    } catch {
+        // ignore storage errors
+    }
+};
+
+const clearLoggedOut = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        window.sessionStorage.removeItem('sphinx-logged-out');
+    } catch {
+        // ignore storage errors
+    }
+};
+
 const redirectToLogin = () => {
     if (typeof window === 'undefined') return;
     const segments = window.location.pathname.split('/').filter(Boolean);
@@ -67,6 +85,7 @@ const handleSessionExpired = () => {
     disableRefreshState();
     clearApiCache();
     clearAuthState();
+    markLoggedOut();
     redirectToLogin();
 };
 
@@ -113,7 +132,13 @@ export const clearBrowserRuntimeCache = async () => {
 
     if ('serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.map((registration) => registration.unregister()));
+        await Promise.all(registrations.map(async (registration) => {
+            try {
+                await registration.update();
+            } catch {
+                // ignore SW update errors
+            }
+        }));
     }
 };
 
@@ -199,15 +224,18 @@ api.interceptors.response.use((response) => {
     if (response.config.url?.includes('/auth/login')) {
         resetRefreshState();
         clearApiCache();
+        clearLoggedOut();
     }
 
     if (response.config.url?.includes('/auth/logout')) {
         disableRefreshState();
         clearApiCache();
+        markLoggedOut();
     }
 
     if (response.config.url?.includes('/auth/refresh')) {
         resetRefreshState();
+        clearLoggedOut();
     }
 
     return response;
