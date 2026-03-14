@@ -152,6 +152,7 @@ export class AuthController {
             fullNameAr: user.fullNameAr,
             role: user.role,
             governorate: user.governorate,
+            branchId: user.branchId,
             mustChangePass: user.mustChangePass,
             department: user.department,
             profileImage: user.profileImage,

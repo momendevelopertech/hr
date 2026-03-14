@@ -119,7 +119,32 @@ model Department {
 
   employees   User[]
   forms       DynamicForm[]
+  branches    DepartmentBranch[]
   manager     User? @relation("DepartmentManager", fields: [managerId], references: [id])
+}
+
+model Branch {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  nameAr    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departments DepartmentBranch[]
+  employees   User[]
+}
+
+model DepartmentBranch {
+  id           String   @id @default(cuid())
+  departmentId String
+  branchId     Int
+  createdAt    DateTime @default(now())
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, branchId])
+  @@index([branchId])
 }
 
 model User {
@@ -133,6 +158,7 @@ model User {
   passwordHash     String
   role             Role      @default(EMPLOYEE)
   governorate      Governorate?
+  branchId         Int?
   departmentId     String?
   jobTitle         String?
   jobTitleAr       String?
@@ -146,6 +172,7 @@ model User {
   updatedAt        DateTime  @updatedAt
 
   department        Department?       @relation(fields: [departmentId], references: [id])
+  branch            Branch?           @relation(fields: [branchId], references: [id])
   managedDepartment Department?       @relation("DepartmentManager")
   refreshTokens     RefreshToken[]
   leaveBalances     LeaveBalance[]
@@ -166,6 +193,7 @@ model User {
   @@index([fullName])
   @@index([phone])
   @@index([departmentId, isActive])
+  @@index([branchId])
   @@index([createdAt])
 }
 

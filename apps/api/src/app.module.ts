@@ -21,6 +21,7 @@ import { ChatModule } from './chat/chat.module';
 import { RootController } from './root.controller';
 import { SettingsModule } from './settings/settings.module';
 import { LatenessModule } from './lateness/lateness.module';
+import { BranchesModule } from './branches/branches.module';
 
 @Module({
     imports: [
@@ -51,6 +52,7 @@ import { LatenessModule } from './lateness/lateness.module';
         RedisModule,
         ChatModule,
         LatenessModule,
+        BranchesModule,
     ],
     controllers: [RootController],
 })

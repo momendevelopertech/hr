@@ -23,6 +23,11 @@ type SeedUser = {
     fingerprintId: string;
 };
 
+const branchesData = [
+    { name: 'Alexandria', nameAr: '\u0627\u0644\u0625\u0633\u0643\u0646\u062f\u0631\u064a\u0629', governorate: 'ALEXANDRIA' },
+    { name: 'Cairo', nameAr: '\u0627\u0644\u0642\u0627\u0647\u0631\u0629', governorate: 'CAIRO' },
+] as const;
+
 const departmentsData = [
     { name: 'ERC', nameAr: 'ERC', description: 'ERC Department' },
     { name: 'SPHINX', nameAr: 'SPHINX', description: 'SPHINX Department' },
@@ -270,7 +275,7 @@ const requiredUsers: SeedUser[] = [
 ];
 
 async function upsertUserWithoutDuplicates(
-    data: Omit<SeedUser, 'password' | 'departmentName'> & { passwordHash: string; departmentId?: string },
+    data: Omit<SeedUser, 'password' | 'departmentName'> & { passwordHash: string; departmentId?: string; branchId?: number },
 ) {
     const username = data.username.toLowerCase();
 
@@ -294,6 +299,7 @@ async function upsertUserWithoutDuplicates(
         passwordHash: data.passwordHash,
         role: data.role,
         governorate: data.governorate,
+        branchId: data.branchId,
         departmentId: data.departmentId,
         jobTitle: data.jobTitle,
         jobTitleAr: data.jobTitleAr,
@@ -312,6 +318,23 @@ async function upsertUserWithoutDuplicates(
 async function main() {
     console.log('Seeding SPHINX HR database (deduplicated)...');
 
+    const branches = await Promise.all(
+        branchesData.map((branch) =>
+            prisma.branch.upsert({
+                where: { name: branch.name },
+                update: { nameAr: branch.nameAr },
+                create: { name: branch.name, nameAr: branch.nameAr },
+            }),
+        ),
+    );
+
+    const branchByName = new Map(branches.map((branch) => [branch.name, branch.id]));
+    const branchByGovernorate = new Map<Governorate, number>();
+    branchesData.forEach((branch) => {
+        const id = branchByName.get(branch.name);
+        if (id) branchByGovernorate.set(branch.governorate, id);
+    });
+
     const departments = await Promise.all(
         departmentsData.map((dept) =>
             prisma.department.upsert({
@@ -323,9 +346,23 @@ async function main() {
     );
 
     const departmentByName = new Map(departments.map((d) => [d.name, d.id]));
+    const departmentBranchLinks = departments.flatMap((dept) =>
+        branches.map((branch) => ({
+            departmentId: dept.id,
+            branchId: branch.id,
+        })),
+    );
+
+    if (departmentBranchLinks.length) {
+        await prisma.departmentBranch.createMany({
+            data: departmentBranchLinks,
+            skipDuplicates: true,
+        });
+    }
 
     for (const user of requiredUsers) {
         const passwordHash = await bcrypt.hash(user.password, 12);
+        const branchId = branchByGovernorate.get(user.governorate);
         await upsertUserWithoutDuplicates({
             employeeNumber: user.employeeNumber,
             fullName: user.fullName,
@@ -336,6 +373,7 @@ async function main() {
             passwordHash,
             role: user.role,
             governorate: user.governorate,
+            branchId,
             departmentId: user.departmentName ? departmentByName.get(user.departmentName) : undefined,
             jobTitle: user.jobTitle,
             jobTitleAr: user.jobTitleAr,

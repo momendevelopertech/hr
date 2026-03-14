@@ -10,7 +10,8 @@ import PageLoader from './PageLoader';
 import EmployeeHistoryModal from './EmployeeHistoryModal';
 import DateRangeFilter from './DateRangeFilter';
 
-type Department = { id: string; name: string };
+type Branch = { id: number; name: string; nameAr?: string | null };
+type Department = { id: string; name: string; branches?: Branch[] };
 type User = {
     id: string;
     employeeNumber: string;
@@ -21,6 +22,7 @@ type User = {
     phone?: string;
     role: string;
     governorate?: 'CAIRO' | 'ALEXANDRIA' | null;
+    branchId?: number | null;
     isActive: boolean;
     createdAt: string;
     department?: Department | null;
@@ -46,6 +48,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     const { user, ready } = useRequireAuth(locale);
     const [employees, setEmployees] = useState<User[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
+    const [branches, setBranches] = useState<Branch[]>([]);
     const [form, setForm] = useState<any>({});
     const [editForm, setEditForm] = useState<any>({});
     const [editOpen, setEditOpen] = useState(false);
@@ -91,17 +94,29 @@ export default function EmployeesClient({ locale }: { locale: string }) {
         ...(filters.to ? { to: filters.to } : {}),
     }), [filters.departmentId, filters.from, filters.name, filters.phone, filters.status, filters.to, limit, page]);
 
+    const availableDepartments = useMemo(() => {
+        if (!form.branchId) return [];
+        return departments.filter((dept) => dept.branches?.some((branch) => branch.id === form.branchId));
+    }, [departments, form.branchId]);
+
+    const availableEditDepartments = useMemo(() => {
+        if (!editForm.branchId) return [];
+        return departments.filter((dept) => dept.branches?.some((branch) => branch.id === editForm.branchId));
+    }, [departments, editForm.branchId]);
+
     const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
-            const [usersRes, deptRes] = await Promise.all([
+            const [usersRes, deptRes, branchRes] = await Promise.all([
                 api.get<UsersResponse>('/users', { params: queryParams }),
                 api.get('/departments'),
+                api.get('/branches'),
             ]);
             setEmployees(usersRes.data.items || []);
             setTotal(usersRes.data.total || 0);
             setTotalPages(usersRes.data.totalPages || 1);
             setDepartments(deptRes.data);
+            setBranches(branchRes.data || []);
         } finally {
             setLoading(false);
         }
@@ -126,13 +141,24 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             alert(locale === 'ar' ? 'رقم الهاتف يجب أن يكون 11 رقمًا.' : 'Phone number must be exactly 11 digits.');
             return;
         }
+        const role = form.role || 'EMPLOYEE';
+        const branchRequired = role !== 'SUPER_ADMIN' && role !== 'HR_ADMIN';
+        if (branchRequired && !form.branchId) {
+            alert(locale === 'ar' ? 'يجب اختيار الفرع.' : 'Branch is required.');
+            return;
+        }
+        const departmentRequired = role === 'EMPLOYEE' || role === 'MANAGER';
+        if (departmentRequired && !form.departmentId) {
+            alert(locale === 'ar' ? 'يجب اختيار القسم.' : 'Department is required.');
+            return;
+        }
         const res = await api.post('/users', {
             employeeNumber: form.employeeNumber,
             fullName: form.fullName,
             fullNameAr: form.fullNameAr,
             email: form.email,
             phone: form.phone,
-            governorate: form.governorate,
+            branchId: form.branchId,
             departmentId: form.departmentId,
             jobTitle: form.jobTitle,
             jobTitleAr: form.jobTitleAr,
@@ -164,6 +190,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             phone: res.data.phone,
             role: res.data.role,
             governorate: res.data.governorate,
+            branchId: res.data.branchId,
             departmentId: res.data.department?.id || '',
             jobTitle: res.data.jobTitle,
             jobTitleAr: res.data.jobTitleAr,
@@ -179,6 +206,17 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             alert(locale === 'ar' ? 'رقم الهاتف يجب أن يكون 11 رقمًا.' : 'Phone number must be exactly 11 digits.');
             return;
         }
+        const role = editForm.role || 'EMPLOYEE';
+        const branchRequired = role !== 'SUPER_ADMIN' && role !== 'HR_ADMIN';
+        if (branchRequired && !editForm.branchId) {
+            alert(locale === 'ar' ? 'يجب اختيار الفرع.' : 'Branch is required.');
+            return;
+        }
+        const departmentRequired = role === 'EMPLOYEE' || role === 'MANAGER';
+        if (departmentRequired && !editForm.departmentId) {
+            alert(locale === 'ar' ? 'يجب اختيار القسم.' : 'Department is required.');
+            return;
+        }
         setSavingEdit(true);
         try {
             await api.patch(`/users/${editingUser.id}`, {
@@ -186,7 +224,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                 fullNameAr: editForm.fullNameAr,
                 phone: editForm.phone,
                 role: editForm.role,
-                governorate: editForm.governorate,
+                branchId: editForm.branchId,
                 departmentId: editForm.departmentId || null,
                 jobTitle: editForm.jobTitle,
                 jobTitleAr: editForm.jobTitleAr,
@@ -383,18 +421,33 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                 maxLength={11}
                                 value={form.phone || ''}
                                 onChange={(e) => setForm((p: any) => ({ ...p, phone: normalizePhone(e.target.value) }))} />
-                            <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" onChange={(e) => setForm((p: any) => ({ ...p, governorate: e.target.value }))}>
+                            <select
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                value={form.branchId || ''}
+                                onChange={(e) => {
+                                    const value = e.target.value ? Number(e.target.value) : '';
+                                    setForm((p: any) => ({ ...p, branchId: value, departmentId: '' }));
+                                }}
+                            >
                                 <option value="">{t('governorate')}</option>
-                                <option value="CAIRO">{t('govCairo')}</option>
-                                <option value="ALEXANDRIA">{t('govAlexandria')}</option>
+                                {branches.map((branch) => (
+                                    <option key={branch.id} value={branch.id}>
+                                        {locale === 'ar' ? (branch.nameAr || branch.name) : branch.name}
+                                    </option>
+                                ))}
                             </select>
-                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('jobTitle')} onChange={(e) => setForm((p: any) => ({ ...p, jobTitle: e.target.value }))} />
-                            <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" onChange={(e) => setForm((p: any) => ({ ...p, departmentId: e.target.value }))}>
-                                <option value="">{t('department')}</option>
-                                {departments.map((d) => (
+                            <select
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                value={form.departmentId || ''}
+                                onChange={(e) => setForm((p: any) => ({ ...p, departmentId: e.target.value }))}
+                                disabled={!form.branchId}
+                            >
+                                <option value="">{form.branchId ? t('department') : t('selectBranchFirst')}</option>
+                                {availableDepartments.map((d) => (
                                     <option key={d.id} value={d.id}>{d.name}</option>
                                 ))}
                             </select>
+                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('jobTitle')} onChange={(e) => setForm((p: any) => ({ ...p, jobTitle: e.target.value }))} />
                             <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" onChange={(e) => setForm((p: any) => ({ ...p, role: e.target.value }))}>
                                 <option value="EMPLOYEE">{t('roles.employee')}</option>
                                 <option value="MANAGER">{t('roles.manager')}</option>
@@ -449,12 +502,29 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                             />
                             <select
                                 className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                value={editForm.governorate || ''}
-                                onChange={(e) => setEditForm((p: any) => ({ ...p, governorate: e.target.value }))}
+                                value={editForm.branchId || ''}
+                                onChange={(e) => {
+                                    const value = e.target.value ? Number(e.target.value) : '';
+                                    setEditForm((p: any) => ({ ...p, branchId: value, departmentId: '' }));
+                                }}
                             >
                                 <option value="">{t('governorate')}</option>
-                                <option value="CAIRO">{t('govCairo')}</option>
-                                <option value="ALEXANDRIA">{t('govAlexandria')}</option>
+                                {branches.map((branch) => (
+                                    <option key={branch.id} value={branch.id}>
+                                        {locale === 'ar' ? (branch.nameAr || branch.name) : branch.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                value={editForm.departmentId || ''}
+                                onChange={(e) => setEditForm((p: any) => ({ ...p, departmentId: e.target.value }))}
+                                disabled={!editForm.branchId}
+                            >
+                                <option value="">{editForm.branchId ? t('department') : t('selectBranchFirst')}</option>
+                                {availableEditDepartments.map((d) => (
+                                    <option key={d.id} value={d.id}>{d.name}</option>
+                                ))}
                             </select>
                             <input
                                 className="rounded-xl border border-ink/20 bg-white px-3 py-2"
@@ -462,16 +532,6 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                 value={editForm.jobTitle || ''}
                                 onChange={(e) => setEditForm((p: any) => ({ ...p, jobTitle: e.target.value }))}
                             />
-                            <select
-                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                value={editForm.departmentId || ''}
-                                onChange={(e) => setEditForm((p: any) => ({ ...p, departmentId: e.target.value }))}
-                            >
-                                <option value="">{t('department')}</option>
-                                {departments.map((d) => (
-                                    <option key={d.id} value={d.id}>{d.name}</option>
-                                ))}
-                            </select>
                             <select
                                 className="rounded-xl border border-ink/20 bg-white px-3 py-2"
                                 value={editForm.role || 'EMPLOYEE'}

@@ -36,6 +36,31 @@ export class UsersService {
         return normalizedPhone;
     }
 
+    private parseBranchId(value?: any) {
+        if (value === undefined || value === null || value === '') return undefined;
+        const parsed = typeof value === 'string' ? parseInt(value, 10) : value;
+        return Number.isFinite(parsed) ? parsed : undefined;
+    }
+
+    private inferGovernorateFromBranchName(name?: string | null) {
+        if (!name) return undefined;
+        const normalized = name.toLowerCase();
+        if (normalized.includes('alex')) return 'ALEXANDRIA';
+        if (normalized.includes('cairo')) return 'CAIRO';
+        return undefined;
+    }
+
+    private async resolveBranchByGovernorate(governorate?: string | null) {
+        if (!governorate) return null;
+        const branchName = governorate === 'ALEXANDRIA'
+            ? 'Alexandria'
+            : governorate === 'CAIRO'
+                ? 'Cairo'
+                : null;
+        if (!branchName) return null;
+        return this.prisma.branch.findFirst({ where: { name: branchName } });
+    }
+
     async create(data: {
         employeeNumber: string;
         fullName: string;
@@ -45,6 +70,7 @@ export class UsersService {
         password?: string;
         role?: any;
         governorate?: any;
+        branchId?: number;
         departmentId?: string;
         jobTitle?: string;
         jobTitleAr?: string;
@@ -56,6 +82,42 @@ export class UsersService {
         const phoneLast4 = (normalizedPhone || '').slice(-4) || '0000';
         const baseName = (data.fullName || 'user').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12) || 'user';
         const generatedUsername = `${baseName}${phoneLast4}`.toLowerCase();
+
+        const role = data.role || 'EMPLOYEE';
+        const branchIdInput = this.parseBranchId(data.branchId);
+        let branchId = branchIdInput;
+        let governorate = data.governorate;
+        let branch: { id: number; name: string } | null = null;
+
+        if (branchId) {
+            branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
+            if (!branch) throw new BadRequestException('Invalid branch selection');
+            if (!governorate) {
+                governorate = this.inferGovernorateFromBranchName(branch.name);
+            }
+        } else if (governorate) {
+            branch = await this.resolveBranchByGovernorate(governorate);
+            branchId = branch?.id;
+        }
+
+        const branchRequired = !['SUPER_ADMIN', 'HR_ADMIN'].includes(role);
+        if (branchRequired && !branchId) {
+            throw new BadRequestException('Branch is required');
+        }
+
+        const departmentRequired = ['EMPLOYEE', 'MANAGER'].includes(role);
+        if (departmentRequired && !data.departmentId) {
+            throw new BadRequestException('Department is required');
+        }
+
+        if (data.departmentId && branchId) {
+            const link = await this.prisma.departmentBranch.findFirst({
+                where: { departmentId: data.departmentId, branchId },
+            });
+            if (!link) {
+                throw new BadRequestException('Department is not available in this branch');
+            }
+        }
 
         const existing = await this.prisma.user.findFirst({
             where: {
@@ -79,8 +141,9 @@ export class UsersService {
                 email: data.email,
                 phone: normalizedPhone,
                 passwordHash,
-                role: data.role || 'EMPLOYEE',
-                governorate: data.governorate,
+                role,
+                governorate,
+                branchId,
                 departmentId: data.departmentId,
                 jobTitle: data.jobTitle,
                 jobTitleAr: data.jobTitleAr,
@@ -210,6 +273,7 @@ export class UsersService {
                     phone: true,
                     role: true,
                     governorate: true,
+                    branchId: true,
                     jobTitle: true,
                     jobTitleAr: true,
                     isActive: true,
@@ -243,6 +307,7 @@ export class UsersService {
                     phone: true,
                     role: true,
                     governorate: true,
+                    branchId: true,
                     jobTitle: true,
                     jobTitleAr: true,
                     isActive: true,
@@ -279,21 +344,78 @@ export class UsersService {
     async update(id: string, data: any, updatedById?: string) {
         const normalizedPhone = data.phone !== undefined ? this.validatePhone(data.phone) : undefined;
 
+        const existing = await this.prisma.user.findUnique({ where: { id } });
+        if (!existing) throw new NotFoundException('Employee not found');
+
+        const role = data.role || existing.role;
+        const branchIdInput = this.parseBranchId(data.branchId);
+        let branchId = existing.branchId ?? undefined;
+        let governorate = existing.governorate ?? undefined;
+
+        if (branchIdInput !== undefined) {
+            branchId = branchIdInput;
+            if (branchId) {
+                const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
+                if (!branch) throw new BadRequestException('Invalid branch selection');
+                if (data.governorate === undefined) {
+                    governorate = this.inferGovernorateFromBranchName(branch.name);
+                }
+            } else if (data.governorate === undefined) {
+                governorate = null;
+            }
+        }
+
+        if (data.governorate !== undefined) {
+            governorate = data.governorate || null;
+            if (branchIdInput === undefined) {
+                const branchFromGov = await this.resolveBranchByGovernorate(governorate);
+                if (branchFromGov) branchId = branchFromGov.id;
+            }
+        }
+
+        const branchRequired = !['SUPER_ADMIN', 'HR_ADMIN'].includes(role);
+        if (branchRequired && !branchId) {
+            throw new BadRequestException('Branch is required');
+        }
+
+        const departmentId = data.departmentId !== undefined ? (data.departmentId || null) : existing.departmentId;
+        const departmentRequired = ['EMPLOYEE', 'MANAGER'].includes(role);
+        if (departmentRequired && !departmentId) {
+            throw new BadRequestException('Department is required');
+        }
+
+        if (departmentId && branchId) {
+            const link = await this.prisma.departmentBranch.findFirst({
+                where: { departmentId, branchId },
+            });
+            if (!link) {
+                throw new BadRequestException('Department is not available in this branch');
+            }
+        }
+
+        const updateData: any = {
+            ...(data.fullName && { fullName: data.fullName }),
+            ...(data.fullNameAr && { fullNameAr: data.fullNameAr }),
+            ...(data.phone !== undefined && { phone: normalizedPhone }),
+            ...(data.role && { role: data.role }),
+            ...(data.jobTitle && { jobTitle: data.jobTitle }),
+            ...(data.jobTitleAr && { jobTitleAr: data.jobTitleAr }),
+            ...(data.fingerprintId && { fingerprintId: data.fingerprintId }),
+            ...(data.isActive !== undefined && { isActive: data.isActive }),
+            ...(data.profileImage && { profileImage: data.profileImage }),
+        };
+
+        if (data.governorate !== undefined || data.branchId !== undefined) {
+            updateData.governorate = governorate;
+            updateData.branchId = branchId ?? null;
+        }
+        if (data.departmentId !== undefined) {
+            updateData.departmentId = departmentId;
+        }
+
         const user = await this.prisma.user.update({
             where: { id },
-            data: {
-                ...(data.fullName && { fullName: data.fullName }),
-                ...(data.fullNameAr && { fullNameAr: data.fullNameAr }),
-                ...(data.phone !== undefined && { phone: normalizedPhone }),
-                ...(data.role && { role: data.role }),
-                ...(data.governorate && { governorate: data.governorate }),
-                ...(data.departmentId && { departmentId: data.departmentId }),
-                ...(data.jobTitle && { jobTitle: data.jobTitle }),
-                ...(data.jobTitleAr && { jobTitleAr: data.jobTitleAr }),
-                ...(data.fingerprintId && { fingerprintId: data.fingerprintId }),
-                ...(data.isActive !== undefined && { isActive: data.isActive }),
-                ...(data.profileImage && { profileImage: data.profileImage }),
-            },
+            data: updateData,
             include: { department: true },
         });
 
