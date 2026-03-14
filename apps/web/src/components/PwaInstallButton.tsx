@@ -34,6 +34,12 @@ export default function PwaInstallButton({ enabled }: { enabled: boolean }) {
         setIsIos(detectIos());
         setIsInstalled(detectStandalone());
 
+        if (!enabled) {
+            setPromptEvent(null);
+            setInstallUnavailable(false);
+            return;
+        }
+
         const handleBeforeInstall = (event: Event) => {
             event.preventDefault();
             setPromptEvent(event as BeforeInstallPromptEvent);
