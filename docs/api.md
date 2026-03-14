@@ -132,3 +132,50 @@ All errors follow a consistent JSON shape:
 - `GET /pdf/leave/:id`
 - `GET /pdf/permission/:id`
 - `GET /pdf/form/:id`
+
+## Pagination and Filtering
+
+Most list endpoints accept:
+
+- `page` (default `1`)
+- `limit` (default `20`, max `100`)
+- `from` / `to` for date filters (YYYY-MM-DD)
+- `status`, `departmentId`, `governorate` and module-specific filters
+
+Example:
+
+```
+GET /users?page=1&limit=50&status=active&search=alex
+```
+
+## Common Response Shapes
+
+Paginated:
+
+```json
+{
+  "items": [],
+  "total": 0,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 1
+}
+```
+
+## Authorization Rules
+
+- `SUPER_ADMIN` and `HR_ADMIN` have global visibility.
+- `MANAGER` and `BRANCH_SECRETARY` are scoped to their department/branch.
+- Endpoints without explicit `@Roles` typically require authentication.
+
+## Rate Limiting
+
+The API applies rate limits globally via Nest Throttler. Sensitive endpoints like login and reset-password are further guarded by `ThrottlerGuard`.
+
+## Error Codes
+
+- `401` Unauthorized: missing/expired auth.
+- `403` Forbidden: role or CSRF failure.
+- `404` Not found: missing record.
+- `429` Too many requests: throttled.
+- `5xx` Internal server error.

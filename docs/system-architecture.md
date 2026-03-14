@@ -75,3 +75,59 @@ Browser
 - API computes filtered datasets.
 - Excel exports generated server-side.
 
+## Runtime Topology
+
+**Web**
+- Next.js app served by Vercel (edge + serverless).
+- Static assets and PWA service worker delivered from `apps/web/public`.
+
+**API**
+- NestJS app running behind a reverse proxy.
+- Prisma connects to PostgreSQL.
+- Redis used for cache and rate-limit storage.
+- Pusher for real-time updates.
+- Cloudinary for uploads.
+- Email/WhatsApp providers for notifications.
+
+## Data Flow Details
+
+### Auth Flow (Cookie + CSRF)
+1. Client calls `GET /auth/csrf` to fetch a CSRF token and store it in memory.
+2. Client posts credentials to `POST /auth/login` with `X-CSRF-Token`.
+3. API sets `access_token` and `refresh_token` HttpOnly cookies.
+4. Client performs authenticated calls using cookies.
+5. On `401`, client calls `POST /auth/refresh` and retries.
+
+### Requests & Approvals
+1. Employee submits leave/permission/form request.
+2. Secretary verifies.
+3. Manager approves.
+4. HR finalizes.
+5. Audit log + notifications emitted at each step.
+
+### Reporting
+1. Frontend requests filtered reports with pagination.
+2. API aggregates data and applies role-based scoping.
+3. Excel exports are generated server-side on demand.
+
+## Key Architecture Decisions
+
+- Cookie-based auth to reduce token exposure in the browser.
+- CSRF protection for all mutating endpoints.
+- RBAC enforced at controller level via guards.
+- Prisma used as a data access layer (thin ORM abstraction).
+- Redis-based caching for frequently accessed reports and lists.
+- Pusher-based real-time notifications to reduce polling needs.
+
+## Inconsistencies and Open Decisions
+
+- Search normalization logic exists in both API and web (`search-normalization.ts`). Consider extracting to a shared package.
+- Background polling in several pages could be centralized via a single data refresh manager.
+- Both `react-query` and `@tanstack/react-query` are listed as dependencies but are not used in the UI code.
+
+## Error Handling and Observability
+
+- Backend uses a global exception filter for consistent JSON error responses.
+- Frontend wraps API errors into `AppApiError` for consistent handling.
+- Recommend adding structured request logging and optional tracing in production.
+

@@ -54,3 +54,46 @@ npm run dev
 - Report endpoints can be cached with `REPORTS_CACHE_TTL` (seconds).
 
 For deeper guidance, see `docs/auth-cookie-hardening.md`.
+
+## Environment Variables (Required)
+
+Backend:
+
+- `DATABASE_URL`
+- `REDIS_URL`
+- `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY`
+- `REFRESH_TOKEN_SECRET`
+- `CSRF_SECRET`
+- `FRONTEND_URL`
+- `AUTH_COOKIE_MODE`, `AUTH_COOKIE_DOMAIN`, `AUTH_COOKIE_SAMESITE`
+- `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, `PUSHER_CLUSTER`
+- `CLOUDINARY_URL` (or cloud name/key/secret)
+- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (email)
+
+Frontend:
+
+- `NEXT_PUBLIC_API_URL`
+- `NEXT_PUBLIC_APP_VERSION` (optional, used for cache invalidation)
+- `NEXT_PUBLIC_PWA_DEBUG` (optional)
+
+## Deployment Checklist
+
+- Run database migrations and seed if required.
+- Verify CORS origins match `FRONTEND_URL`.
+- Validate cookies are secure and SameSite configured for production.
+- Ensure `NODE_ENV=production` and logging level is correct.
+- Confirm Redis connectivity for cache and rate limiting.
+
+## Monitoring & Logging
+
+- Enable structured logs on the API (HTTP + background jobs).
+- Track 4xx/5xx rates and response latency.
+- Add uptime checks for `/api/health` (consider adding a health route).
+- Add error tracking (Sentry/Datadog) in both web and API.
+
+## Development Guidelines (Extended)
+
+- Prefer adding a DTO + validator for any new request input.
+- Keep Prisma queries scoped and paginated.
+- Do not store tokens in localStorage; rely on HttpOnly cookies.
+- Avoid adding new background polling; prefer Pusher events or WebSocket.

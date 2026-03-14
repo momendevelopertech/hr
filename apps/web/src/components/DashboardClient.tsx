@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import api from '@/lib/api';
+import api, { isAuthError } from '@/lib/api';
 import { usePusherChannel } from '@/lib/use-pusher-channel';
 import StatsGrid from './StatsGrid';
 import CalendarView from './CalendarView';
@@ -148,6 +148,8 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             setSchedule(scheduleRes.data);
             setLatenessItems(latenessRes.data?.items || []);
             setHrNotice(announcementsRes.data?.items?.[0] || null);
+        } catch (error) {
+            if (isAuthError(error)) return;
         } finally {
             refreshInFlight.current = false;
         }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
+import api, { isAuthError } from '@/lib/api';
 import { useRequireAuth } from '@/lib/use-auth';
 import { enumLabels } from '@/lib/enum-labels';
 import { getPublicApiUrl } from '@/lib/public-urls';
@@ -103,8 +103,12 @@ export default function ReportsClient({ locale }: { locale: string }) {
 
     const fetchSummary = useCallback(async () => {
         if (!canViewReports) return;
-        const res = await api.get('/reports/summary');
-        setSummary(res.data);
+        try {
+            const res = await api.get('/reports/summary');
+            setSummary(res.data);
+        } catch (error) {
+            if (isAuthError(error)) return;
+        }
     }, [canViewReports]);
 
     const refreshData = useCallback(async () => {
@@ -115,6 +119,8 @@ export default function ReportsClient({ locale }: { locale: string }) {
             setData(res.data.items || []);
             setTotal(res.data.total || 0);
             setTotalPages(res.data.totalPages || 1);
+        } catch (error) {
+            if (isAuthError(error)) return;
         } finally {
             refreshInFlight.current = false;
         }
@@ -135,15 +141,19 @@ export default function ReportsClient({ locale }: { locale: string }) {
 
     const fetchDepartments = useCallback(async () => {
         if (!isAdmin) return;
-        const res = await api.get('/departments');
-        const items = Array.isArray(res.data)
-            ? res.data.map((dept: Department) => ({
-                id: dept.id,
-                name: dept.name,
-                nameAr: dept.nameAr ?? null,
-            }))
-            : [];
-        setDepartments(items);
+        try {
+            const res = await api.get('/departments');
+            const items = Array.isArray(res.data)
+                ? res.data.map((dept: Department) => ({
+                    id: dept.id,
+                    name: dept.name,
+                    nameAr: dept.nameAr ?? null,
+                }))
+                : [];
+            setDepartments(items);
+        } catch (error) {
+            if (isAuthError(error)) return;
+        }
     }, [isAdmin]);
 
     useEffect(() => {

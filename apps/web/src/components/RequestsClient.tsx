@@ -3,7 +3,7 @@
 import { addMonths } from 'date-fns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
+import api, { isAuthError } from '@/lib/api';
 import { useRequireAuth } from '@/lib/use-auth';
 import { enumLabels } from '@/lib/enum-labels';
 import { usePusherChannel } from '@/lib/use-pusher-channel';
@@ -134,6 +134,8 @@ export default function RequestsClient({ locale }: { locale: string }) {
             ]);
             setLeaves(leaveReqs.data);
             setPermissions(permissionReqs.data);
+        } catch (error) {
+            if (isAuthError(error)) return;
         } finally {
             refreshInFlight.current = false;
         }
@@ -155,15 +157,19 @@ export default function RequestsClient({ locale }: { locale: string }) {
 
     const fetchDepartments = useCallback(async () => {
         if (!canAdmin) return;
-        const res = await api.get('/departments');
-        const items = Array.isArray(res.data)
-            ? res.data.map((dept: Department) => ({
-                id: dept.id,
-                name: dept.name,
-                nameAr: dept.nameAr ?? null,
-            }))
-            : [];
-        setDepartments(items);
+        try {
+            const res = await api.get('/departments');
+            const items = Array.isArray(res.data)
+                ? res.data.map((dept: Department) => ({
+                    id: dept.id,
+                    name: dept.name,
+                    nameAr: dept.nameAr ?? null,
+                }))
+                : [];
+            setDepartments(items);
+        } catch (error) {
+            if (isAuthError(error)) return;
+        }
     }, [canAdmin]);
 
     useEffect(() => {
@@ -229,6 +235,8 @@ export default function RequestsClient({ locale }: { locale: string }) {
                 cycleStart: res.data.cycleStart,
                 cycleEnd: res.data.cycleEnd,
             });
+        } catch (error) {
+            if (isAuthError(error)) return;
         } finally {
             setLatenessLoading(false);
         }

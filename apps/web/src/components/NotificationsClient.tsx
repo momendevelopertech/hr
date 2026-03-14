@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import api from '@/lib/api';
+import api, { isAuthError } from '@/lib/api';
 import { useRequireAuth } from '@/lib/use-auth';
 import { usePusherChannel } from '@/lib/use-pusher-channel';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
@@ -112,6 +112,8 @@ export default function NotificationsClient({ locale }: { locale: string }) {
             setItems(res.data.items || []);
             setTotal(res.data.total || 0);
             setTotalPages(res.data.totalPages || 1);
+        } catch (error) {
+            if (isAuthError(error)) return;
         } finally {
             refreshInFlight.current = false;
         }

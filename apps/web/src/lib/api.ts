@@ -17,6 +17,18 @@ export class AppApiError extends Error {
     }
 }
 
+export const getErrorStatus = (error: unknown): number | undefined => {
+    if (!error || typeof error !== 'object') return undefined;
+    const maybeAny = error as any;
+    const status = maybeAny?.status ?? maybeAny?.response?.status;
+    return typeof status === 'number' ? status : undefined;
+};
+
+export const isAuthError = (error: unknown): boolean => {
+    const status = getErrorStatus(error);
+    return status === 401 || status === 403;
+};
+
 export const setCsrfToken = (token: string) => {
     csrfToken = token;
 };
