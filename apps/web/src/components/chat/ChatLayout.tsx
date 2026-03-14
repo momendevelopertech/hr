@@ -11,14 +11,19 @@ type ChatLayoutProps = {
     currentUser: {
         id: string;
         fullName: string;
+        fullNameAr?: string | null;
         governorate?: 'CAIRO' | 'ALEXANDRIA' | null;
         role: string;
+        department?: { id: string; name: string; nameAr?: string } | null;
+        jobTitle?: string | null;
+        jobTitleAr?: string | null;
     };
+    locale: string;
     roleFilter?: string;
     autoSelectFirst?: boolean;
 };
 
-export default function ChatLayout({ currentUser, roleFilter, autoSelectFirst }: ChatLayoutProps) {
+export default function ChatLayout({ currentUser, locale, roleFilter, autoSelectFirst }: ChatLayoutProps) {
     const [employees, setEmployees] = useState<ChatEmployee[]>([]);
     const [search, setSearch] = useState('');
     const [selectedEmployee, setSelectedEmployee] = useState<ChatEmployee | null>(null);
@@ -141,6 +146,8 @@ export default function ChatLayout({ currentUser, roleFilter, autoSelectFirst }:
             />
             <ChatWindow
                 currentUserId={currentUser.id}
+                currentUser={currentUser}
+                locale={locale}
                 selectedEmployee={selectedEmployee}
                 messages={messages}
                 onSend={sendMessage}

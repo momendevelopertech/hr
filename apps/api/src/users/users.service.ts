@@ -5,12 +5,12 @@ import {
     ForbiddenException,
     BadRequestException,
 } from '@nestjs/common';
-import { endOfDay, startOfDay } from 'date-fns';
+import { addMonths, endOfDay, setDate, startOfDay } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
 import { RedisService } from '../redis/redis.service';
-import { matchesEmployeeSearch } from '../shared/search-normalization';
+import { matchesEmployeeSearch, normalizeDigits, normalizeSearchText } from '../shared/search-normalization';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -59,6 +59,29 @@ export class UsersService {
                 : null;
         if (!branchName) return null;
         return this.prisma.branch.findFirst({ where: { name: branchName } });
+    }
+
+    // Request history cycle: day 11 to day 10 next month.
+    private getCycleRange(date: Date) {
+        const day = date.getDate();
+        if (day >= 11) {
+            return {
+                start: startOfDay(setDate(date, 11)),
+                end: endOfDay(setDate(addMonths(date, 1), 10)),
+            };
+        }
+        const prevMonth = addMonths(date, -1);
+        return {
+            start: startOfDay(setDate(prevMonth, 11)),
+            end: endOfDay(setDate(date, 10)),
+        };
+    }
+
+    private formatCycleKey(date: Date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
     async create(data: {
@@ -223,8 +246,9 @@ export class UsersService {
         const skip = (page - 1) * limit;
         const rawSearch = params?.search?.trim() || params?.name?.trim() || '';
         const searchQuery = rawSearch.trim();
-        const phoneDigits = searchQuery.replace(/\D/g, '');
-        const isPhoneLike = phoneDigits.length >= 7;
+        const normalizedSearch = normalizeSearchText(searchQuery);
+        const phoneDigits = normalizeDigits(searchQuery).replace(/\D/g, '');
+        const isPhoneLike = phoneDigits.length >= 7 && !/[a-z\u0600-\u06FF]/i.test(normalizedSearch);
         const hasArabic = /[\u0600-\u06FF]/.test(searchQuery);
 
         if (requesterRole === 'MANAGER') {
@@ -253,10 +277,11 @@ export class UsersService {
                 ...(toDate ? { lte: toDate } : {}),
             };
         }
+        const hasLetters = /[a-z\u0600-\u06FF]/i.test(normalizedSearch);
         if (searchQuery && isPhoneLike) {
             where.OR = [
                 { phone: { contains: phoneDigits, mode: 'insensitive' } },
-                { employeeNumber: { contains: searchQuery, mode: 'insensitive' } },
+                { employeeNumber: { contains: phoneDigits, mode: 'insensitive' } },
             ];
         }
 
@@ -265,16 +290,28 @@ export class UsersService {
         if (cached) return cached;
 
         if (searchQuery && !isPhoneLike) {
-            const candidateWhere = hasArabic
-                ? where
-                : {
+            const numericOnly = !!phoneDigits && !hasLetters;
+            const candidateWhere = numericOnly
+                ? {
                     ...where,
                     OR: [
-                        { fullName: { contains: searchQuery, mode: 'insensitive' } },
-                        { fullNameAr: { contains: searchQuery, mode: 'insensitive' } },
-                        { employeeNumber: { contains: searchQuery, mode: 'insensitive' } },
+                        { phone: { contains: phoneDigits, mode: 'insensitive' } },
+                        { employeeNumber: { contains: phoneDigits, mode: 'insensitive' } },
                     ],
-                };
+                }
+                : hasArabic
+                    ? where
+                    : {
+                        ...where,
+                        OR: [
+                            { fullName: { contains: searchQuery, mode: 'insensitive' } },
+                            { fullNameAr: { contains: searchQuery, mode: 'insensitive' } },
+                            { employeeNumber: { contains: normalizedSearch, mode: 'insensitive' } },
+                            ...(phoneDigits
+                                ? [{ phone: { contains: phoneDigits, mode: 'insensitive' } }]
+                                : []),
+                        ],
+                    };
             const candidates = await this.prisma.user.findMany({
                 where: candidateWhere,
                 orderBy: { createdAt: 'desc' },
@@ -298,13 +335,7 @@ export class UsersService {
                     createdAt: true,
                 },
             });
-            const filtered = candidates.filter((user) => {
-                if (matchesEmployeeSearch(searchQuery, user)) return true;
-                if (phoneDigits && user.phone) {
-                    return user.phone.includes(phoneDigits);
-                }
-                return false;
-            });
+            const filtered = candidates.filter((user) => matchesEmployeeSearch(searchQuery, user));
             const items = filtered.slice(skip, skip + limit);
             const total = filtered.length;
             const payload = { items, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) };
@@ -670,13 +701,9 @@ export class UsersService {
         };
 
         const ensureCycle = (cycles: Map<string, any>, date: Date) => {
-            const year = date.getFullYear();
-            const monthIndex = date.getMonth();
-            const key = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+            const { start: cycleStart, end: cycleEnd } = this.getCycleRange(date);
+            const key = this.formatCycleKey(cycleStart);
             if (cycles.has(key)) return cycles.get(key);
-
-            const cycleStart = new Date(year, monthIndex, 1);
-            const cycleEnd = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
             const entry = {
                 key,
                 start: cycleStart,
@@ -740,7 +767,8 @@ export class UsersService {
         });
 
         const now = new Date();
-        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const { start: currentStart } = this.getCycleRange(now);
+        const currentKey = this.formatCycleKey(currentStart);
         const currentCycle = cycles.get(currentKey)
             || ensureCycle(cycles, now);
 

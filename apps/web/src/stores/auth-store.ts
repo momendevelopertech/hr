@@ -9,10 +9,13 @@ export type UserProfile = {
     fullNameAr?: string;
     role: 'SUPER_ADMIN' | 'HR_ADMIN' | 'MANAGER' | 'BRANCH_SECRETARY' | 'SUPPORT' | 'EMPLOYEE';
     governorate?: 'CAIRO' | 'ALEXANDRIA' | null;
+    branchId?: number | null;
     mustChangePass?: boolean;
     department?: { id: string; name: string; nameAr?: string } | null;
     profileImage?: string | null;
     employeeNumber?: string;
+    jobTitle?: string | null;
+    jobTitleAr?: string | null;
 };
 
 type AuthState = {

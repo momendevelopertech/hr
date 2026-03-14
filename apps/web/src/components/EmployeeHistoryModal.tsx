@@ -43,15 +43,17 @@ export default function EmployeeHistoryModal({ open, user, locale, onClose }: Pr
         };
     }, [open, user]);
 
-    const formatCycleLabel = (value?: string) => {
-        if (!value) return '';
-        const date = new Date(value);
-        return date.toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' });
-    };
-
-    const formatDateOnly = (value?: string) => {
+    const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-US';
+    const formatDateOnlyFromIso = (value?: string) => {
         if (!value) return '-';
-        return new Date(value).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US');
+        const datePart = value.split('T')[0];
+        const [year, month, day] = datePart.split('-').map((part) => Number(part));
+        if (!year || !month || !day) return new Date(value).toLocaleDateString(dateLocale);
+        return new Date(year, month - 1, day).toLocaleDateString(dateLocale);
+    };
+    const formatCycleRange = (start?: string, end?: string) => {
+        if (!start || !end) return '';
+        return `${formatDateOnlyFromIso(start)} - ${formatDateOnlyFromIso(end)}`;
     };
 
     const historyCycles = useMemo(
@@ -86,7 +88,7 @@ export default function EmployeeHistoryModal({ open, user, locale, onClose }: Pr
                         <div className="rounded-xl border border-ink/10 bg-white/70 p-4">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <p className="text-sm text-ink/60">{t('historyCurrentCycle')}</p>
-                                <p className="text-sm font-semibold">{formatCycleLabel(data?.currentCycle?.start)}</p>
+                                <p className="text-sm font-semibold">{formatCycleRange(data?.currentCycle?.start, data?.currentCycle?.end)}</p>
                             </div>
                             <div className="mt-3 grid gap-2 md:grid-cols-3">
                                 {[
@@ -127,7 +129,7 @@ export default function EmployeeHistoryModal({ open, user, locale, onClose }: Pr
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <div>
                                             <p className="text-sm text-ink/60">{t('historyCycle')}</p>
-                                            <p className="text-base font-semibold">{formatCycleLabel(cycle.start)}</p>
+                                            <p className="text-base font-semibold">{formatCycleRange(cycle.start, cycle.end)}</p>
                                         </div>
                                         <button className="btn-outline text-xs" onClick={() => toggleCycle(cycle.key)}>
                                             {isExpanded ? t('historyHideDetails') : t('historyShowDetails')}
@@ -157,7 +159,7 @@ export default function EmployeeHistoryModal({ open, user, locale, onClose }: Pr
                                                     <div className="mt-2 space-y-2">
                                                         {(cycle?.details?.[group.key] || []).map((item: any) => (
                                                             <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm">
-                                                                <span>{formatDateOnly(item.startDate)}{item.endDate ? ` - ${formatDateOnly(item.endDate)}` : ''}</span>
+                                                                <span>{formatDateOnlyFromIso(item.startDate)}{item.endDate ? ` - ${formatDateOnlyFromIso(item.endDate)}` : ''}</span>
                                                                 <span className="text-xs text-ink/60">#{item.id}</span>
                                                             </div>
                                                         ))}
@@ -170,7 +172,7 @@ export default function EmployeeHistoryModal({ open, user, locale, onClose }: Pr
                                                     <div className="mt-2 space-y-2">
                                                         {permissionDetails.map((item: any) => (
                                                             <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm">
-                                                                <span>{formatDateOnly(item.requestDate)} - {item.hoursUsed}h</span>
+                                                                <span>{formatDateOnlyFromIso(item.requestDate)} - {item.hoursUsed}h</span>
                                                                 <span className="text-xs text-ink/60">#{item.id}</span>
                                                             </div>
                                                         ))}

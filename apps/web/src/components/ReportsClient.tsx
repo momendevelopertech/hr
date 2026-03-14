@@ -25,7 +25,8 @@ type TabKey = 'leaves' | 'permissions' | 'missions' | 'absences' | 'summary' | '
 type Department = { id: string; name: string; nameAr?: string | null };
 
 type SummaryCard = {
-    month?: string | null;
+    cycleStart?: string | null;
+    cycleEnd?: string | null;
     totals?: {
         leaves?: number;
         permissions?: number;
@@ -40,6 +41,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
     const router = useRouter();
     const { user, ready } = useRequireAuth(locale);
     const apiBaseUrl = getPublicApiUrl();
+    const dateLocale = useMemo(() => (locale === 'ar' ? 'ar-EG' : 'en-US'), [locale]);
 
     const role = user?.role;
     const isAdmin = role === 'HR_ADMIN' || role === 'SUPER_ADMIN';
@@ -188,11 +190,18 @@ export default function ReportsClient({ locale }: { locale: string }) {
         () => data.some((item) => (item?.counts?.emergency ?? 0) > 0),
         [data],
     );
-    const summaryLabel = useMemo(() => {
-        if (!summary?.month) return '';
-        const date = new Date(`${summary.month}-01`);
-        return date.toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' });
-    }, [locale, summary?.month]);
+    const formatDateOnlyFromIso = useCallback((value?: string | null) => {
+        if (!value) return '';
+        const datePart = value.split('T')[0];
+        const [year, month, day] = datePart.split('-').map((part) => Number(part));
+        if (!year || !month || !day) return new Date(value).toLocaleDateString(dateLocale);
+        return new Date(year, month - 1, day).toLocaleDateString(dateLocale);
+    }, [dateLocale]);
+
+    const summaryRange = useMemo(() => {
+        if (!summary?.cycleStart || !summary?.cycleEnd) return '';
+        return `${formatDateOnlyFromIso(summary.cycleStart)} - ${formatDateOnlyFromIso(summary.cycleEnd)}`;
+    }, [formatDateOnlyFromIso, summary?.cycleEnd, summary?.cycleStart]);
 
     const tabs: Array<{ key: TabKey; label: string }> = [
         { key: 'leaves', label: t('leaveTitle') },
@@ -235,7 +244,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
                 <section className="card p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <h2 className="text-lg font-semibold">{t('statsTitle')}</h2>
-                        {summaryLabel && <p className="text-sm text-ink/60">{summaryLabel}</p>}
+                        {summaryRange && <p className="text-sm text-ink/60">{t('summaryCycleLabel', { range: summaryRange })}</p>}
                     </div>
                     <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-xl border border-ink/10 bg-white/70 p-4">

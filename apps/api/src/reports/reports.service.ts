@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { endOfDay, startOfDay } from 'date-fns';
+import { addMonths, endOfDay, setDate, startOfDay } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
 import * as ExcelJS from 'exceljs';
 import { PdfService } from '../pdf/pdf.service';
-import { matchesEmployeeSearch, normalizeSearchText } from '../shared/search-normalization';
+import { matchesEmployeeSearch, normalizeDigits, normalizeSearchText } from '../shared/search-normalization';
 
 @Injectable()
 export class ReportsService {
@@ -43,14 +43,26 @@ export class ReportsService {
     }
 
     private async resolveEmployeeIds(employee: string | undefined, userWhere: any) {
-        const normalized = normalizeSearchText(employee?.trim());
+        const raw = employee?.trim() || '';
+        const normalized = normalizeSearchText(raw);
         if (!normalized) return null;
+        const phoneDigits = normalizeDigits(raw).replace(/\D/g, '');
+        const hasLetters = /[a-z\u0600-\u06FF]/i.test(normalized);
+        const where = phoneDigits && !hasLetters
+            ? {
+                ...userWhere,
+                OR: [
+                    { phone: { contains: phoneDigits, mode: 'insensitive' } },
+                    { employeeNumber: { contains: phoneDigits, mode: 'insensitive' } },
+                ],
+            }
+            : userWhere;
         const users = await this.prisma.user.findMany({
-            where: userWhere,
-            select: { id: true, fullName: true, fullNameAr: true, employeeNumber: true },
+            where,
+            select: { id: true, fullName: true, fullNameAr: true, employeeNumber: true, phone: true },
         });
         return users
-            .filter((user) => matchesEmployeeSearch(normalized, user))
+            .filter((user) => matchesEmployeeSearch(raw, user))
             .map((user) => user.id);
     }
 
@@ -78,6 +90,23 @@ export class ReportsService {
         }
 
         return [];
+    }
+
+    // Reporting cycle: day 11 to day 10 next month.
+    private getCycleRange(date: Date) {
+        const day = date.getDate();
+        if (day >= 11) {
+            return {
+                start: startOfDay(setDate(date, 11)),
+                end: endOfDay(setDate(addMonths(date, 1), 10)),
+            };
+        }
+
+        const prevMonth = addMonths(date, -1);
+        return {
+            start: startOfDay(setDate(prevMonth, 11)),
+            end: endOfDay(setDate(date, 10)),
+        };
     }
 
     async getLeaveReport(requesterId: string, requesterRole: string, query?: any) {
@@ -232,6 +261,7 @@ export class ReportsService {
                     fullName: true,
                     fullNameAr: true,
                     employeeNumber: true,
+                    phone: true,
                     department: { select: { name: true, nameAr: true } },
                 },
             });
@@ -250,6 +280,7 @@ export class ReportsService {
                         fullName: true,
                         fullNameAr: true,
                         employeeNumber: true,
+                        phone: true,
                         department: { select: { name: true, nameAr: true } },
                     },
                 }),
@@ -327,8 +358,9 @@ export class ReportsService {
                 emergency: 0,
                 permissions: 0,
             };
+            const { phone: _phone, ...safeUser } = user;
             return {
-                ...user,
+                ...safeUser,
                 counts: {
                     annual: counts.annual ?? 0,
                     casual: counts.casual ?? 0,
@@ -444,18 +476,17 @@ export class ReportsService {
     async getMonthlySummary(requesterId: string, requesterRole: string) {
         const scopeUserIds = await this.resolveScopeUserIds(requesterId, requesterRole);
         if (scopeUserIds && scopeUserIds.length === 0) {
-            return { month: null, totals: { leaves: 0, permissions: 0, missions: 0, absences: 0 } };
+            return { cycleStart: null, cycleEnd: null, totals: { leaves: 0, permissions: 0, missions: 0, absences: 0 } };
         }
 
         const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const { start: cycleStart, end: cycleEnd } = this.getCycleRange(now);
 
         const leaveScope: any = {
-            startDate: { gte: monthStart, lte: monthEnd },
+            startDate: { gte: cycleStart, lte: cycleEnd },
         };
         const permissionScope: any = {
-            requestDate: { gte: monthStart, lte: monthEnd },
+            requestDate: { gte: cycleStart, lte: cycleEnd },
         };
 
         if (scopeUserIds) {
@@ -486,7 +517,8 @@ export class ReportsService {
         ]);
 
         return {
-            month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+            cycleStart,
+            cycleEnd,
             totals: {
                 leaves,
                 permissions,

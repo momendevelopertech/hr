@@ -76,6 +76,7 @@ type NotificationsResponse = {
 export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const t = useTranslations('dashboard');
     const tm = useTranslations('requestModal');
+    const dateLocale = useMemo(() => (locale === 'ar' ? 'ar-EG' : 'en-US'), [locale]);
     const { user, ready } = useRequireAuth(locale);
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [permissions, setPermissions] = useState<PermissionRequest[]>([]);
@@ -175,6 +176,14 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         return () => clearInterval(interval);
     }, [ready, refreshAll]);
 
+    const formatDateOnlyFromIso = useCallback((value?: string) => {
+        if (!value) return '';
+        const datePart = value.split('T')[0];
+        const [year, month, day] = datePart.split('-').map((part) => Number(part));
+        if (!year || !month || !day) return new Date(value).toLocaleDateString(dateLocale);
+        return new Date(year, month - 1, day).toLocaleDateString(dateLocale);
+    }, [dateLocale]);
+
     const stats = useMemo(() => {
         const annual = balances.find((b) => b.leaveType === 'ANNUAL');
         const totalRemaining = annual?.remainingDays ?? 0;
@@ -182,7 +191,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         const remainingPermissions = permissionCycle?.remainingHours ?? 4;
         const pending = [...leaves, ...permissions, ...forms].filter((r) => r.status === 'PENDING').length;
         const cycleHint = absenceDeduction?.cycleStart && absenceDeduction?.cycleEnd
-            ? `${new Date(absenceDeduction.cycleStart).toLocaleDateString(locale)} - ${new Date(absenceDeduction.cycleEnd).toLocaleDateString(locale)}`
+            ? `${formatDateOnlyFromIso(absenceDeduction.cycleStart)} - ${formatDateOnlyFromIso(absenceDeduction.cycleEnd)}`
             : undefined;
 
         return [
@@ -204,7 +213,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                 hint: cycleHint,
             },
         ];
-    }, [absenceDeduction?.absenceDays, absenceDeduction?.cycleEnd, absenceDeduction?.cycleStart, absenceDeduction?.latenessDeductionDays, balances, leaves, locale, permissions, forms, permissionCycle?.remainingHours, permissionCycle?.usedHours, t]);
+    }, [absenceDeduction?.absenceDays, absenceDeduction?.cycleEnd, absenceDeduction?.cycleStart, absenceDeduction?.latenessDeductionDays, balances, formatDateOnlyFromIso, forms, leaves, permissionCycle?.remainingHours, permissionCycle?.usedHours, permissions, t]);
 
     const canBroadcast = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'BRANCH_SECRETARY';
 
