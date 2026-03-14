@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/auth-store';
+import DateRangeFilter from './DateRangeFilter';
 
 type RequestType = 'leave' | 'absence' | 'permission' | 'mission' | 'note' | 'lateness';
 
@@ -341,22 +342,18 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                     </select>
                                 </label>
                                 <label className="text-sm">
-                                    {tm('startDate')}
-                                    <input
-                                        type="date"
-                                        defaultValue={dateValue}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                        onChange={(e) => update('startDate', e.target.value)}
-                                    />
-                                </label>
-                                <label className="text-sm">
-                                    {tm('endDate')}
-                                    <input
-                                        type="date"
-                                        defaultValue={dateValue}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                        onChange={(e) => update('endDate', e.target.value)}
-                                    />
+                                    {locale === 'ar' ? 'التاريخ / الفترة' : 'Date / Range'}
+                                    <div className="mt-1">
+                                        <DateRangeFilter
+                                            locale={locale}
+                                            from={formData.startDate || ''}
+                                            to={formData.endDate || ''}
+                                            onChange={({ from, to }) => {
+                                                update('startDate', from);
+                                                update('endDate', to);
+                                            }}
+                                        />
+                                    </div>
                                 </label>
                             </div>
                             <label className="text-sm">
@@ -374,22 +371,18 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                         <>
                             <div className="grid gap-3 md:grid-cols-2">
                                 <label className="text-sm">
-                                    {tm('startDate')}
-                                    <input
-                                        type="date"
-                                        defaultValue={dateValue}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                        onChange={(e) => update('startDate', e.target.value)}
-                                    />
-                                </label>
-                                <label className="text-sm">
-                                    {tm('endDate')}
-                                    <input
-                                        type="date"
-                                        defaultValue={dateValue}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                        onChange={(e) => update('endDate', e.target.value)}
-                                    />
+                                    {locale === 'ar' ? 'التاريخ / الفترة' : 'Date / Range'}
+                                    <div className="mt-1">
+                                        <DateRangeFilter
+                                            locale={locale}
+                                            from={formData.startDate || ''}
+                                            to={formData.endDate || ''}
+                                            onChange={({ from, to }) => {
+                                                update('startDate', from);
+                                                update('endDate', to);
+                                            }}
+                                        />
+                                    </div>
                                 </label>
                             </div>
                             <label className="text-sm">
@@ -499,22 +492,18 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                     </select>
                                 </label>
                                 <label className="text-sm">
-                                    {tm('startDate')}
-                                    <input
-                                        type="date"
-                                        defaultValue={dateValue}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                        onChange={(e) => update('startDate', e.target.value)}
-                                    />
-                                </label>
-                                <label className="text-sm">
-                                    {tm('endDate')}
-                                    <input
-                                        type="date"
-                                        defaultValue={dateValue}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                        onChange={(e) => update('endDate', e.target.value)}
-                                    />
+                                    {locale === 'ar' ? 'التاريخ / الفترة' : 'Date / Range'}
+                                    <div className="mt-1">
+                                        <DateRangeFilter
+                                            locale={locale}
+                                            from={formData.startDate || ''}
+                                            to={formData.endDate || ''}
+                                            onChange={({ from, to }) => {
+                                                update('startDate', from);
+                                                update('endDate', to);
+                                            }}
+                                        />
+                                    </div>
                                 </label>
                             </div>
                             <label className="text-sm">
