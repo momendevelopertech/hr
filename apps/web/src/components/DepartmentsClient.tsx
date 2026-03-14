@@ -258,7 +258,16 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
                                         ))}
                                         <td className="py-3 font-semibold">{dept.totalEmployees}</td>
                                         <td className="py-3">
-                                            <button className="btn-outline" onClick={() => openEdit(dept)}>{t('edit')}</button>
+                                            <div className="flex flex-wrap gap-2">
+                                                <button className="btn-outline" onClick={() => openEdit(dept)}>{t('edit')}</button>
+                                                <button
+                                                    className={`btn-outline text-red-600 ${dept.totalEmployees > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    onClick={() => requestDeleteDepartment(dept)}
+                                                    disabled={dept.totalEmployees > 0}
+                                                >
+                                                    {t('delete')}
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
