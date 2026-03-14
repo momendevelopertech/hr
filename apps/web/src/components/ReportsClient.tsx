@@ -66,6 +66,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
     });
 
     const debouncedEmployee = useDebouncedValue(filters.employee, 400);
+    const initialLoadRef = useRef(true);
 
     const refreshInFlight = useRef(false);
 
@@ -118,11 +119,15 @@ export default function ReportsClient({ locale }: { locale: string }) {
     }, [endpoint, params]);
 
     const fetchData = useCallback(async () => {
-        setLoading(true);
+        const isInitial = initialLoadRef.current;
+        if (isInitial) setLoading(true);
         try {
             await Promise.all([refreshData(), fetchSummary()]);
         } finally {
-            setLoading(false);
+            if (isInitial) {
+                setLoading(false);
+                initialLoadRef.current = false;
+            }
         }
     }, [fetchSummary, refreshData]);
 
@@ -295,7 +300,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
                         className="rounded-xl border border-ink/20 bg-white px-3 py-2"
                         placeholder={t('employeeSearchPlaceholder')}
                         value={filters.employee}
-                        onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, employee: e.target.value })); }}
+                        onChange={(e) => setFilters((p: any) => ({ ...p, employee: e.target.value }))}
                     />
                     {showLeaveTypeFilter && (
                         <select

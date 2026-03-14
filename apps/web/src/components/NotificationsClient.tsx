@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
 import { useRequireAuth } from '@/lib/use-auth';
 import { usePusherChannel } from '@/lib/use-pusher-channel';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import PageLoader from './PageLoader';
 import DateRangeFilter from './DateRangeFilter';
 
@@ -39,6 +40,8 @@ export default function NotificationsClient({ locale }: { locale: string }) {
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const [filters, setFilters] = useState<any>({ type: '', status: '', search: '', from: '', to: '' });
+    const debouncedSearch = useDebouncedValue(filters.search, 400);
+    const initialLoadRef = useRef(true);
     const typeLabels = useMemo(() => {
         const map: Record<string, string> = {};
         notificationTypes.forEach((type) => {
@@ -94,10 +97,10 @@ export default function NotificationsClient({ locale }: { locale: string }) {
         limit,
         ...(filters.type ? { type: filters.type } : {}),
         ...(filters.status ? { status: filters.status } : {}),
-        ...(filters.search ? { search: filters.search } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(filters.from ? { from: filters.from } : {}),
         ...(filters.to ? { to: filters.to } : {}),
-    }), [filters.from, filters.search, filters.status, filters.to, filters.type, limit, page]);
+    }), [debouncedSearch, filters.from, filters.status, filters.to, filters.type, limit, page]);
 
     const refreshInFlight = useRef(false);
 
@@ -115,11 +118,15 @@ export default function NotificationsClient({ locale }: { locale: string }) {
     }, [params]);
 
     const fetchAll = useCallback(async () => {
-        setLoading(true);
+        const isInitial = initialLoadRef.current;
+        if (isInitial) setLoading(true);
         try {
             await refreshAll();
         } finally {
-            setLoading(false);
+            if (isInitial) {
+                setLoading(false);
+                initialLoadRef.current = false;
+            }
         }
     }, [refreshAll]);
 
@@ -127,6 +134,10 @@ export default function NotificationsClient({ locale }: { locale: string }) {
         if (!ready) return;
         fetchAll();
     }, [ready, fetchAll]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch]);
 
     const notificationHandlers = useMemo(
         () => ({
@@ -166,7 +177,12 @@ export default function NotificationsClient({ locale }: { locale: string }) {
                 </div>
 
                 <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
-                    <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('search')} value={filters.search} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, search: e.target.value })); }} />
+                    <input
+                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                        placeholder={t('search')}
+                        value={filters.search}
+                        onChange={(e) => setFilters((p: any) => ({ ...p, search: e.target.value }))}
+                    />
                     <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.type} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, type: e.target.value })); }}>
                         <option value="">{t('type')}</option>
                         {notificationTypes.map((type) => (

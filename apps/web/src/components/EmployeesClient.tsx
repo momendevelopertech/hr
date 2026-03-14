@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
@@ -78,6 +78,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
 
     const debouncedName = useDebouncedValue(filters.name, 400);
     const debouncedPhone = useDebouncedValue(filters.phone, 400);
+    const initialLoadRef = useRef(true);
 
     const cancelLabel = locale === 'ar' ? 'إلغاء' : 'Cancel';
     const resetLabel = locale === 'ar' ? 'مسح البيانات' : 'Reset Data';
@@ -109,7 +110,8 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     }, [departments, editForm.branchId]);
 
     const fetchAll = useCallback(async () => {
-        setLoading(true);
+        const isInitial = initialLoadRef.current;
+        if (isInitial) setLoading(true);
         try {
             const [usersRes, deptRes, branchRes] = await Promise.all([
                 api.get<UsersResponse>('/users', { params: queryParams }),
@@ -122,7 +124,10 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             setDepartments(deptRes.data);
             setBranches(branchRes.data || []);
         } finally {
-            setLoading(false);
+            if (isInitial) {
+                setLoading(false);
+                initialLoadRef.current = false;
+            }
         }
     }, [queryParams]);
 
@@ -134,6 +139,10 @@ export default function EmployeesClient({ locale }: { locale: string }) {
         }
         fetchAll();
     }, [canViewEmployees, locale, ready, router, fetchAll]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedName, debouncedPhone]);
 
     if (!ready || loading) {
         return <PageLoader text={locale === 'ar' ? 'جاري تحميل الموظفين...' : 'Loading employees...'} />;
@@ -302,13 +311,13 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                         className="rounded-xl border border-ink/20 bg-white px-3 py-2"
                         placeholder={t('searchNamePlaceholder')}
                         value={filters.name}
-                        onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, name: e.target.value })); }}
+                        onChange={(e) => setFilters((p: any) => ({ ...p, name: e.target.value }))}
                     />
                     <input
                         className="rounded-xl border border-ink/20 bg-white px-3 py-2"
                         placeholder={t('searchPhonePlaceholder')}
                         value={filters.phone}
-                        onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, phone: e.target.value })); }}
+                        onChange={(e) => setFilters((p: any) => ({ ...p, phone: e.target.value }))}
                     />
                     <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.departmentId} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, departmentId: e.target.value })); }}>
                         <option value="">{t('department')}</option>
