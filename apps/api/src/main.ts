@@ -59,7 +59,14 @@ async function bootstrap() {
         origin: allowedOrigins,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'X-CSRF-Token',
+            'X-No-Cache',
+            'X-Allow-Cache',
+            'X-Skip-Activity',
+        ],
     });
 
     // Global validation

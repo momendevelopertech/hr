@@ -192,6 +192,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
     useEffect(() => {
         if (!ready || !canViewReports) return;
         const interval = setInterval(() => {
+            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
             refreshData(true);
             fetchSummary(true);
         }, 30000);
