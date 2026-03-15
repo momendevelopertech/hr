@@ -5,7 +5,7 @@ import { addMinutes, format } from 'date-fns';
 import { arSA, enUS } from 'date-fns/locale';
 import { NotebookPen } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '@/lib/api';
+import api, { clearApiCache } from '@/lib/api';
 import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/auth-store';
 import DateRangeFilter from './DateRangeFilter';
@@ -243,6 +243,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                 });
             }
 
+            clearApiCache();
             onSubmitted();
             onClose();
             setType(null);
