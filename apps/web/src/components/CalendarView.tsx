@@ -79,10 +79,11 @@ export default function CalendarView({
 
     const DateCellWrapper = useCallback(({ value, children }: { value: Date; children: ReactElement }) => {
         if (!isValidElement(children)) return children;
-        return cloneElement(children, {
+        const extra = {
             'data-date': format(value, 'yyyy-MM-dd'),
             'data-day': value.getDate(),
-        });
+        } as Record<string, string | number>;
+        return cloneElement(children as ReactElement<any>, extra);
     }, []);
 
     const clearHoveredCell = useCallback(() => {
