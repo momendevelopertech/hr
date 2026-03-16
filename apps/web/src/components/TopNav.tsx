@@ -14,6 +14,8 @@ export default function TopNav({ locale }: { locale: string }) {
     const t = useTranslations('nav');
     const router = useRouter();
     const pathname = usePathname();
+    const normalizedPath = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
+    const isDashboard = normalizedPath === `/${locale}`;
     const { user, setUser, setBootstrapped } = useAuthStore();
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [pwaEnabled, setPwaEnabled] = useState(false);
@@ -99,8 +101,12 @@ export default function TopNav({ locale }: { locale: string }) {
             <div className="flex flex-wrap items-center gap-3">
                 <BrandLogo locale={locale} compact />
                 <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-ink/60">SPHINX HR</p>
-                    <p className="text-lg font-semibold text-ink">{t('dashboard')}</p>
+                    <p className={`uppercase tracking-[0.2em] text-ink/60 ${isDashboard ? 'text-[clamp(11px,0.9vw,14px)]' : 'text-xs'}`}>
+                        SPHINX HR
+                    </p>
+                    <p className={`font-semibold text-ink ${isDashboard ? 'text-[clamp(14px,1.2vw,18px)]' : 'text-lg'}`}>
+                        {t('dashboard')}
+                    </p>
                 </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">

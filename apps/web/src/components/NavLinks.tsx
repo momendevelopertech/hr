@@ -23,6 +23,8 @@ export default function NavLinks({ locale }: { locale: string }) {
     const t = useTranslations('nav');
     const pathname = usePathname();
     const router = useRouter();
+    const normalizedPath = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
+    const isDashboard = normalizedPath === `/${locale}`;
     const { user, loading, bootstrapped } = useAuthStore();
     const isAdmin = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
     const canViewReports = isAdmin || user?.role === 'MANAGER' || user?.role === 'BRANCH_SECRETARY';
@@ -107,7 +109,7 @@ export default function NavLinks({ locale }: { locale: string }) {
 
     if (!authReady) {
         return (
-            <nav className="flex flex-wrap gap-2 px-4 pb-4 sm:px-6" aria-busy="true">
+            <nav className={`flex flex-wrap px-4 pb-4 sm:px-6 ${isDashboard ? 'gap-2 max-[1439px]:gap-1' : 'gap-2'}`} aria-busy="true">
                 {Array.from({ length: 6 }).map((_, index) => (
                     <div
                         key={`nav-skeleton-${index}`}
@@ -119,19 +121,22 @@ export default function NavLinks({ locale }: { locale: string }) {
     }
 
     return (
-        <nav className="flex flex-wrap gap-2 px-4 pb-4 sm:px-6">
+        <nav className={`flex flex-wrap px-4 pb-4 sm:px-6 ${isDashboard ? 'gap-2 max-[1439px]:gap-1' : 'gap-2'}`}>
             {links.map((link) => {
                 const isRoot = link.href === `/${locale}`;
                 const active = isRoot
                     ? pathname === link.href
                     : pathname === link.href || pathname.startsWith(`${link.href}/`);
+                const compactClass = isDashboard
+                    ? 'max-[1439px]:px-3 max-[1439px]:py-1.5 max-[1439px]:text-[clamp(11px,0.85vw,14px)]'
+                    : '';
                 return (
                     <Link
                         key={link.href}
                         href={link.href}
-                        className={`btn-outline ${active ? 'bg-ink/10' : ''}`}
+                        className={`btn-outline ${active ? 'bg-ink/10' : ''} ${compactClass}`}
                     >
-                        <span className="inline-flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-2 ${isDashboard ? 'max-[1439px]:gap-1' : ''}`}>
                             {link.icon && <link.icon size={16} className={link.iconClass} />}
                             {link.label}
                             {!!link.badge && (

@@ -402,7 +402,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     }
 
     return (
-        <main className="pb-12">
+        <main className="dashboard-page pb-12">
             <StatsGrid stats={stats} />
             {canBroadcast && (
                 <div className="px-6 mt-6">

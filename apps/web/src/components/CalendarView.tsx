@@ -76,6 +76,7 @@ export default function CalendarView({
     const calendarGridRef = useRef<HTMLDivElement | null>(null);
     const hoveredCellRef = useRef<HTMLElement | null>(null);
     const createRequestRef = useRef<HTMLButtonElement | null>(null);
+    const didAutoSwitchRef = useRef(false);
 
     const DateCellWrapper = useCallback(({ value, children }: { value: Date; children: ReactElement }) => {
         if (!isValidElement(children)) return children;
@@ -198,6 +199,13 @@ export default function CalendarView({
     }, []);
 
     useEffect(() => {
+        if (!isMobile) return;
+        if (didAutoSwitchRef.current) return;
+        setView('week');
+        didAutoSwitchRef.current = true;
+    }, [isMobile]);
+
+    useEffect(() => {
         clearHoveredCell();
     }, [clearHoveredCell, view]);
 
@@ -248,11 +256,11 @@ export default function CalendarView({
         <div className="card calendar-shell p-4">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('title')}</p>
+                    <p className="text-[clamp(11px,0.9vw,14px)] uppercase tracking-[0.2em] text-ink/50">{t('title')}</p>
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             ref={createRequestRef}
-                            className="btn-primary"
+                            className="btn-primary text-[clamp(14px,1.2vw,18px)]"
                             onClick={() => {
                                 handleSelectDate(new Date());
                             }}
@@ -260,7 +268,7 @@ export default function CalendarView({
                             {t('createRequest')}
                         </button>
                         <button
-                            className="btn-outline"
+                            className="btn-outline text-[clamp(11px,0.9vw,14px)]"
                             onClick={() => {
                                 setView('month');
                                 setGuideOpen(true);
@@ -270,7 +278,7 @@ export default function CalendarView({
                             جولة تعريفية
                         </button>
                     </div>
-                    <p className="text-sm text-ink/70">{title}</p>
+                    <p className="text-[clamp(11px,0.9vw,14px)] text-ink/70">{title}</p>
                     {ramadanRange && (
                         <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-900">
                             <span>{t('ramadanBadge')}</span>
@@ -283,30 +291,30 @@ export default function CalendarView({
                 </div>
                 <div className="calendar-controls flex flex-wrap items-center gap-2 sm:justify-end">
                     <div className="inline-flex items-center rounded-xl border border-ink/15 bg-white/80 p-1 shadow-sm">
-                        <button className="btn-outline border-0 bg-transparent px-3 py-1.5 text-xs sm:text-sm" onClick={() => navigate('prev')}>
+                        <button className="btn-outline border-0 bg-transparent px-3 py-1.5 text-[clamp(11px,0.9vw,14px)]" onClick={() => navigate('prev')}>
                             <PrevIcon className="size-4" aria-hidden="true" />
                             <span>{t('previous')}</span>
                         </button>
-                        <button className="btn-outline border-0 bg-transparent px-3 py-1.5 text-xs sm:text-sm" onClick={() => navigate('next')}>
+                        <button className="btn-outline border-0 bg-transparent px-3 py-1.5 text-[clamp(11px,0.9vw,14px)]" onClick={() => navigate('next')}>
                             <span>{t('next')}</span>
                             <NextIcon className="size-4" aria-hidden="true" />
                         </button>
                     </div>
                     <div className="inline-flex items-center rounded-xl border border-ink/15 bg-white/80 p-1 shadow-sm">
                         <button
-                            className={`btn-outline border-0 px-3 py-1.5 text-xs sm:text-sm ${view === 'month' ? 'bg-cactus/15 text-cactus' : 'bg-transparent'}`}
+                            className={`btn-outline border-0 px-3 py-1.5 text-[clamp(11px,0.9vw,14px)] ${view === 'month' ? 'bg-cactus/15 text-cactus' : 'bg-transparent'}`}
                             onClick={() => setView('month')}
                         >
                             {t('month')}
                         </button>
                         <button
-                            className={`btn-outline border-0 px-3 py-1.5 text-xs sm:text-sm ${view === 'week' ? 'bg-cactus/15 text-cactus' : 'bg-transparent'}`}
+                            className={`btn-outline border-0 px-3 py-1.5 text-[clamp(11px,0.9vw,14px)] ${view === 'week' ? 'bg-cactus/15 text-cactus' : 'bg-transparent'}`}
                             onClick={() => setView('week')}
                         >
                             {t('week')}
                         </button>
                         <button
-                            className={`btn-outline border-0 px-3 py-1.5 text-xs sm:text-sm ${view === 'day' ? 'bg-cactus/15 text-cactus' : 'bg-transparent'}`}
+                            className={`btn-outline border-0 px-3 py-1.5 text-[clamp(11px,0.9vw,14px)] ${view === 'day' ? 'bg-cactus/15 text-cactus' : 'bg-transparent'}`}
                             onClick={() => setView('day')}
                         >
                             {t('day')}
@@ -320,6 +328,7 @@ export default function CalendarView({
                 onMouseMove={handleGridMouseMove}
                 onMouseLeave={handleGridMouseLeave}
                 onClick={handleGridClick}
+                className="w-full overflow-x-auto sm:overflow-visible"
             >
             <Calendar
                 localizer={localizer}
@@ -356,7 +365,7 @@ export default function CalendarView({
                     dayHeaderFormat: (date: Date) => `${fullWeekdayFormat(date)} ${format(date, 'd MMM', { locale: calendarLocale })}`,
                 }}
                 className="rbc-sphinx"
-                style={{ height: isMobile ? 440 : 540 }}
+                style={{ height: isMobile ? 440 : 540, width: '100%' }}
                 dayPropGetter={(date) => {
                     const isRamadan =
                         !!ramadanRange &&
@@ -382,6 +391,18 @@ export default function CalendarView({
                 onClose={() => setGuideOpen(false)}
                 onStepChange={setCurrentGuideStep}
             />
+            <style jsx global>{`
+                .dashboard-page .calendar-shell,
+                .dashboard-page .calendar-shell .rbc-sphinx,
+                .dashboard-page .calendar-shell .rbc-month-view {
+                    width: 100%;
+                }
+
+                .dashboard-page .calendar-shell .rbc-month-row {
+                    min-height: 70px;
+                    height: auto;
+                }
+            `}</style>
         </div>
     );
 }
