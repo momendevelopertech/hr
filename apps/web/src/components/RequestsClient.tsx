@@ -146,6 +146,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
     const suppressRealtimeRefreshUntilRef = useRef(0);
     const latenessFetchMetaRef = useRef<{ key: string | null; timestamp: number }>({ key: null, timestamp: 0 });
     const latenessInFlightRef = useRef(false);
+    const rowActionLocksRef = useRef<Set<string>>(new Set());
 
     const backgroundConfig = useMemo(() => ({ headers: { 'x-skip-activity': '1' } }), []);
 
@@ -548,6 +549,27 @@ export default function RequestsClient({ locale }: { locale: string }) {
         });
     }, []);
 
+    const runRowAction = useCallback(
+        (row: RequestRow, action: () => Promise<unknown>) => {
+            const key = getRowKey(row);
+            if (rowActionLocksRef.current.has(key)) return Promise.resolve();
+            rowActionLocksRef.current.add(key);
+            setRowBusy(key, true);
+            suppressRealtimeRefreshUntilRef.current = Date.now() + 1500;
+            try {
+                return Promise.resolve(action()).finally(() => {
+                    rowActionLocksRef.current.delete(key);
+                    setRowBusy(key, false);
+                });
+            } catch (error) {
+                rowActionLocksRef.current.delete(key);
+                setRowBusy(key, false);
+                return Promise.reject(error);
+            }
+        },
+        [getRowKey, setRowBusy],
+    );
+
     const setLatenessBusyFlag = useCallback((key: string, value: boolean) => {
         setLatenessBusy((prev) => {
             if (value) {
@@ -561,32 +583,14 @@ export default function RequestsClient({ locale }: { locale: string }) {
         });
     }, []);
 
-    const onApprove = (row: RequestRow) => {
-        const key = getRowKey(row);
-        if (actionBusy[key]) return Promise.resolve();
-        setRowBusy(key, true);
-        suppressRealtimeRefreshUntilRef.current = Date.now() + 1500;
-        const action = row.requestType === 'leave' ? approveLeave(row.id) : approvePermission(row.id);
-        return action.finally(() => setRowBusy(key, false));
-    };
+    const onApprove = (row: RequestRow) =>
+        runRowAction(row, () => (row.requestType === 'leave' ? approveLeave(row.id) : approvePermission(row.id)));
 
-    const onReject = (row: RequestRow) => {
-        const key = getRowKey(row);
-        if (actionBusy[key]) return Promise.resolve();
-        setRowBusy(key, true);
-        suppressRealtimeRefreshUntilRef.current = Date.now() + 1500;
-        const action = row.requestType === 'leave' ? rejectLeave(row.id) : rejectPermission(row.id);
-        return action.finally(() => setRowBusy(key, false));
-    };
+    const onReject = (row: RequestRow) =>
+        runRowAction(row, () => (row.requestType === 'leave' ? rejectLeave(row.id) : rejectPermission(row.id)));
 
-    const onCancel = (row: RequestRow) => {
-        const key = getRowKey(row);
-        if (actionBusy[key]) return Promise.resolve();
-        setRowBusy(key, true);
-        suppressRealtimeRefreshUntilRef.current = Date.now() + 1500;
-        const action = row.requestType === 'leave' ? cancelLeave(row.id) : cancelPermission(row.id);
-        return action.finally(() => setRowBusy(key, false));
-    };
+    const onCancel = (row: RequestRow) =>
+        runRowAction(row, () => (row.requestType === 'leave' ? cancelLeave(row.id) : cancelPermission(row.id)));
 
     const onDelete = (row: RequestRow) => {
         const key = getRowKey(row);

@@ -22,6 +22,7 @@ export default function AsyncActionButton({
     const isPending = internalPending || externalPending;
 
     const handleClick = useCallback(async (event: MouseEvent<HTMLButtonElement>) => {
+        event.stopPropagation();
         if (isPending || disabled || clickLockRef.current) return;
         clickLockRef.current = true;
         setInternalPending(true);
