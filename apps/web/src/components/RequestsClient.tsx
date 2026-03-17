@@ -54,6 +54,7 @@ type RequestRow = {
     employeeNumber: string;
     requestDate: string;
     requestDateTs: number;
+    requestEndTs?: number;
     createdAt: string;
     createdAtTs: number;
     status: string;
@@ -84,6 +85,13 @@ type LatenessResponse = {
 
 const LATENESS_STALE_MS = 30000;
 
+const parseDateOnlyTs = (value: string) => {
+    const datePart = value.split('T')[0];
+    const [year, month, day] = datePart.split('-').map((part) => Number(part));
+    if (!year || !month || !day) return new Date(value).getTime();
+    return new Date(year, month - 1, day).getTime();
+};
+
 export default function RequestsClient({ locale }: { locale: string }) {
     const t = useTranslations('requestsPage');
     const tEmployees = useTranslations('employees');
@@ -109,7 +117,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
     const [latenessLoading, setLatenessLoading] = useState(false);
     const [cycleBaseDate, setCycleBaseDate] = useState(new Date());
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'all' | 'leave' | 'absence' | 'mission' | 'permission' | 'lateness'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'leave' | 'absence' | 'mission' | 'permission' | 'deductions'>('all');
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
     const [filters, setFilters] = useState({
@@ -295,7 +303,8 @@ export default function RequestsClient({ locale }: { locale: string }) {
                 const altName = locale === 'ar' ? leave.user.fullName : leave.user.fullNameAr || '';
                 const subtype = enumLabels.leaveType(leave.leaveType, locale as 'en' | 'ar');
                 const searchKey = normalizeSearchText(`${primaryName} ${altName || ''} ${leave.user.employeeNumber} ${subtype}`);
-                const requestDateTs = new Date(leave.startDate).getTime();
+                const requestDateTs = parseDateOnlyTs(leave.startDate);
+                const requestEndTs = parseDateOnlyTs(leave.endDate);
                 const createdAtTs = new Date(leave.createdAt).getTime();
                 return {
                     id: leave.id,
@@ -307,6 +316,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     employeeNumber: leave.user.employeeNumber,
                     requestDate: leave.startDate,
                     requestDateTs,
+                    requestEndTs,
                     createdAt: leave.createdAt,
                     createdAtTs,
                     status: leave.status,
@@ -328,7 +338,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                 const altName = locale === 'ar' ? perm.user.fullName : perm.user.fullNameAr || '';
                 const subtype = enumLabels.permissionType(perm.permissionType, locale as 'en' | 'ar');
                 const searchKey = normalizeSearchText(`${primaryName} ${altName || ''} ${perm.user.employeeNumber} ${subtype}`);
-                const requestDateTs = new Date(perm.requestDate).getTime();
+                const requestDateTs = parseDateOnlyTs(perm.requestDate);
                 const createdAtTs = new Date(perm.createdAt).getTime();
                 return {
                     id: perm.id,
@@ -339,6 +349,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     employeeNumber: perm.user.employeeNumber,
                     requestDate: perm.requestDate,
                     requestDateTs,
+                    requestEndTs: requestDateTs,
                     createdAt: perm.createdAt,
                     createdAtTs,
                     status: perm.status,
@@ -366,42 +377,74 @@ export default function RequestsClient({ locale }: { locale: string }) {
         [leaveRows],
     );
 
+    const cycleRange = useMemo(() => getCycleRange(cycleBaseDate), [cycleBaseDate]);
+    const cycleRangeTs = useMemo(() => {
+        const start = new Date(cycleRange.start);
+        const end = new Date(cycleRange.end);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        return { start: start.getTime(), end: end.getTime() };
+    }, [cycleRange.end, cycleRange.start]);
+
+    const filterByCycle = useCallback(
+        (rows: RequestRow[]) => rows.filter((row) => {
+            const rowStart = row.requestDateTs;
+            const rowEnd = row.requestEndTs ?? rowStart;
+            return rowEnd >= cycleRangeTs.start && rowStart <= cycleRangeTs.end;
+        }),
+        [cycleRangeTs.end, cycleRangeTs.start],
+    );
+
     const rowsByTab = useMemo(
         () => ({
-            all: [...permissionRows, ...leaveOnlyRows, ...absenceRows, ...missionRows],
-            leave: leaveOnlyRows,
-            absence: absenceRows,
-            mission: missionRows,
-            permission: permissionRows,
-            lateness: [] as RequestRow[],
+            all: [
+                ...filterByCycle(permissionRows),
+                ...filterByCycle(leaveOnlyRows),
+                ...filterByCycle(absenceRows),
+                ...filterByCycle(missionRows),
+            ],
+            leave: filterByCycle(leaveOnlyRows),
+            absence: filterByCycle(absenceRows),
+            mission: filterByCycle(missionRows),
+            permission: filterByCycle(permissionRows),
+            deductions: filterByCycle(absenceRows),
         }),
-        [absenceRows, leaveOnlyRows, missionRows, permissionRows],
+        [absenceRows, filterByCycle, leaveOnlyRows, missionRows, permissionRows],
     );
 
     const sortedRowsByTab = useMemo(() => {
         const sortByCreatedAt = (rows: RequestRow[]) => rows.slice().sort((a, b) => b.createdAtTs - a.createdAtTs);
         return {
-            all: sortByCreatedAt([...permissionRows, ...leaveOnlyRows, ...absenceRows, ...missionRows]),
-            leave: sortByCreatedAt(leaveOnlyRows),
-            absence: sortByCreatedAt(absenceRows),
-            mission: sortByCreatedAt(missionRows),
-            permission: sortByCreatedAt(permissionRows),
-            lateness: [] as RequestRow[],
+            all: sortByCreatedAt(rowsByTab.all),
+            leave: sortByCreatedAt(rowsByTab.leave),
+            absence: sortByCreatedAt(rowsByTab.absence),
+            mission: sortByCreatedAt(rowsByTab.mission),
+            permission: sortByCreatedAt(rowsByTab.permission),
+            deductions: sortByCreatedAt(rowsByTab.deductions),
         };
-    }, [absenceRows, leaveOnlyRows, missionRows, permissionRows]);
+    }, [rowsByTab]);
 
     const applyFilters = useCallback((rows: RequestRow[]) => {
         const normalizedQuery = deferredSearch ? normalizeSearchText(deferredSearch) : '';
-        const fromTs = filters.from ? new Date(filters.from).getTime() : null;
-        const toTs = filters.to ? new Date(`${filters.to}T23:59:59`).getTime() : null;
+        const dayMs = 24 * 60 * 60 * 1000;
+        const fromTs = filters.from ? parseDateOnlyTs(filters.from) : null;
+        const toTs = filters.to ? parseDateOnlyTs(filters.to) + dayMs - 1 : null;
         return rows.filter((row) => {
             const statusOk = !filters.status || row.status === filters.status;
             const searchOk = !normalizedQuery || row.searchKey.includes(normalizedQuery);
-            const fromOk = !fromTs || row.requestDateTs >= fromTs;
-            const toOk = !toTs || row.requestDateTs <= toTs;
+            const rowStart = row.requestDateTs;
+            const rowEnd = row.requestEndTs ?? rowStart;
+            let dateOk = true;
+            if (fromTs !== null && toTs !== null) {
+                dateOk = rowEnd >= fromTs && rowStart <= toTs;
+            } else if (fromTs !== null) {
+                dateOk = rowEnd >= fromTs;
+            } else if (toTs !== null) {
+                dateOk = rowStart <= toTs;
+            }
             const governorateOk = !filters.governorate || row.employeeGovernorate === filters.governorate;
             const departmentOk = !filters.departmentId || row.employeeDepartmentId === filters.departmentId;
-            return statusOk && searchOk && fromOk && toOk && governorateOk && departmentOk;
+            return statusOk && searchOk && dateOk && governorateOk && departmentOk;
         });
     }, [deferredSearch, filters.departmentId, filters.from, filters.governorate, filters.status, filters.to]);
 
@@ -411,8 +454,19 @@ export default function RequestsClient({ locale }: { locale: string }) {
         absence: applyFilters(sortedRowsByTab.absence),
         mission: applyFilters(sortedRowsByTab.mission),
         permission: applyFilters(sortedRowsByTab.permission),
-        lateness: [] as RequestRow[],
+        deductions: applyFilters(sortedRowsByTab.deductions),
     }), [applyFilters, sortedRowsByTab]);
+
+    const filteredAbsenceRows = filteredRowsByTab.absence;
+    const absenceDeductionDays = useMemo(() => {
+        const dayMs = 24 * 60 * 60 * 1000;
+        return filteredAbsenceRows.reduce((sum, row) => {
+            const start = row.requestDateTs;
+            const end = row.requestEndTs ?? start;
+            const diff = Math.floor((end - start) / dayMs) + 1;
+            return sum + (diff > 0 ? diff : 0);
+        }, 0);
+    }, [filteredAbsenceRows]);
 
     const filteredRows = filteredRowsByTab[activeTab] || [];
 
@@ -422,7 +476,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
 
     useEffect(() => {
         setPage(1);
-    }, [activeTab, filters.departmentId, filters.from, filters.governorate, filters.search, filters.status, filters.to, limit]);
+    }, [activeTab, cycleBaseDate, filters.departmentId, filters.from, filters.governorate, filters.search, filters.status, filters.to, limit]);
 
     useEffect(() => {
         if (page > totalPages) {
@@ -432,7 +486,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
 
     useEffect(() => {
         if (!ready) return;
-        if (activeTab === 'lateness') {
+        if (activeTab === 'deductions') {
             fetchLateness();
         }
     }, [activeTab, fetchLateness, ready]);
@@ -473,37 +527,29 @@ export default function RequestsClient({ locale }: { locale: string }) {
 
     const isCurrentCycle = useMemo(() => {
         const current = getCycleRange(new Date());
-        const selected = getCycleRange(cycleBaseDate);
-        return formatDateOnly(current.start) === formatDateOnly(selected.start);
-    }, [cycleBaseDate]);
+        return formatDateOnly(current.start) === formatDateOnly(cycleRange.start);
+    }, [cycleRange.start]);
 
     if (!ready || loading) {
         return <PageLoader text={t('loading')} />;
     }
 
-    const tabs: Array<{ key: 'all' | 'leave' | 'permission' | 'absence' | 'mission' | 'lateness'; label: string; count: number }> = [
+    const deductionsCount = rowsByTab.deductions.length + (latenessSummary.totalCount || 0);
+    const tabs: Array<{ key: 'all' | 'leave' | 'permission' | 'mission' | 'deductions'; label: string; count: number }> = [
         { key: 'all', label: t('tabAll'), count: rowsByTab.all.length },
-        { key: 'permission', label: t('tabPermission'), count: permissionRows.length },
-        { key: 'leave', label: t('tabLeave'), count: leaveOnlyRows.length },
-        { key: 'absence', label: t('tabAbsence'), count: absenceRows.length },
-        { key: 'mission', label: t('tabMission'), count: missionRows.length },
-        { key: 'lateness', label: t('tabLateness'), count: latenessSummary.totalCount },
+        { key: 'permission', label: t('tabPermission'), count: rowsByTab.permission.length },
+        { key: 'leave', label: t('tabLeave'), count: rowsByTab.leave.length },
+        { key: 'mission', label: t('tabMission'), count: rowsByTab.mission.length },
+        { key: 'deductions', label: t('tabDeductions'), count: deductionsCount },
     ];
 
 
     const tableAlignClass = locale === 'ar' ? 'text-right' : 'text-left';
-    const formatDateOnlyFromIso = (value?: string) => {
-        if (!value) return '';
-        const datePart = value.split('T')[0];
-        const [year, month, day] = datePart.split('-').map((part) => Number(part));
-        if (!year || !month || !day) return new Date(value).toLocaleDateString(dateLocale);
-        return new Date(year, month - 1, day).toLocaleDateString(dateLocale);
-    };
-    const cycleLabel = latenessSummary.cycleStart && latenessSummary.cycleEnd
-        ? `${formatDateOnlyFromIso(latenessSummary.cycleStart)} - ${formatDateOnlyFromIso(latenessSummary.cycleEnd)}`
-        : '';
+    const formatCycleDate = (value: Date) => value.toLocaleDateString(dateLocale);
+    const cycleLabel = `${formatCycleDate(cycleRange.start)} - ${formatCycleDate(cycleRange.end)}`;
+    const totalDeductionDays = (latenessSummary.deductionDays || 0) + absenceDeductionDays;
     const salaryValue = Number(salary) || 0;
-    const estimatedDeduction = salaryValue > 0 ? (salaryValue / 30) * (latenessSummary.deductionDays || 0) : 0;
+    const estimatedDeduction = salaryValue > 0 ? (salaryValue / 30) * totalDeductionDays : 0;
     const netSalary = salaryValue > 0 ? Math.max(0, salaryValue - estimatedDeduction) : 0;
 
     return (
@@ -542,67 +588,80 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     ))}
                 </div>
 
-                {activeTab !== 'lateness' && (
-                    <div className={`mt-4 grid gap-2 md:grid-cols-2 ${canAdmin ? 'xl:grid-cols-7' : 'xl:grid-cols-5'}`}>
-                        <input
-                            className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                            placeholder={t('search')}
-                            value={filters.search}
-                            onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                        />
-                        <select
-                            className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                            value={filters.status}
-                            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
-                        >
-                            <option value="">{t('allStatuses')}</option>
-                            <option value="PENDING">{enumLabels.status('PENDING', locale as 'en' | 'ar', { requestType: 'leave' })}</option>
-                            <option value="MANAGER_APPROVED">{enumLabels.status('MANAGER_APPROVED', locale as 'en' | 'ar')}</option>
-                            <option value="HR_APPROVED">{enumLabels.status('HR_APPROVED', locale as 'en' | 'ar')}</option>
-                            <option value="REJECTED">{enumLabels.status('REJECTED', locale as 'en' | 'ar')}</option>
-                            <option value="CANCELLED">{enumLabels.status('CANCELLED', locale as 'en' | 'ar')}</option>
-                        </select>
-                        {canAdmin && (
-                            <select
-                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                value={filters.governorate}
-                                onChange={(e) => setFilters((prev) => ({ ...prev, governorate: e.target.value }))}
-                            >
-                                <option value="">{t('allBranches')}</option>
-                                <option value="CAIRO">{tEmployees('govCairo')}</option>
-                                <option value="ALEXANDRIA">{tEmployees('govAlexandria')}</option>
-                            </select>
-                        )}
-                        {canAdmin && (
-                            <select
-                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                value={filters.departmentId}
-                                onChange={(e) => setFilters((prev) => ({ ...prev, departmentId: e.target.value }))}
-                            >
-                                <option value="">{t('allDepartments')}</option>
-                                {departments.map((dept) => (
-                                    <option key={dept.id} value={dept.id}>
-                                        {locale === 'ar' ? dept.nameAr || dept.name : dept.name}
-                                    </option>
-                                ))}
-                            </select>
-                        )}
-                        <DateRangeFilter
-                            locale={locale}
-                            from={filters.from}
-                            to={filters.to}
-                            onChange={({ from, to }) => setFilters((prev) => ({ ...prev, from, to }))}
-                        />
-                        <button
-                            className="btn-outline"
-                            onClick={() => setFilters({ status: '', search: '', from: '', to: '', governorate: '', departmentId: '' })}
-                        >
-                            {t('resetFilters')}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink/10 bg-white/60 px-3 py-2">
+                    <span className="text-sm text-ink/60">{t('latenessCycle', { range: cycleLabel })}</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button className="btn-outline text-xs" onClick={() => setCycleBaseDate(addMonths(cycleBaseDate, -1))}>
+                            {t('prevCycle')}
+                        </button>
+                        <button className="btn-outline text-xs" onClick={() => setCycleBaseDate(new Date())} disabled={isCurrentCycle}>
+                            {t('currentCycle')}
+                        </button>
+                        <button className="btn-outline text-xs" onClick={() => setCycleBaseDate(addMonths(cycleBaseDate, 1))} disabled={isCurrentCycle}>
+                            {t('nextCycle')}
                         </button>
                     </div>
-                )}
+                </div>
 
-                {activeTab !== 'lateness' ? (
+                <div className={`mt-4 grid gap-2 md:grid-cols-2 ${canAdmin ? 'xl:grid-cols-7' : 'xl:grid-cols-5'}`}>
+                    <input
+                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                        placeholder={t('search')}
+                        value={filters.search}
+                        onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                    />
+                    <select
+                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                        value={filters.status}
+                        onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+                    >
+                        <option value="">{t('allStatuses')}</option>
+                        <option value="PENDING">{enumLabels.status('PENDING', locale as 'en' | 'ar', { requestType: 'leave' })}</option>
+                        <option value="MANAGER_APPROVED">{enumLabels.status('MANAGER_APPROVED', locale as 'en' | 'ar')}</option>
+                        <option value="HR_APPROVED">{enumLabels.status('HR_APPROVED', locale as 'en' | 'ar')}</option>
+                        <option value="REJECTED">{enumLabels.status('REJECTED', locale as 'en' | 'ar')}</option>
+                        <option value="CANCELLED">{enumLabels.status('CANCELLED', locale as 'en' | 'ar')}</option>
+                    </select>
+                    {canAdmin && (
+                        <select
+                            className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                            value={filters.governorate}
+                            onChange={(e) => setFilters((prev) => ({ ...prev, governorate: e.target.value }))}
+                        >
+                            <option value="">{t('allBranches')}</option>
+                            <option value="CAIRO">{tEmployees('govCairo')}</option>
+                            <option value="ALEXANDRIA">{tEmployees('govAlexandria')}</option>
+                        </select>
+                    )}
+                    {canAdmin && (
+                        <select
+                            className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                            value={filters.departmentId}
+                            onChange={(e) => setFilters((prev) => ({ ...prev, departmentId: e.target.value }))}
+                        >
+                            <option value="">{t('allDepartments')}</option>
+                            {departments.map((dept) => (
+                                <option key={dept.id} value={dept.id}>
+                                    {locale === 'ar' ? dept.nameAr || dept.name : dept.name}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                    <DateRangeFilter
+                        locale={locale}
+                        from={filters.from}
+                        to={filters.to}
+                        onChange={({ from, to }) => setFilters((prev) => ({ ...prev, from, to }))}
+                    />
+                    <button
+                        className="btn-outline"
+                        onClick={() => setFilters({ status: '', search: '', from: '', to: '', governorate: '', departmentId: '' })}
+                    >
+                        {t('resetFilters')}
+                    </button>
+                </div>
+
+                {activeTab !== 'deductions' ? (
                     <div className="mt-4 overflow-x-auto">
                         <table className={`min-w-[980px] w-full text-sm ${tableAlignClass}`}>
                             <thead className={tableAlignClass}>
@@ -696,19 +755,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     <div className="mt-4 space-y-4">
                         <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <h3 className="text-base font-semibold">{t('latenessTitle')}</h3>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {cycleLabel && <span className="text-sm text-ink/60">{t('latenessCycle', { range: cycleLabel })}</span>}
-                                    <button className="btn-outline text-xs" onClick={() => setCycleBaseDate(addMonths(cycleBaseDate, -1))}>
-                                        {t('prevCycle')}
-                                    </button>
-                                    <button className="btn-outline text-xs" onClick={() => setCycleBaseDate(new Date())} disabled={isCurrentCycle}>
-                                        {t('currentCycle')}
-                                    </button>
-                                    <button className="btn-outline text-xs" onClick={() => setCycleBaseDate(addMonths(cycleBaseDate, 1))} disabled={isCurrentCycle}>
-                                        {t('nextCycle')}
-                                    </button>
-                                </div>
+                                <h3 className="text-base font-semibold">{t('deductionsTitle')}</h3>
                             </div>
                             <div className="mt-3 grid gap-3 md:grid-cols-4">
                                 <div className="rounded-xl border border-ink/10 bg-white p-3">
@@ -724,93 +771,191 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                     <p className="text-lg font-semibold">{latenessSummary.deductionDays}</p>
                                 </div>
                                 <div className="rounded-xl border border-ink/10 bg-white p-3">
-                                    <label className="text-xs text-ink/60">{t('latenessSalary')}</label>
-                                    <input
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2 text-sm"
-                                        type="number"
-                                        min={0}
-                                        placeholder="0"
-                                        value={salary}
-                                        onChange={(e) => setSalary(e.target.value)}
-                                    />
-                                    <p className="mt-2 text-sm text-ink/70">
-                                        {t('latenessEstimate')}: <span className="font-semibold">
-                                            {estimatedDeduction ? estimatedDeduction.toLocaleString(dateLocale) : '0'}
-                                        </span>
-                                    </p>
-                                    <p className="mt-2 text-sm text-ink/70">
-                                        {t('latenessNetSalary')}: <span className="font-semibold">
-                                            {netSalary ? netSalary.toLocaleString(dateLocale) : '0'}
-                                        </span>
-                                    </p>
+                                    <p className="text-xs text-ink/60">{t('absenceDeductionDays')}</p>
+                                    <p className="text-lg font-semibold">{absenceDeductionDays}</p>
                                 </div>
+                            </div>
+                            <div className="mt-3 rounded-xl border border-ink/10 bg-white p-3">
+                                <label className="text-xs text-ink/60">{t('latenessSalary')}</label>
+                                <input
+                                    className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2 text-sm"
+                                    type="number"
+                                    min={0}
+                                    placeholder="0"
+                                    value={salary}
+                                    onChange={(e) => setSalary(e.target.value)}
+                                />
+                                <p className="mt-2 text-sm text-ink/70">
+                                    {t('latenessEstimate')}: <span className="font-semibold">
+                                        {estimatedDeduction ? estimatedDeduction.toLocaleString(dateLocale) : '0'}
+                                    </span>
+                                </p>
+                                <p className="mt-2 text-sm text-ink/70">
+                                    {t('latenessNetSalary')}: <span className="font-semibold">
+                                        {netSalary ? netSalary.toLocaleString(dateLocale) : '0'}
+                                    </span>
+                                </p>
                             </div>
                             <p className="mt-3 text-xs text-ink/50">{t('latenessPolicy')}</p>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className={`min-w-[720px] w-full text-sm ${tableAlignClass}`}>
-                                <thead className={tableAlignClass}>
-                                    <tr className="border-b border-ink/10">
-                                        <th className="py-2">{t('latenessDate')}</th>
-                                        <th className="py-2">{t('latenessLateMinutes')}</th>
-                                        <th className="py-2">{t('latenessStatus')}</th>
-                                        <th className="py-2">{t('latenessAction')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody className={tableAlignClass}>
-                                    {latenessLoading && (
-                                        <tr>
-                                            <td className="py-6 text-center text-ink/60" colSpan={4}>
-                                                {t('latenessLoading')}
-                                            </td>
+                        <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">
+                            <h4 className="text-sm font-semibold">{t('latenessSectionTitle')}</h4>
+                            <div className="mt-3 overflow-x-auto">
+                                <table className={`min-w-[720px] w-full text-sm ${tableAlignClass}`}>
+                                    <thead className={tableAlignClass}>
+                                        <tr className="border-b border-ink/10">
+                                            <th className="py-2">{t('latenessDate')}</th>
+                                            <th className="py-2">{t('latenessLateMinutes')}</th>
+                                            <th className="py-2">{t('latenessStatus')}</th>
+                                            <th className="py-2">{t('latenessAction')}</th>
                                         </tr>
-                                    )}
-                                    {!latenessLoading && latenessItems.length === 0 && (
-                                        <tr>
-                                            <td className="py-6 text-center text-ink/60" colSpan={4}>
-                                                {t('latenessEmpty')}
-                                            </td>
+                                    </thead>
+                                    <tbody className={tableAlignClass}>
+                                        {latenessLoading && (
+                                            <tr>
+                                                <td className="py-6 text-center text-ink/60" colSpan={4}>
+                                                    {t('latenessLoading')}
+                                                </td>
+                                            </tr>
+                                        )}
+                                        {!latenessLoading && latenessItems.length === 0 && (
+                                            <tr>
+                                                <td className="py-6 text-center text-ink/60" colSpan={4}>
+                                                    {t('latenessEmpty')}
+                                                </td>
+                                            </tr>
+                                        )}
+                                        {!latenessLoading && latenessItems.map((item) => (
+                                            <tr key={item.id} className="border-b border-ink/5">
+                                                <td className="py-2">{new Date(item.date).toLocaleDateString(dateLocale)}</td>
+                                                <td className="py-2">{item.minutesLate}</td>
+                                                <td className="py-2">
+                                                    {item.convertedToPermission ? t('latenessConverted') : t('latenessNotConverted')}
+                                                </td>
+                                                <td className="py-2">
+                                                    <button
+                                                        className="btn-outline"
+                                                        disabled={item.convertedToPermission}
+                                                        onClick={() => convertLateness(item.id)}
+                                                    >
+                                                        {item.convertedToPermission ? t('latenessConverted') : t('latenessConvert')}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">
+                            <h4 className="text-sm font-semibold">{t('absenceSectionTitle')}</h4>
+                            <div className="mt-3 overflow-x-auto">
+                                <table className={`min-w-[980px] w-full text-sm ${tableAlignClass}`}>
+                                    <thead className={tableAlignClass}>
+                                        <tr className="border-b border-ink/10">
+                                            <th className="py-2">{t('employee')}</th>
+                                            <th className="py-2">{t('requestType')}</th>
+                                            <th className="py-2">{t('details')}</th>
+                                            <th className="py-2">{t('date')}</th>
+                                            <th className="py-2">{t('status')}</th>
+                                            <th className="py-2">{t('actions')}</th>
                                         </tr>
-                                    )}
-                                    {!latenessLoading && latenessItems.map((item) => (
-                                        <tr key={item.id} className="border-b border-ink/5">
-                                            <td className="py-2">{new Date(item.date).toLocaleDateString(dateLocale)}</td>
-                                            <td className="py-2">{item.minutesLate}</td>
-                                            <td className="py-2">
-                                                {item.convertedToPermission ? t('latenessConverted') : t('latenessNotConverted')}
-                                            </td>
-                                            <td className="py-2">
-                                                <button
-                                                    className="btn-outline"
-                                                    disabled={item.convertedToPermission}
-                                                    onClick={() => convertLateness(item.id)}
-                                                >
-                                                    {item.convertedToPermission ? t('latenessConverted') : t('latenessConvert')}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className={tableAlignClass}>
+                                        {pagedRows.map((row) => (
+                                            <tr key={`${row.requestType}-${row.id}`} className="border-b border-ink/5">
+                                                <td className="py-2">
+                                                    <p className="font-medium">{row.employeeName}</p>
+                                                    <p className="text-xs text-ink/60">#{row.employeeNumber}</p>
+                                                </td>
+                                                <td className="py-2">{row.subtype}</td>
+                                                <td className="py-2">{row.details}</td>
+                                                <td className="py-2">{new Date(row.requestDate).toLocaleDateString(dateLocale)}</td>
+                                                <td className="py-2">
+                                                    <span className="pill bg-ink/10 text-ink">
+                                                        {enumLabels.status(row.status, locale as 'en' | 'ar', {
+                                                            requestType: row.requestType,
+                                                            approvedByMgrId: row.approvedByMgrId,
+                                                        })}
+                                                    </span>
+                                                </td>
+                                                <td className="py-2">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <a
+                                                            className={`btn-outline ${row.status === 'HR_APPROVED' ? '' : 'opacity-50 cursor-not-allowed'}`}
+                                                            href={row.printUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer noopener"
+                                                            aria-disabled={row.status !== 'HR_APPROVED'}
+                                                            tabIndex={row.status === 'HR_APPROVED' ? undefined : -1}
+                                                            onClick={(event) => {
+                                                                if (row.status !== 'HR_APPROVED') {
+                                                                    event.preventDefault();
+                                                                }
+                                                            }}
+                                                        >
+                                                            {t('printPdf')}
+                                                        </a>
+                                                        {row.status === 'PENDING' && (
+                                                            <button className="btn-outline" onClick={() => onCancel(row)}>
+                                                                {t('cancel')}
+                                                            </button>
+                                                        )}
+                                                        {canManage && (
+                                                            <>
+                                                                {((isSecretary && row.status === 'PENDING') ||
+                                                                    (isManager && row.status === 'MANAGER_APPROVED' && !row.approvedByMgrId) ||
+                                                                    (isHr && row.status === 'MANAGER_APPROVED' && !!row.approvedByMgrId)) && (
+                                                                    <button className="btn-primary" onClick={() => onApprove(row)}>
+                                                                        {isSecretary ? t('verify') : t('approve')}
+                                                                    </button>
+                                                                )}
+                                                                {((isSecretary && row.status === 'PENDING') ||
+                                                                    (isManager && row.status === 'MANAGER_APPROVED' && !row.approvedByMgrId) ||
+                                                                    (isHr && row.status === 'MANAGER_APPROVED' && !!row.approvedByMgrId)) && (
+                                                                    <button className="btn-secondary" onClick={() => onReject(row)}>
+                                                                        {t('reject')}
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                        {canAdmin && ['PENDING', 'REJECTED', 'CANCELLED'].includes(row.status) && (
+                                                            <button className="btn-outline" onClick={() => onDelete(row)}>
+                                                                {t('delete')}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {pagedRows.length === 0 && (
+                                            <tr>
+                                                <td className="py-6 text-center text-ink/60" colSpan={6}>
+                                                    {t('noResults')}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {activeTab !== 'lateness' && (
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                        <p className="text-sm text-ink/60">{t('records', { count: total })}</p>
-                        <div className="flex items-center gap-2">
-                            <button className="btn-outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                                {t('prev')}
-                            </button>
-                            <p className="text-sm">{t('pageIndicator', { page, totalPages })}</p>
-                            <button className="btn-outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-                                {t('next')}
-                            </button>
-                        </div>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                    <p className="text-sm text-ink/60">{t('records', { count: total })}</p>
+                    <div className="flex items-center gap-2">
+                        <button className="btn-outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                            {t('prev')}
+                        </button>
+                        <p className="text-sm">{t('pageIndicator', { page, totalPages })}</p>
+                        <button className="btn-outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                            {t('next')}
+                        </button>
                     </div>
-                )}
+                </div>
             </section>
 
             <EmployeeHistoryModal
