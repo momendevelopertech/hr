@@ -12,6 +12,10 @@ import {
 import { PermissionType } from '@prisma/client';
 
 export class CreatePermissionDto {
+    @IsOptional()
+    @IsString()
+    userId?: string;
+
     @IsEnum(PermissionType)
     permissionType: PermissionType;
 

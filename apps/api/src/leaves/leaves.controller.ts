@@ -43,7 +43,8 @@ export class LeavesController {
 
     @Post()
     create(@Body() body: CreateLeaveDto, @Req() req: any) {
-        return this.leavesService.createRequest(req.user.id, body);
+        const targetUserId = body.userId || req.user.id;
+        return this.leavesService.createRequest(targetUserId, body, { id: req.user.id, role: req.user.role });
     }
 
     @Patch(':id/approve')

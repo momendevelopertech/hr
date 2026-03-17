@@ -1,7 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsInt, Min } from 'class-validator';
+import { IsDateString, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateLatenessDto {
+    @IsOptional()
+    @IsString()
+    userId?: string;
+
     @IsDateString()
     date: string;
 

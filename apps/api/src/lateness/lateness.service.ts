@@ -30,7 +30,23 @@ export class LatenessService {
         return 0;
     }
 
-    async createOrUpdate(userId: string, data: { date: string; minutesLate: number }) {
+    private async resolveTargetUserId(targetUserId: string, actor?: { id: string; role: string }) {
+        if (!actor || actor.id === targetUserId) return targetUserId;
+        if (actor.role !== 'BRANCH_SECRETARY') {
+            throw new ForbiddenException('Only branch secretary can submit requests for other employees');
+        }
+        const [secretary, target] = await Promise.all([
+            this.prisma.user.findUnique({ where: { id: actor.id } }),
+            this.prisma.user.findUnique({ where: { id: targetUserId } }),
+        ]);
+        if (!secretary || !target || !secretary.governorate || secretary.governorate !== target.governorate) {
+            throw new ForbiddenException('Secretary can only submit requests for their branch');
+        }
+        return targetUserId;
+    }
+
+    async createOrUpdate(userId: string, data: { date: string; minutesLate: number }, actor?: { id: string; role: string }) {
+        const targetUserId = await this.resolveTargetUserId(userId, actor);
         const minutesLate = Math.max(0, Math.round(Number(data.minutesLate)));
         if (!minutesLate) {
             throw new BadRequestException('Minutes late must be greater than zero');
@@ -38,10 +54,10 @@ export class LatenessService {
         const date = this.normalizeDate(data.date);
 
         return this.prisma.lateness.upsert({
-            where: { userId_date: { userId, date } },
+            where: { userId_date: { userId: targetUserId, date } },
             update: { minutesLate },
             create: {
-                userId,
+                userId: targetUserId,
                 date,
                 minutesLate,
             },

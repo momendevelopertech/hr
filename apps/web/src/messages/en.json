@@ -198,7 +198,11 @@
     "latenessMinutesError": "Please enter minutes late.",
     "latenessConfirm": "Arrival will be recorded at {time}.",
     "latenessSaved": "Lateness recorded.",
-    "employeeActionsTitle": "Employee actions"
+    "employeeActionsTitle": "Employee actions",
+    "employeeLabel": "Employee",
+    "employeePlaceholder": "Select employee",
+    "employeeLoading": "Loading employees...",
+    "employeeRequired": "Please select an employee before submitting."
   },
   "eventDetails": {
     "title": "Request details",

@@ -61,6 +61,21 @@ export class PermissionsService {
         });
     }
 
+    private async resolveTargetUserId(targetUserId: string, actor?: { id: string; role: string }) {
+        if (!actor || actor.id === targetUserId) return targetUserId;
+        if (actor.role !== 'BRANCH_SECRETARY') {
+            throw new ForbiddenException('Only branch secretary can submit requests for other employees');
+        }
+        const [secretary, target] = await Promise.all([
+            this.prisma.user.findUnique({ where: { id: actor.id } }),
+            this.prisma.user.findUnique({ where: { id: targetUserId } }),
+        ]);
+        if (!secretary || !target || !secretary.governorate || secretary.governorate !== target.governorate) {
+            throw new ForbiddenException('Secretary can only submit requests for their branch');
+        }
+        return targetUserId;
+    }
+
     // Permission cycle: day 11 to day 10 next month.
     private getCycleForDate(date: Date): { start: Date; end: Date } {
         return getCycleRange(date, { endOfDay: false });
@@ -156,9 +171,10 @@ export class PermissionsService {
         return this.getOrCreateCycle(userId, new Date());
     }
 
-    async createRequest(userId: string, data: CreatePermissionDto) {
+    async createRequest(userId: string, data: CreatePermissionDto, actor?: { id: string; role: string }) {
+        const targetUserId = await this.resolveTargetUserId(userId, actor);
         const requestDate = new Date(data.requestDate);
-        const cycle = await this.getOrCreateCycle(userId, requestDate);
+        const cycle = await this.getOrCreateCycle(targetUserId, requestDate);
 
         let hoursUsed = this.parseHours(data.arrivalTime, data.leaveTime);
         let arrivalTime = data.arrivalTime;
@@ -193,7 +209,7 @@ export class PermissionsService {
 
         const request = await this.prisma.permissionRequest.create({
             data: {
-                userId,
+                userId: targetUserId,
                 cycleId: cycle.id,
                 permissionType,
                 requestDate,
@@ -206,11 +222,13 @@ export class PermissionsService {
             include: { user: { include: { department: true } } },
         });
 
+        const actorId = actor?.id || targetUserId;
         await this.auditService.log({
-            userId,
+            userId: actorId,
             action: 'PERMISSION_REQUESTED',
             entity: 'PermissionRequest',
             entityId: request.id,
+            details: actorId === targetUserId ? undefined : { requestFor: targetUserId },
         });
 
         await this.notificationsService.notifyPermissionAction(request, 'submitted');
@@ -226,7 +244,7 @@ export class PermissionsService {
             for (const mgr of managers) {
                 await this.notificationsService.createInApp({
                     receiverId: mgr.id,
-                    senderId: userId,
+                    senderId: targetUserId,
                     type: 'PERMISSION_REQUEST',
                     title: 'New Permission Request',
                     titleAr: 'طلب إذن جديد',
@@ -237,7 +255,7 @@ export class PermissionsService {
             }
         }
 
-        await this.emitWorkflowUpdate(request, userId);
+        await this.emitWorkflowUpdate(request, actorId);
 
         return request;
     }

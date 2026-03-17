@@ -61,6 +61,21 @@ export class LeavesService {
         });
     }
 
+    private async resolveTargetUserId(targetUserId: string, actor?: { id: string; role: string }) {
+        if (!actor || actor.id === targetUserId) return targetUserId;
+        if (actor.role !== 'BRANCH_SECRETARY') {
+            throw new ForbiddenException('Only branch secretary can submit requests for other employees');
+        }
+        const [secretary, target] = await Promise.all([
+            this.prisma.user.findUnique({ where: { id: actor.id } }),
+            this.prisma.user.findUnique({ where: { id: targetUserId } }),
+        ]);
+        if (!secretary || !target || !secretary.governorate || secretary.governorate !== target.governorate) {
+            throw new ForbiddenException('Secretary can only submit requests for their branch');
+        }
+        return targetUserId;
+    }
+
     private async ensureYearBalances(userId: string, year: number) {
         const defaults: Array<{ leaveType: any; days: number }> = [
             { leaveType: 'ANNUAL', days: 21 },
@@ -155,9 +170,10 @@ export class LeavesService {
         };
     }
 
-    async createRequest(userId: string, data: CreateLeaveDto) {
+    async createRequest(userId: string, data: CreateLeaveDto, actor?: { id: string; role: string }) {
+        const targetUserId = await this.resolveTargetUserId(userId, actor);
         const year = new Date(data.startDate).getFullYear();
-        await this.ensureYearBalances(userId, year);
+        await this.ensureYearBalances(targetUserId, year);
 
         const days = differenceInBusinessDays(new Date(data.endDate), new Date(data.startDate)) + 1;
         if (days <= 0) {
@@ -168,7 +184,7 @@ export class LeavesService {
             const balance = await this.prisma.leaveBalance.findUnique({
                 where: {
                     userId_year_leaveType: {
-                        userId,
+                        userId: targetUserId,
                         year,
                         leaveType: data.leaveType,
                     },
@@ -183,7 +199,7 @@ export class LeavesService {
 
         const request = await this.prisma.leaveRequest.create({
             data: {
-                userId,
+                userId: targetUserId,
                 leaveType: data.leaveType,
                 startDate: new Date(data.startDate),
                 endDate: new Date(data.endDate),
@@ -195,11 +211,13 @@ export class LeavesService {
             include: { user: { include: { department: true } } },
         });
 
+        const actorId = actor?.id || targetUserId;
         await this.auditService.log({
-            userId,
+            userId: actorId,
             action: 'LEAVE_REQUESTED',
             entity: 'LeaveRequest',
             entityId: request.id,
+            details: actorId === targetUserId ? undefined : { requestFor: targetUserId },
         });
 
         await this.notificationsService.notifyLeaveAction(request, 'submitted');
@@ -215,7 +233,7 @@ export class LeavesService {
             for (const manager of managers) {
                 await this.notificationsService.createInApp({
                     receiverId: manager.id,
-                    senderId: userId,
+                    senderId: targetUserId,
                     type: 'LEAVE_REQUEST',
                     title: 'New Leave Request',
                     titleAr: 'طلب إجازة جديد',
@@ -226,7 +244,7 @@ export class LeavesService {
             }
         }
 
-        await this.emitWorkflowUpdate(request, userId);
+        await this.emitWorkflowUpdate(request, actorId);
 
         return request;
     }

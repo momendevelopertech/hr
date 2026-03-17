@@ -12,6 +12,14 @@ import DateRangeFilter from './DateRangeFilter';
 
 type RequestType = 'leave' | 'absence' | 'permission' | 'mission' | 'note' | 'lateness';
 
+type EmployeeOption = {
+    id: string;
+    fullName: string;
+    fullNameAr?: string | null;
+    employeeNumber?: string | null;
+    isActive?: boolean;
+};
+
 type Props = {
     open: boolean;
     locale: 'en' | 'ar';
@@ -60,10 +68,14 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
     const t = useTranslations('requests');
     const tm = useTranslations('requestModal');
     const { user } = useAuthStore();
+    const isSecretary = user?.role === 'BRANCH_SECRETARY';
     const [type, setType] = useState<RequestType | null>(null);
     const [formData, setFormData] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(false);
     const [schedule, setSchedule] = useState<WorkScheduleSettings>(DEFAULT_SCHEDULE);
+    const [employeeOptions, setEmployeeOptions] = useState<EmployeeOption[]>([]);
+    const [employeesLoading, setEmployeesLoading] = useState(false);
+    const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
 
     const dateValue = useMemo(() => {
         if (!date) return '';
@@ -86,6 +98,37 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
         setType(null);
         setFormData(date ? { startDate: dateValue, endDate: dateValue } : {});
     }, [open, date, dateValue]);
+
+    useEffect(() => {
+        if (!open) return;
+        if (isSecretary) {
+            setSelectedEmployeeId('');
+        } else if (user?.id) {
+            setSelectedEmployeeId(user.id);
+        }
+    }, [isSecretary, open, user?.id]);
+
+    useEffect(() => {
+        if (!open || !isSecretary) return;
+        let active = true;
+        setEmployeesLoading(true);
+        api.get('/users', { params: { page: 1, limit: 200 } })
+            .then((res) => {
+                if (!active) return;
+                setEmployeeOptions(res.data?.items || []);
+            })
+            .catch(() => {
+                if (!active) return;
+                setEmployeeOptions([]);
+            })
+            .finally(() => {
+                if (!active) return;
+                setEmployeesLoading(false);
+            });
+        return () => {
+            active = false;
+        };
+    }, [isSecretary, open]);
 
     const permissionPreview = useMemo(() => {
         if (!date || type !== 'permission') return null;
@@ -174,6 +217,11 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
 
     const submit = async () => {
         if (!date || !type) return;
+        if (isSecretary && !selectedEmployeeId) {
+            toast.error(tm('employeeRequired'));
+            return;
+        }
+        const requestUserPayload = isSecretary && selectedEmployeeId ? { userId: selectedEmployeeId } : {};
         setLoading(true);
         try {
             if (type === 'leave') {
@@ -182,6 +230,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     startDate: formData.startDate || dateValue,
                     endDate: formData.endDate || dateValue,
                     reason: '',
+                    ...requestUserPayload,
                 });
             }
 
@@ -191,6 +240,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     startDate: formData.startDate || dateValue,
                     endDate: formData.endDate || dateValue,
                     reason: '',
+                    ...requestUserPayload,
                 });
             }
 
@@ -211,6 +261,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     permissionType: permissionScope === 'ARRIVAL' ? 'LATE_ARRIVAL' : 'EARLY_LEAVE',
                     requestDate: dateValue,
                     reason: '',
+                    ...requestUserPayload,
                 });
             }
 
@@ -225,6 +276,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     startDate: formData.startDate || dateValue,
                     endDate: formData.endDate || dateValue,
                     reason: payloadReason,
+                    ...requestUserPayload,
                 });
             }
 
@@ -246,6 +298,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                 await api.post('/lateness', {
                     date: dateValue,
                     minutesLate,
+                    ...requestUserPayload,
                 });
             }
 
@@ -281,6 +334,33 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     {tm('selectedDate')}: <span className="font-semibold">{dateValue}</span>
                     {dayName ? <span className="ml-2 text-ink/60">- {dayName}</span> : null}
                 </p>
+
+                {isSecretary && (
+                    <div className="mt-3 rounded-2xl border border-ink/10 bg-white/70 p-3">
+                        <label className="text-sm">
+                            {tm('employeeLabel')}
+                            <select
+                                className="mt-2 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                value={selectedEmployeeId}
+                                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                                disabled={employeesLoading}
+                            >
+                                <option value="">
+                                    {employeesLoading ? tm('employeeLoading') : tm('employeePlaceholder')}
+                                </option>
+                                {employeeOptions.map((emp) => {
+                                    const displayName = locale === 'ar' ? emp.fullNameAr || emp.fullName : emp.fullName;
+                                    const number = emp.employeeNumber ? ` #${emp.employeeNumber}` : '';
+                                    return (
+                                        <option key={emp.id} value={emp.id}>
+                                            {displayName}{number}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </label>
+                    </div>
+                )}
 
                 <div className="mt-4 grid gap-4 md:grid-cols-[240px_1fr]">
                     <div className="space-y-4">
@@ -546,7 +626,11 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
 
                 <div className="mt-6 flex justify-end gap-2">
                     <button className="btn-outline" onClick={onClose}>{tm('cancel')}</button>
-                    <button className="btn-primary" onClick={submit} disabled={loading || !type}>
+                    <button
+                        className="btn-primary"
+                        onClick={submit}
+                        disabled={loading || !type || (isSecretary && !selectedEmployeeId)}
+                    >
                         {loading ? tm('saving') : tm('submit')}
                     </button>
                 </div>

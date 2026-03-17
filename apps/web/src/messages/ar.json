@@ -198,7 +198,11 @@
     "latenessMinutesError": "يرجى إدخال دقائق التأخير.",
     "latenessConfirm": "سيتم تسجيل الوصول الساعة {time}.",
     "latenessSaved": "تم تسجيل التأخير.",
-    "employeeActionsTitle": "إجراءات الموظف"
+    "employeeActionsTitle": "إجراءات الموظف",
+    "employeeLabel": "الموظف",
+    "employeePlaceholder": "اختر الموظف",
+    "employeeLoading": "جاري تحميل الموظفين...",
+    "employeeRequired": "من فضلك اختر الموظف قبل الحفظ."
   },
   "eventDetails": {
     "title": "تفاصيل الطلب",

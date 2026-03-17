@@ -2,6 +2,10 @@ import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 import { LeaveType } from '@prisma/client';
 
 export class CreateLeaveDto {
+    @IsOptional()
+    @IsString()
+    userId?: string;
+
     @IsEnum(LeaveType)
     leaveType: LeaveType;
 

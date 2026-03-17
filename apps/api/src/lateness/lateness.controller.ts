@@ -19,7 +19,8 @@ export class LatenessController {
 
     @Post()
     create(@Req() req: any, @Body() body: CreateLatenessDto) {
-        return this.latenessService.createOrUpdate(req.user.id, body);
+        const targetUserId = body.userId || req.user.id;
+        return this.latenessService.createOrUpdate(targetUserId, body, { id: req.user.id, role: req.user.role });
     }
 
     @Post(':id/convert')
