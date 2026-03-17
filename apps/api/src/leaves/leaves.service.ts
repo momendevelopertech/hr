@@ -337,15 +337,22 @@ export class LeavesService {
 
         if (role === 'BRANCH_SECRETARY') {
             if (request.status !== 'PENDING') {
-                if (['MANAGER_APPROVED', 'HR_APPROVED'].includes(request.status)) {
-                    return request;
-                }
+                // Idempotent guard for stale/double clicks.
+                if (action === 'approve' && ['MANAGER_APPROVED', 'HR_APPROVED'].includes(request.status)) return request;
+                if (action === 'reject' && request.status === 'REJECTED') return request;
+                if (request.status === 'CANCELLED') return request;
                 throw new BadRequestException('Secretary can only process pending requests');
             }
             newStatus = action === 'approve' ? 'MANAGER_APPROVED' : 'REJECTED';
             updateData.managerComment = comment;
         } else if (role === 'MANAGER') {
             if (request.status !== 'MANAGER_APPROVED' || request.approvedByMgrId) {
+                // Idempotent guard for stale/double clicks.
+                if (action === 'approve' && (request.status === 'HR_APPROVED' || (request.status === 'MANAGER_APPROVED' && request.approvedByMgrId))) {
+                    return request;
+                }
+                if (action === 'reject' && request.status === 'REJECTED') return request;
+                if (request.status === 'CANCELLED') return request;
                 throw new BadRequestException('Manager can only process secretary-approved requests');
             }
             if (action === 'approve') {
@@ -358,6 +365,10 @@ export class LeavesService {
             updateData.managerComment = comment;
         } else if (role === 'HR_ADMIN' || role === 'SUPER_ADMIN') {
             if (request.status !== 'MANAGER_APPROVED' || !request.approvedByMgrId) {
+                // Idempotent guard for stale/double clicks.
+                if (action === 'approve' && request.status === 'HR_APPROVED') return request;
+                if (action === 'reject' && request.status === 'REJECTED') return request;
+                if (request.status === 'CANCELLED') return request;
                 throw new BadRequestException('HR can only process manager-approved requests');
             }
             if (action === 'approve') {
