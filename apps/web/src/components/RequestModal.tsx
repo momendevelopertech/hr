@@ -112,7 +112,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
         if (!open || !isSecretary) return;
         let active = true;
         setEmployeesLoading(true);
-        api.get('/users', { params: { page: 1, limit: 200 } })
+        api.get('/users', { params: { page: 1, limit: 100 } })
             .then((res) => {
                 if (!active) return;
                 setEmployeeOptions(res.data?.items || []);
