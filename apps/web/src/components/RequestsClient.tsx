@@ -602,11 +602,11 @@ export default function RequestsClient({ locale }: { locale: string }) {
             () => (row.requestType === 'leave' ? approveLeave(row.id) : approvePermission(row.id)),
             () => {
                 if (isSecretary) {
-                    toast.success(t('toastToManager'));
+                    toast.success(`${t('toastToManager')} — ${t('toastWaitManager')}`, { icon: '📨', duration: 15000 });
                 } else if (isManager) {
-                    toast.success(t('toastToHr'));
+                    toast.success(`${t('toastToHr')} — ${t('toastWaitHr')}`, { icon: '📨', duration: 15000 });
                 } else if (isHr) {
-                    toast.success(t('toastApprovedHr'));
+                    toast.success(t('toastApprovedHr'), { icon: '✅', duration: 15000 });
                 }
             },
         );
