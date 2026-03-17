@@ -337,6 +337,9 @@ export class LeavesService {
 
         if (role === 'BRANCH_SECRETARY') {
             if (request.status !== 'PENDING') {
+                if (['MANAGER_APPROVED', 'HR_APPROVED'].includes(request.status)) {
+                    return request;
+                }
                 throw new BadRequestException('Secretary can only process pending requests');
             }
             newStatus = action === 'approve' ? 'MANAGER_APPROVED' : 'REJECTED';
