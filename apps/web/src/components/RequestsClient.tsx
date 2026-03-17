@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { addMonths } from 'date-fns';
+import toast from 'react-hot-toast';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import api, { isAuthError } from '@/lib/api';
@@ -551,7 +552,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
     }, []);
 
     const runRowAction = useCallback(
-        (row: RequestRow, action: () => Promise<unknown>) => {
+        (row: RequestRow, action: () => Promise<unknown>, onSuccess?: () => void) => {
             const key = getRowKey(row);
             const now = Date.now();
             const last = rowActionCooldownRef.current.get(key) || 0;
@@ -562,13 +563,17 @@ export default function RequestsClient({ locale }: { locale: string }) {
             setRowBusy(key, true);
             suppressRealtimeRefreshUntilRef.current = Date.now() + 1500;
             try {
-                return Promise.resolve(action()).finally(() => {
-                    rowActionLocksRef.current.delete(key);
-                    setTimeout(() => {
-                        rowActionCooldownRef.current.set(key, Date.now());
-                        setRowBusy(key, false);
-                    }, 50);
-                });
+                return Promise.resolve(action())
+                    .then(() => {
+                        if (onSuccess) onSuccess();
+                    })
+                    .finally(() => {
+                        rowActionLocksRef.current.delete(key);
+                        setTimeout(() => {
+                            rowActionCooldownRef.current.set(key, Date.now());
+                            setRowBusy(key, false);
+                        }, 50);
+                    });
             } catch (error) {
                 rowActionLocksRef.current.delete(key);
                 setRowBusy(key, false);
@@ -592,7 +597,19 @@ export default function RequestsClient({ locale }: { locale: string }) {
     }, []);
 
     const onApprove = (row: RequestRow) =>
-        runRowAction(row, () => (row.requestType === 'leave' ? approveLeave(row.id) : approvePermission(row.id)));
+        runRowAction(
+            row,
+            () => (row.requestType === 'leave' ? approveLeave(row.id) : approvePermission(row.id)),
+            () => {
+                if (isSecretary) {
+                    toast.success(t('toastToManager'));
+                } else if (isManager) {
+                    toast.success(t('toastToHr'));
+                } else if (isHr) {
+                    toast.success(t('toastApprovedHr'));
+                }
+            },
+        );
 
     const onReject = (row: RequestRow) =>
         runRowAction(row, () => (row.requestType === 'leave' ? rejectLeave(row.id) : rejectPermission(row.id)));
