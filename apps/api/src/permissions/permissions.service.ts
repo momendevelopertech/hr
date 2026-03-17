@@ -407,15 +407,18 @@ export class PermissionsService {
         }
 
         if (role === 'BRANCH_SECRETARY') {
-            await this.notificationsService.notifyPermissionAction(request, 'verified');
+            const jobs: Promise<any>[] = [
+                this.notificationsService.notifyPermissionAction(request, 'verified'),
+            ];
 
             if (request.user.departmentId) {
                 const managers = await this.prisma.user.findMany({
                     where: { role: 'MANAGER', departmentId: request.user.departmentId },
+                    select: { id: true },
                 });
 
-                for (const manager of managers) {
-                    await this.notificationsService.createInApp({
+                jobs.push(this.notificationsService.createInAppBulk(
+                    managers.map((manager) => ({
                         receiverId: manager.id,
                         senderId: actorId,
                         type: 'PERMISSION_REQUEST',
@@ -424,27 +427,31 @@ export class PermissionsService {
                         body: `${request.user.fullName} has a permission request verified by the secretary.`,
                         bodyAr: 'تم التحقق من طلب الإذن وبانتظار موافقتك.',
                         metadata: { permissionRequestId: id },
-                    });
-                }
+                    })),
+                ));
             }
-        } else if (role === 'MANAGER') {
-            await this.notificationsService.notifyPermissionAction(request, 'managerApproved');
 
+            await Promise.all(jobs);
+        } else if (role === 'MANAGER') {
             const hrAdmins = await this.prisma.user.findMany({
                 where: { role: { in: ['HR_ADMIN', 'SUPER_ADMIN'] } },
+                select: { id: true },
             });
 
-            for (const hr of hrAdmins) {
-                await this.notificationsService.createInApp({
-                    receiverId: hr.id,
-                    type: 'PERMISSION_REQUEST',
-                    title: 'Permission Pending HR Approval',
-                    titleAr: 'طلب إذن بانتظار موافقة الموارد البشرية',
-                    body: `${request.user.fullName}'s permission has been approved by manager. Awaiting HR decision.`,
-                    bodyAr: 'تمت موافقة المدير على طلب الإذن وبانتظار الموارد البشرية.',
-                    metadata: { permissionRequestId: id },
-                });
-            }
+            await Promise.all([
+                this.notificationsService.notifyPermissionAction(request, 'managerApproved'),
+                this.notificationsService.createInAppBulk(
+                    hrAdmins.map((hr) => ({
+                        receiverId: hr.id,
+                        type: 'PERMISSION_REQUEST',
+                        title: 'Permission Pending HR Approval',
+                        titleAr: 'طلب إذن بانتظار موافقة الموارد البشرية',
+                        body: `${request.user.fullName}'s permission has been approved by manager. Awaiting HR decision.`,
+                        bodyAr: 'تمت موافقة المدير على طلب الإذن وبانتظار الموارد البشرية.',
+                        metadata: { permissionRequestId: id },
+                    })),
+                ),
+            ]);
         } else {
             await this.notificationsService.notifyPermissionAction(request, 'approved', { comment, sendExternal: true });
         }

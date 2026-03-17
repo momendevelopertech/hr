@@ -41,6 +41,24 @@ export class NotificationsService {
         return notification;
     }
 
+    async createInAppBulk(items: Array<{
+        receiverId: string;
+        senderId?: string;
+        type: any;
+        title: string;
+        titleAr: string;
+        body: string;
+        bodyAr: string;
+        metadata?: any;
+    }>) {
+        if (!items.length) return;
+
+        await this.prisma.notification.createMany({ data: items });
+        await Promise.all(
+            items.map((item) => this.pusher.triggerToUser(item.receiverId, 'notification', { type: item.type })),
+        );
+    }
+
     async emitRealtimeToUsers(userIds: string[], payload: Record<string, any> = { type: 'REQUEST_UPDATED' }) {
         const unique = Array.from(new Set(userIds.filter(Boolean)));
         if (unique.length === 0) return;

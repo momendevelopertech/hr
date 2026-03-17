@@ -417,15 +417,18 @@ export class LeavesService {
         }
 
         if (role === 'BRANCH_SECRETARY') {
-            await this.notificationsService.notifyLeaveAction(request, 'verified');
+            const jobs: Promise<any>[] = [
+                this.notificationsService.notifyLeaveAction(request, 'verified'),
+            ];
 
             if (request.user.departmentId) {
                 const managers = await this.prisma.user.findMany({
                     where: { role: 'MANAGER', departmentId: request.user.departmentId },
+                    select: { id: true },
                 });
 
-                for (const manager of managers) {
-                    await this.notificationsService.createInApp({
+                jobs.push(this.notificationsService.createInAppBulk(
+                    managers.map((manager) => ({
                         receiverId: manager.id,
                         senderId: actorId,
                         type: 'LEAVE_REQUEST',
@@ -434,26 +437,31 @@ export class LeavesService {
                         body: `${request.user.fullName} has a leave request verified by the secretary.`,
                         bodyAr: 'تم التحقق من طلب الإجازة وبانتظار موافقتك.',
                         metadata: { leaveRequestId: id },
-                    });
-                }
+                    })),
+                ));
             }
-        } else if (role === 'MANAGER') {
-            await this.notificationsService.notifyLeaveAction(request, 'managerApproved');
 
+            await Promise.all(jobs);
+        } else if (role === 'MANAGER') {
             const hrAdmins = await this.prisma.user.findMany({
                 where: { role: { in: ['HR_ADMIN', 'SUPER_ADMIN'] } },
+                select: { id: true },
             });
-            for (const hr of hrAdmins) {
-                await this.notificationsService.createInApp({
-                    receiverId: hr.id,
-                    type: 'LEAVE_REQUEST',
-                    title: 'Leave Pending HR Approval',
-                    titleAr: 'طلب إجازة بانتظار موافقة الموارد البشرية',
-                    body: `${request.user.fullName}'s leave has been approved by manager. Awaiting HR decision.`,
-                    bodyAr: 'تمت موافقة المدير على طلب الإجازة وبانتظار الموارد البشرية.',
-                    metadata: { leaveRequestId: id },
-                });
-            }
+
+            await Promise.all([
+                this.notificationsService.notifyLeaveAction(request, 'managerApproved'),
+                this.notificationsService.createInAppBulk(
+                    hrAdmins.map((hr) => ({
+                        receiverId: hr.id,
+                        type: 'LEAVE_REQUEST',
+                        title: 'Leave Pending HR Approval',
+                        titleAr: 'طلب إجازة بانتظار موافقة الموارد البشرية',
+                        body: `${request.user.fullName}'s leave has been approved by manager. Awaiting HR decision.`,
+                        bodyAr: 'تمت موافقة المدير على طلب الإجازة وبانتظار الموارد البشرية.',
+                        metadata: { leaveRequestId: id },
+                    })),
+                ),
+            ]);
         } else if (role === 'HR_ADMIN' || role === 'SUPER_ADMIN') {
             await this.notificationsService.notifyLeaveAction(request, 'approved');
         }
