@@ -140,13 +140,22 @@ export default function RequestsClient({ locale }: { locale: string }) {
     const dateLocale = useMemo(() => (locale === 'ar' ? 'ar-EG' : 'en-US'), [locale]);
 
     const refreshInFlight = useRef(false);
+    const refreshQueued = useRef(false);
+    const refreshQueueSkipActivity = useRef<boolean | null>(null);
     const latenessFetchMetaRef = useRef<{ key: string | null; timestamp: number }>({ key: null, timestamp: 0 });
     const latenessInFlightRef = useRef(false);
 
     const backgroundConfig = useMemo(() => ({ headers: { 'x-skip-activity': '1' } }), []);
 
     const refreshAll = useCallback(async (skipActivity = false) => {
-        if (refreshInFlight.current) return;
+        if (refreshInFlight.current) {
+            refreshQueued.current = true;
+            refreshQueueSkipActivity.current =
+                refreshQueueSkipActivity.current === null
+                    ? skipActivity
+                    : refreshQueueSkipActivity.current && skipActivity;
+            return;
+        }
         refreshInFlight.current = true;
         try {
             const config = skipActivity ? backgroundConfig : undefined;
@@ -160,6 +169,12 @@ export default function RequestsClient({ locale }: { locale: string }) {
             if (isAuthError(error)) return;
         } finally {
             refreshInFlight.current = false;
+            if (refreshQueued.current) {
+                const queuedSkip = refreshQueueSkipActivity.current ?? false;
+                refreshQueued.current = false;
+                refreshQueueSkipActivity.current = null;
+                void refreshAll(queuedSkip);
+            }
         }
     }, [backgroundConfig]);
 
