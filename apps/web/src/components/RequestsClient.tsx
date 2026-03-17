@@ -12,6 +12,7 @@ import PageLoader from './PageLoader';
 import EmployeeHistoryModal from './EmployeeHistoryModal';
 import ConfirmDialog from './ConfirmDialog';
 import DateRangeFilter from './DateRangeFilter';
+import AsyncActionButton from './AsyncActionButton';
 
 type Department = { id: string; name: string; nameAr?: string | null };
 type RequestUser = {
@@ -793,32 +794,32 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                                     {t('printPdf')}
                                                 </a>
                                                 {row.status === 'PENDING' && (
-                                                    <button className="btn-outline" onClick={() => onCancel(row)} disabled={rowBusy}>
+                                                    <AsyncActionButton className="btn-outline" onClick={() => onCancel(row)} externalPending={rowBusy}>
                                                         {t('cancel')}
-                                                    </button>
+                                                    </AsyncActionButton>
                                                 )}
                                                 {canManage && (
                                                     <>
                                                         {((isSecretary && row.status === 'PENDING') ||
                                                             (isManager && row.status === 'MANAGER_APPROVED' && !row.approvedByMgrId) ||
                                                             (isHr && row.status === 'MANAGER_APPROVED' && !!row.approvedByMgrId)) && (
-                                                            <button className="btn-primary" onClick={() => onApprove(row)} disabled={rowBusy}>
+                                                            <AsyncActionButton className="btn-primary" onClick={() => onApprove(row)} externalPending={rowBusy}>
                                                                 {isSecretary ? t('verify') : t('approve')}
-                                                            </button>
+                                                            </AsyncActionButton>
                                                         )}
                                                         {((isSecretary && row.status === 'PENDING') ||
                                                             (isManager && row.status === 'MANAGER_APPROVED' && !row.approvedByMgrId) ||
                                                             (isHr && row.status === 'MANAGER_APPROVED' && !!row.approvedByMgrId)) && (
-                                                            <button className="btn-secondary" onClick={() => onReject(row)} disabled={rowBusy}>
+                                                            <AsyncActionButton className="btn-secondary" onClick={() => onReject(row)} externalPending={rowBusy}>
                                                                 {t('reject')}
-                                                            </button>
+                                                            </AsyncActionButton>
                                                         )}
                                                     </>
                                                 )}
                                                 {canAdmin && ['PENDING', 'REJECTED', 'CANCELLED'].includes(row.status) && (
-                                                    <button className="btn-outline" onClick={() => onDelete(row)} disabled={rowBusy}>
+                                                    <AsyncActionButton className="btn-outline" onClick={() => onDelete(row)} externalPending={rowBusy}>
                                                         {t('delete')}
-                                                    </button>
+                                                    </AsyncActionButton>
                                                 )}
                                             </div>
                                         </td>
@@ -991,32 +992,32 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                                             {t('printPdf')}
                                                         </a>
                                                         {row.status === 'PENDING' && (
-                                                            <button className="btn-outline" onClick={() => onCancel(row)} disabled={rowBusy}>
+                                                            <AsyncActionButton className="btn-outline" onClick={() => onCancel(row)} externalPending={rowBusy}>
                                                                 {t('cancel')}
-                                                            </button>
+                                                            </AsyncActionButton>
                                                         )}
                                                         {canManage && (
                                                             <>
                                                                 {((isSecretary && row.status === 'PENDING') ||
                                                                     (isManager && row.status === 'MANAGER_APPROVED' && !row.approvedByMgrId) ||
                                                                     (isHr && row.status === 'MANAGER_APPROVED' && !!row.approvedByMgrId)) && (
-                                                                    <button className="btn-primary" onClick={() => onApprove(row)} disabled={rowBusy}>
+                                                                    <AsyncActionButton className="btn-primary" onClick={() => onApprove(row)} externalPending={rowBusy}>
                                                                         {isSecretary ? t('verify') : t('approve')}
-                                                                    </button>
+                                                                    </AsyncActionButton>
                                                                 )}
                                                                 {((isSecretary && row.status === 'PENDING') ||
                                                                     (isManager && row.status === 'MANAGER_APPROVED' && !row.approvedByMgrId) ||
                                                                     (isHr && row.status === 'MANAGER_APPROVED' && !!row.approvedByMgrId)) && (
-                                                                    <button className="btn-secondary" onClick={() => onReject(row)} disabled={rowBusy}>
+                                                                    <AsyncActionButton className="btn-secondary" onClick={() => onReject(row)} externalPending={rowBusy}>
                                                                         {t('reject')}
-                                                                    </button>
+                                                                    </AsyncActionButton>
                                                                 )}
                                                             </>
                                                         )}
                                                         {canAdmin && ['PENDING', 'REJECTED', 'CANCELLED'].includes(row.status) && (
-                                                            <button className="btn-outline" onClick={() => onDelete(row)} disabled={rowBusy}>
+                                                            <AsyncActionButton className="btn-outline" onClick={() => onDelete(row)} externalPending={rowBusy}>
                                                                 {t('delete')}
-                                                            </button>
+                                                            </AsyncActionButton>
                                                         )}
                                                     </div>
                                                 </td>

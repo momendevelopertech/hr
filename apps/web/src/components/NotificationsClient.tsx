@@ -8,6 +8,7 @@ import { usePusherChannel } from '@/lib/use-pusher-channel';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import PageLoader from './PageLoader';
 import DateRangeFilter from './DateRangeFilter';
+import AsyncActionButton from './AsyncActionButton';
 
 type NotificationItem = {
     id: string;
@@ -166,9 +167,17 @@ export default function NotificationsClient({ locale }: { locale: string }) {
         return () => clearInterval(interval);
     }, [ready, refreshAll]);
 
+    const [markAllPending, setMarkAllPending] = useState(false);
+
     const markAll = async () => {
-        await api.patch('/notifications/read-all');
-        fetchAll();
+        if (markAllPending) return;
+        setMarkAllPending(true);
+        try {
+            await api.patch('/notifications/read-all');
+            await fetchAll();
+        } finally {
+            setMarkAllPending(false);
+        }
     };
 
     const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-US';
@@ -183,7 +192,14 @@ export default function NotificationsClient({ locale }: { locale: string }) {
             <section className="card p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-lg font-semibold">{t('title')}</h2>
-                    <button className="btn-outline" onClick={markAll}>{t('markAllRead')}</button>
+                    <AsyncActionButton
+                        className="btn-outline"
+                        onClick={markAll}
+                        externalPending={markAllPending}
+                        pendingLabel={t('markAllRead')}
+                    >
+                        {t('markAllRead')}
+                    </AsyncActionButton>
                 </div>
 
                 <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-6">

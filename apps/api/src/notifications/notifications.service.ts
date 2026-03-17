@@ -233,6 +233,13 @@ export class NotificationsService {
         }
     }
 
+
+    private runInBackground(task: Promise<unknown>, context: string) {
+        task.catch((error: any) => {
+            this.logger.error(`${context}: ${error?.message || 'Unknown background task error'}`);
+        });
+    }
+
     async sendEmail(options: { to: string; subject: string; html: string }) {
         if (!process.env.MAIL_USER) {
             this.logger.warn('Email not configured');
@@ -307,15 +314,18 @@ export class NotificationsService {
         });
 
         if (['submitted', 'approved', 'rejected'].includes(action)) {
+            const jobs: Promise<unknown>[] = [];
             if (user.phone) {
-                await this.sendWhatsApp(user.phone, `SPHINX HR: ${titles[action].en}\n${bodies[action].en}`);
+                jobs.push(this.sendWhatsApp(user.phone, `SPHINX HR: ${titles[action].en}
+${bodies[action].en}`));
             }
-
-            await this.sendEmail({
+            jobs.push(this.sendEmail({
                 to: user.email,
                 subject: `SPHINX HR - ${titles[action].en}`,
                 html: `<div style="font-family:sans-serif;max-width:600px"><h2>${titles[action].en}</h2><p>${bodies[action].en}</p><p>Login to SPHINX HR for details.</p></div>`,
-            });
+            }));
+
+            this.runInBackground(Promise.allSettled(jobs), `Deferred leave external notifications (${action}) failed`);
         }
     }
 
@@ -381,7 +391,10 @@ export class NotificationsService {
         });
 
         if (options?.sendExternal && user.phone) {
-            await this.sendWhatsApp(user.phone, `SPHINX HR: ${titles[action].en}\n${body}`);
+            this.runInBackground(
+                this.sendWhatsApp(user.phone, `SPHINX HR: ${titles[action].en}\n${body}`),
+                `Deferred permission external notification (${action}) failed`,
+            );
         }
     }
 }
