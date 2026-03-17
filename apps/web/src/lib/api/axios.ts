@@ -176,14 +176,12 @@ api.defaults.adapter = async (config) => {
     const method = (config.method || 'get').toLowerCase();
     const skipCache = config.headers?.['x-no-cache'];
     const allowCacheHeader = config.headers?.['x-allow-cache'];
-    const forceDisableCache = allowCacheHeader === '0';
     const explicitAllowCache = allowCacheHeader === '1';
     const shouldUseCache =
         method === 'get' &&
+        explicitAllowCache &&
         !skipCache &&
-        !forceDisableCache &&
-        !isAuthEndpoint(config.url) &&
-        (explicitAllowCache || allowCacheHeader === undefined);
+        !isAuthEndpoint(config.url);
 
     if (shouldUseCache) {
         const key = getCacheKey(config);
