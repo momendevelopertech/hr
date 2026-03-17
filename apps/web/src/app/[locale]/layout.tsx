@@ -16,6 +16,7 @@ const cairo = Cairo({
     subsets: ['arabic', 'latin'],
     variable: '--font-primary',
     weight: ['400', '500', '600', '700'],
+    preload: false,
 });
 
 export const metadata = {

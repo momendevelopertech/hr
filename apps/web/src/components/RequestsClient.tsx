@@ -143,6 +143,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
     const refreshInFlight = useRef(false);
     const refreshQueued = useRef(false);
     const refreshQueueSkipActivity = useRef<boolean | null>(null);
+    const suppressRealtimeRefreshUntilRef = useRef(0);
     const latenessFetchMetaRef = useRef<{ key: string | null; timestamp: number }>({ key: null, timestamp: 0 });
     const latenessInFlightRef = useRef(false);
 
@@ -217,7 +218,10 @@ export default function RequestsClient({ locale }: { locale: string }) {
 
     const notificationHandlers = useMemo(
         () => ({
-            notification: () => refreshAll(true),
+            notification: () => {
+                if (Date.now() < suppressRealtimeRefreshUntilRef.current) return;
+                refreshAll(true);
+            },
         }),
         [refreshAll],
     );
@@ -324,15 +328,15 @@ export default function RequestsClient({ locale }: { locale: string }) {
         }
     };
 
-    const approveLeave = (id: string) => api.patch(`/leaves/${id}/approve`).then(fetchAll);
-    const rejectLeave = (id: string) => api.patch(`/leaves/${id}/reject`).then(fetchAll);
-    const cancelLeave = (id: string) => api.patch(`/leaves/${id}/cancel`).then(fetchAll);
-    const deleteLeave = (id: string) => api.delete(`/leaves/${id}`).then(fetchAll);
+    const approveLeave = (id: string) => api.patch(`/leaves/${id}/approve`).then(() => refreshAll(true));
+    const rejectLeave = (id: string) => api.patch(`/leaves/${id}/reject`).then(() => refreshAll(true));
+    const cancelLeave = (id: string) => api.patch(`/leaves/${id}/cancel`).then(() => refreshAll(true));
+    const deleteLeave = (id: string) => api.delete(`/leaves/${id}`).then(() => refreshAll(true));
 
-    const approvePermission = (id: string) => api.patch(`/permissions/${id}/approve`).then(fetchAll);
-    const rejectPermission = (id: string) => api.patch(`/permissions/${id}/reject`).then(fetchAll);
-    const cancelPermission = (id: string) => api.patch(`/permissions/${id}/cancel`).then(fetchAll);
-    const deletePermission = (id: string) => api.delete(`/permissions/${id}`).then(fetchAll);
+    const approvePermission = (id: string) => api.patch(`/permissions/${id}/approve`).then(() => refreshAll(true));
+    const rejectPermission = (id: string) => api.patch(`/permissions/${id}/reject`).then(() => refreshAll(true));
+    const cancelPermission = (id: string) => api.patch(`/permissions/${id}/cancel`).then(() => refreshAll(true));
+    const deletePermission = (id: string) => api.delete(`/permissions/${id}`).then(() => refreshAll(true));
 
     const leaveRows = useMemo<RequestRow[]>(
         () =>
@@ -561,6 +565,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
         const key = getRowKey(row);
         if (actionBusy[key]) return Promise.resolve();
         setRowBusy(key, true);
+        suppressRealtimeRefreshUntilRef.current = Date.now() + 1500;
         const action = row.requestType === 'leave' ? approveLeave(row.id) : approvePermission(row.id);
         return action.finally(() => setRowBusy(key, false));
     };
@@ -569,6 +574,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
         const key = getRowKey(row);
         if (actionBusy[key]) return Promise.resolve();
         setRowBusy(key, true);
+        suppressRealtimeRefreshUntilRef.current = Date.now() + 1500;
         const action = row.requestType === 'leave' ? rejectLeave(row.id) : rejectPermission(row.id);
         return action.finally(() => setRowBusy(key, false));
     };
@@ -577,6 +583,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
         const key = getRowKey(row);
         if (actionBusy[key]) return Promise.resolve();
         setRowBusy(key, true);
+        suppressRealtimeRefreshUntilRef.current = Date.now() + 1500;
         const action = row.requestType === 'leave' ? cancelLeave(row.id) : cancelPermission(row.id);
         return action.finally(() => setRowBusy(key, false));
     };

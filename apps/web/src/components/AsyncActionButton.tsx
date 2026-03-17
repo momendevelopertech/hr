@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
 
 type AsyncActionButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'children'> & {
     onClick: (event: MouseEvent<HTMLButtonElement>) => void | Promise<unknown>;
@@ -18,15 +18,18 @@ export default function AsyncActionButton({
     ...props
 }: AsyncActionButtonProps) {
     const [internalPending, setInternalPending] = useState(false);
+    const clickLockRef = useRef(false);
     const isPending = internalPending || externalPending;
 
     const handleClick = useCallback(async (event: MouseEvent<HTMLButtonElement>) => {
-        if (isPending || disabled) return;
+        if (isPending || disabled || clickLockRef.current) return;
+        clickLockRef.current = true;
         setInternalPending(true);
         try {
             await onClick(event);
         } finally {
             setInternalPending(false);
+            clickLockRef.current = false;
         }
     }, [disabled, isPending, onClick]);
 

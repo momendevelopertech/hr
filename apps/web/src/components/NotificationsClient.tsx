@@ -174,7 +174,7 @@ export default function NotificationsClient({ locale }: { locale: string }) {
         setMarkAllPending(true);
         try {
             await api.patch('/notifications/read-all');
-            await fetchAll();
+            await refreshAll(true);
         } finally {
             setMarkAllPending(false);
         }

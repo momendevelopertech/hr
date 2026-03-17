@@ -36,8 +36,10 @@ export class NotificationsService {
         metadata?: any;
     }) {
         const notification = await this.prisma.notification.create({ data });
-        // Realtime: notify receiver on their scoped channel.
-        await this.pusher.triggerToUser(data.receiverId, 'notification', notification);
+        this.runInBackground(
+            this.pusher.triggerToUser(data.receiverId, 'notification', notification),
+            'Failed to send realtime notification',
+        );
         return notification;
     }
 
@@ -54,16 +56,18 @@ export class NotificationsService {
         if (!items.length) return;
 
         await this.prisma.notification.createMany({ data: items });
-        await Promise.all(
-            items.map((item) => this.pusher.triggerToUser(item.receiverId, 'notification', { type: item.type })),
+        this.runInBackground(
+            Promise.allSettled(items.map((item) => this.pusher.triggerToUser(item.receiverId, 'notification', { type: item.type }))).then(() => undefined),
+            'Failed to send realtime bulk notifications',
         );
     }
 
     async emitRealtimeToUsers(userIds: string[], payload: Record<string, any> = { type: 'REQUEST_UPDATED' }) {
         const unique = Array.from(new Set(userIds.filter(Boolean)));
         if (unique.length === 0) return;
-        await Promise.all(
-            unique.map((userId) => this.pusher.triggerToUser(userId, 'notification', payload)),
+        this.runInBackground(
+            Promise.allSettled(unique.map((userId) => this.pusher.triggerToUser(userId, 'notification', payload))).then(() => undefined),
+            'Failed to emit realtime updates',
         );
     }
 
@@ -100,7 +104,10 @@ export class NotificationsService {
             })),
         });
 
-        await Promise.all(users.map((user) => this.pusher.triggerToUser(user.id, 'notification', { type: data.type })));
+        this.runInBackground(
+            Promise.allSettled(users.map((user) => this.pusher.triggerToUser(user.id, 'notification', { type: data.type }))).then(() => undefined),
+            'Failed to broadcast realtime notifications',
+        );
         return { sent: users.length };
     }
 
@@ -316,8 +323,7 @@ export class NotificationsService {
         if (['submitted', 'approved', 'rejected'].includes(action)) {
             const jobs: Promise<unknown>[] = [];
             if (user.phone) {
-                jobs.push(this.sendWhatsApp(user.phone, `SPHINX HR: ${titles[action].en}
-${bodies[action].en}`));
+                jobs.push(this.sendWhatsApp(user.phone, `SPHINX HR: ${titles[action].en}\n${bodies[action].en}`));
             }
             jobs.push(this.sendEmail({
                 to: user.email,
