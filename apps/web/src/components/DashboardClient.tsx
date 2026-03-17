@@ -269,16 +269,18 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     ]), [dashboardStats.pendingTotal, dashboardStats.remainingPermissions, dashboardStats.totalRemaining, t]);
 
     const pendingStats = useMemo(() => {
-        const pendingLeaves = leaves.filter((r) => r.status === 'PENDING').length;
+        const pendingLeaves = leaves.filter((r) => r.status === 'PENDING' && r.leaveType !== 'MISSION' && r.leaveType !== 'ABSENCE_WITH_PERMISSION').length;
+        const pendingMission = leaves.filter((r) => r.status === 'PENDING' && r.leaveType === 'MISSION').length;
+        const pendingAbsence = leaves.filter((r) => r.status === 'PENDING' && r.leaveType === 'ABSENCE_WITH_PERMISSION').length;
         const pendingPermissions = permissions.filter((r) => r.status === 'PENDING').length;
-        const pendingForms = forms.filter((r) => r.status === 'PENDING').length;
 
         return [
-            { id: 'pending-leaves', label: t('pendingLeavesLabel'), value: `${pendingLeaves}`, color: 'teal' as const },
             { id: 'pending-permissions', label: t('pendingPermissionsLabel'), value: `${pendingPermissions}`, color: 'amber' as const },
-            { id: 'pending-forms', label: t('pendingFormsLabel'), value: `${pendingForms}`, color: 'violet' as const },
+            { id: 'pending-leaves', label: t('pendingLeavesLabel'), value: `${pendingLeaves}`, color: 'teal' as const },
+            { id: 'pending-mission', label: t('pendingMissionLabel'), value: `${pendingMission}`, color: 'violet' as const },
+            { id: 'pending-absence', label: t('pendingAbsenceLabel'), value: `${pendingAbsence}`, color: 'rose' as const },
         ];
-    }, [forms, leaves, permissions, t]);
+    }, [leaves, permissions, t]);
 
     const deductionStats = useMemo(() => ([
         {

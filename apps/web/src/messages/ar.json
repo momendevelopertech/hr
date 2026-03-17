@@ -130,6 +130,8 @@
     "rejectLabel": "✕ رفض",
     "pendingLeavesLabel": "الإجازات",
     "pendingPermissionsLabel": "الأذونات",
+    "pendingMissionLabel": "مأمورية",
+    "pendingAbsenceLabel": "غياب بإذن",
     "pendingFormsLabel": "النماذج",
     "approvalLeaveFallback": "طلب إجازة",
     "approvalPermissionFallback": "طلب إذن",

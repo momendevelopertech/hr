@@ -52,7 +52,7 @@ export default function DashboardSidePanel({
 
             <div>
                 <div className="rp-section-title">{t('pendingRequestsTitle')}</div>
-                <div className="summary-list">
+                <div className="summary-grid">
                     {pendingStats.length === 0 && (
                         <div className="panel-empty">{t('noPendingRequests')}</div>
                     )}

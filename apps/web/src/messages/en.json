@@ -130,6 +130,8 @@
     "rejectLabel": "✕ Reject",
     "pendingLeavesLabel": "Leaves",
     "pendingPermissionsLabel": "Permissions",
+    "pendingMissionLabel": "Mission",
+    "pendingAbsenceLabel": "Absence with permission",
     "pendingFormsLabel": "Forms",
     "approvalLeaveFallback": "Leave request",
     "approvalPermissionFallback": "Permission request",
