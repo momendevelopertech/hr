@@ -5,21 +5,16 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { Toaster } from 'react-hot-toast';
 import { defaultLocale, locales } from '@/i18n/routing';
-import { Noto_Kufi_Arabic, Sora } from 'next/font/google';
+import { Cairo } from 'next/font/google';
 import ClientCacheManager from '@/components/ClientCacheManager';
 import PwaRegistrar from '@/components/PwaRegistrar';
 import { AuthProvider } from '@/context/AuthContext';
 import SessionTimeoutManager from '@/components/SessionTimeoutManager';
 import ReactQueryProvider from '@/components/ReactQueryProvider';
 
-const notoKufiArabic = Noto_Kufi_Arabic({
-    subsets: ['arabic'],
-    variable: '--font-arabic-primary',
-    weight: ['400', '500', '600', '700'],
-});
-const sora = Sora({
-    subsets: ['latin'],
-    variable: '--font-latin-primary',
+const cairo = Cairo({
+    subsets: ['arabic', 'latin'],
+    variable: '--font-primary',
     weight: ['400', '500', '600', '700'],
 });
 
@@ -49,11 +44,11 @@ export default async function LocaleLayout({
     if (!locale) notFound();
     const messages = await getMessages();
     const dir = locale === 'ar' ? 'rtl' : 'ltr';
-    const fontClass = locale === 'ar' ? notoKufiArabic.variable : sora.variable;
+    const fontClass = cairo.variable;
 
     return (
         <html lang={locale} dir={dir} className={fontClass}>
-            <body className={`bg-atmosphere text-ink ${locale === 'ar' ? 'font-ar' : 'font-base'}`}>
+            <body className="bg-atmosphere text-ink font-base">
                 <NextIntlClientProvider messages={messages}>
                     <ReactQueryProvider>
                         <AuthProvider locale={locale}>

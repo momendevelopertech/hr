@@ -131,11 +131,11 @@ body {
 .tb-icon { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--r-sm); display: inline-flex; align-items: center; justify-content: center; }
 
 .font-base {
-    font-family: var(--font-latin-primary), 'Segoe UI', sans-serif;
+    font-family: var(--font-primary), 'Segoe UI', sans-serif;
 }
 
 .font-ar {
-    font-family: var(--font-arabic-primary), 'Segoe UI', sans-serif;
+    font-family: var(--font-primary), 'Segoe UI', sans-serif;
 }
 
 .bg-atmosphere {
