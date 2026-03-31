@@ -657,10 +657,11 @@ export default function RequestsClient({ locale }: { locale: string }) {
     }
 
     const deductionsCount = rowsByTab.deductions.length + (latenessSummary.totalCount || 0);
-    const tabs: Array<{ key: 'all' | 'leave' | 'permission' | 'mission' | 'deductions'; label: string; count: number }> = [
+    const tabs: Array<{ key: 'all' | 'leave' | 'permission' | 'absence' | 'mission' | 'deductions'; label: string; count: number }> = [
         { key: 'all', label: t('tabAll'), count: rowsByTab.all.length },
         { key: 'permission', label: t('tabPermission'), count: rowsByTab.permission.length },
         { key: 'leave', label: t('tabLeave'), count: rowsByTab.leave.length },
+        { key: 'absence', label: t('tabAbsence'), count: rowsByTab.absence.length },
         { key: 'mission', label: t('tabMission'), count: rowsByTab.mission.length },
         { key: 'deductions', label: t('tabDeductions'), count: deductionsCount },
     ];
