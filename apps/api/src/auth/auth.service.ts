@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
+import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { addDays, addMinutes } from 'date-fns';
@@ -25,7 +26,28 @@ export class AuthService {
         private jwtService: JwtService,
         private notificationsService: NotificationsService,
         private auditService: AuditService,
+        private usersService: UsersService,
     ) { }
+
+    private buildUserProfile(user: any) {
+        return {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            fullName: user.fullName,
+            fullNameAr: user.fullNameAr,
+            role: user.role,
+            governorate: user.governorate,
+            branchId: user.branchId,
+            mustChangePass: user.mustChangePass,
+            department: user.department,
+            profileImage: user.profileImage,
+            employeeNumber: user.employeeNumber,
+            jobTitle: user.jobTitle,
+            jobTitleAr: user.jobTitleAr,
+            workflowMode: user.workflowMode,
+        };
+    }
 
     private getRefreshTokenSecret() {
         return (
@@ -47,6 +69,44 @@ export class AuthService {
             where: { userId, tokenType: 'REFRESH' },
             data: { isRevoked: true },
         });
+    }
+
+    async getRegistrationOptions() {
+        const [branches, departments] = await Promise.all([
+            this.prisma.branch.findMany({
+                orderBy: { id: 'asc' },
+                select: { id: true, name: true, nameAr: true },
+            }),
+            this.prisma.department.findMany({
+                orderBy: { name: 'asc' },
+                select: {
+                    id: true,
+                    name: true,
+                    nameAr: true,
+                    branches: {
+                        select: {
+                            branch: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    nameAr: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            }),
+        ]);
+
+        return {
+            branches,
+            departments: departments.map((department) => ({
+                id: department.id,
+                name: department.name,
+                nameAr: department.nameAr,
+                branches: department.branches.map((link) => link.branch),
+            })),
+        };
     }
 
     async login(identifier: string, password: string, rememberMe = false, ipAddress?: string, userAgent?: string) {
@@ -138,18 +198,44 @@ export class AuthService {
         return {
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
-            user: {
-                id: user.id,
-                email: user.email,
-                username: user.username,
-                fullName: user.fullName,
-                fullNameAr: user.fullNameAr,
-                role: user.role,
-                mustChangePass: user.mustChangePass,
-                department: user.department,
-                profileImage: user.profileImage,
-                employeeNumber: user.employeeNumber,
-            },
+            user: this.buildUserProfile(user),
+        };
+    }
+
+    async register(
+        data: {
+            fullName: string;
+            fullNameAr?: string;
+            email: string;
+            phone?: string;
+            password: string;
+            branchId: number;
+            departmentId: string;
+            jobTitle: string;
+            jobTitleAr?: string;
+        },
+        ipAddress?: string,
+        userAgent?: string,
+    ) {
+        const user = await this.usersService.createSelfRegisteredUser(data);
+
+        await this.auditService.log({
+            userId: user.id,
+            action: 'LOGIN',
+            ipAddress,
+            userAgent,
+            details: { selfRegistered: true },
+        });
+
+        const tokens = await this.generateTokens(user.id, user.email, user.role, undefined, {
+            ipAddress,
+            userAgent,
+        });
+
+        return {
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            user: this.buildUserProfile(user),
         };
     }
 
@@ -289,6 +375,41 @@ export class AuthService {
         });
 
         await this.auditService.log({ userId: stored.userId, action: 'PASSWORD_RESET' });
+    }
+
+    async updateWorkflowMode(userId: string, workflowMode: 'SANDBOX' | 'APPROVAL_WORKFLOW') {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: { department: true },
+        });
+
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        if (user.role !== 'EMPLOYEE') {
+            throw new ForbiddenException('Only employees can switch workflow mode');
+        }
+
+        if (user.workflowMode === workflowMode) {
+            return this.buildUserProfile(user);
+        }
+
+        const updated = await this.prisma.user.update({
+            where: { id: userId },
+            data: { workflowMode },
+            include: { department: true },
+        });
+
+        await this.auditService.log({
+            userId,
+            action: 'EMPLOYEE_UPDATED',
+            entity: 'User',
+            entityId: userId,
+            details: { workflowMode },
+        });
+
+        return this.buildUserProfile(updated);
     }
 
     private getRememberMeRefreshDays() {

@@ -2,6 +2,7 @@ type Locale = 'en' | 'ar';
 type StatusLabelOptions = {
     requestType?: 'leave' | 'permission';
     approvedByMgrId?: string | null;
+    approvedByHrId?: string | null;
 };
 
 const labels = {
@@ -86,9 +87,16 @@ function getStatusLabel(value: string, locale: Locale, options?: StatusLabelOpti
                 ? 'تمت الموافقة من المدير'
                 : 'Approved by manager';
         }
+
         return locale === 'ar'
             ? 'في انتظار موافقة المدير'
             : 'Awaiting manager approval';
+    }
+
+    if (isRequest && value === 'HR_APPROVED' && options && Object.prototype.hasOwnProperty.call(options, 'approvedByHrId') && !options.approvedByHrId) {
+        return locale === 'ar'
+            ? 'اعتماد تلقائي (وضع التجربة)'
+            : 'Auto-approved (Sandbox)';
     }
 
     return getLabel('status', value, locale);

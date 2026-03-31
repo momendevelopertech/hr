@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { KeyRound, Languages, LogOut, Moon, Sun } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PwaInstallButton from './PwaInstallButton';
+import WorkflowModeSwitch from './WorkflowModeSwitch';
 
 export default function SidebarFooter({
     locale,
@@ -101,6 +102,7 @@ export default function SidebarFooter({
 
     return (
         <div className={`sidebar-footer${collapsed ? ' is-collapsed' : ''}`} ref={menuRef}>
+            <WorkflowModeSwitch locale={locale} collapsed={collapsed} />
             <div className="sidebar-tools">
                 <button className="tb-icon" type="button" onClick={() => switchLocale(locale === 'ar' ? 'en' : 'ar')} title={locale === 'ar' ? 'English' : 'العربية'}>
                     <Languages size={14} />

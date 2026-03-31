@@ -63,6 +63,76 @@ export class UsersService {
         return this.prisma.branch.findFirst({ where: { name: branchName } });
     }
 
+    private normalizeUsernameBase(value?: string) {
+        const normalized = (value || '')
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 24);
+        return normalized || 'employee';
+    }
+
+    private async generateUniqueUsername(fullName: string, email: string) {
+        const base = this.normalizeUsernameBase(fullName) || this.normalizeUsernameBase(email.split('@')[0]);
+
+        for (let attempt = 0; attempt < 100; attempt += 1) {
+            const suffix = attempt === 0 ? '' : `-${attempt + 1}`;
+            const candidate = `${base}${suffix}`.slice(0, 32);
+            const existing = await this.prisma.user.findUnique({ where: { username: candidate } });
+            if (!existing) {
+                return candidate;
+            }
+        }
+
+        return `${base}-${Date.now().toString().slice(-6)}`.slice(0, 32);
+    }
+
+    private async generateEmployeeNumber() {
+        const numbers = await this.prisma.user.findMany({
+            where: { employeeNumber: { startsWith: 'EMP-' } },
+            select: { employeeNumber: true },
+        });
+
+        let nextNumber = numbers.reduce((max, item) => {
+            const match = /^EMP-(\d+)$/.exec(item.employeeNumber || '');
+            if (!match) return max;
+            const parsed = parseInt(match[1], 10);
+            return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
+        }, 0) + 1;
+
+        for (;;) {
+            const candidate = `EMP-${String(nextNumber).padStart(4, '0')}`;
+            const existing = await this.prisma.user.findUnique({ where: { employeeNumber: candidate } });
+            if (!existing) {
+                return candidate;
+            }
+            nextNumber += 1;
+        }
+    }
+
+    private async initializeLeaveBalances(userId: string, year = new Date().getFullYear()) {
+        const defaults = [
+            { leaveType: 'ANNUAL', totalDays: 21 },
+            { leaveType: 'CASUAL', totalDays: 7 },
+            { leaveType: 'EMERGENCY', totalDays: 3 },
+            { leaveType: 'MISSION', totalDays: 10 },
+        ] as const;
+
+        await this.prisma.leaveBalance.createMany({
+            data: defaults.map((item) => ({
+                userId,
+                year,
+                leaveType: item.leaveType,
+                totalDays: item.totalDays,
+                usedDays: 0,
+                remainingDays: item.totalDays,
+            })),
+            skipDuplicates: true,
+        });
+    }
+
     // Request history cycle: day 11 to day 10 next month.
     private getCycleRange(date: Date) {
         return getCycleRange(date, { endOfDay: true });
@@ -73,6 +143,115 @@ export class UsersService {
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
+    }
+
+    async createSelfRegisteredUser(data: {
+        fullName: string;
+        fullNameAr?: string;
+        email: string;
+        phone?: string;
+        password: string;
+        branchId: number;
+        departmentId: string;
+        jobTitle: string;
+        jobTitleAr?: string;
+    }) {
+        const normalizedEmail = data.email.trim().toLowerCase();
+        const normalizedPhone = this.validatePhone(data.phone);
+        const jobTitle = data.jobTitle?.trim();
+        if (!jobTitle) {
+            throw new BadRequestException('Job title is required');
+        }
+
+        const branchId = this.parseBranchId(data.branchId);
+        if (!branchId) {
+            throw new BadRequestException('Branch is required');
+        }
+
+        const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
+        if (!branch) {
+            throw new BadRequestException('Invalid branch selection');
+        }
+
+        if (!data.departmentId) {
+            throw new BadRequestException('Department is required');
+        }
+
+        const departmentLink = await this.prisma.departmentBranch.findFirst({
+            where: {
+                departmentId: data.departmentId,
+                branchId,
+            },
+        });
+        if (!departmentLink) {
+            throw new BadRequestException('Department is not available in this branch');
+        }
+
+        const existing = await this.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: normalizedEmail },
+                ],
+            },
+        });
+        if (existing) {
+            throw new ConflictException('Employee with this email already exists');
+        }
+
+        const employeeNumber = await this.generateEmployeeNumber();
+        const username = await this.generateUniqueUsername(data.fullName, normalizedEmail);
+        const passwordHash = await bcrypt.hash(data.password, 12);
+        const governorate = this.inferGovernorateFromBranchName(branch.name);
+
+        const user = await this.prisma.user.create({
+            data: {
+                employeeNumber,
+                username,
+                fullName: data.fullName.trim(),
+                fullNameAr: data.fullNameAr?.trim() || null,
+                email: normalizedEmail,
+                phone: normalizedPhone,
+                passwordHash,
+                role: 'EMPLOYEE',
+                governorate,
+                branchId,
+                departmentId: data.departmentId,
+                jobTitle,
+                jobTitleAr: data.jobTitleAr?.trim() || null,
+                fingerprintId: employeeNumber,
+                mustChangePass: false,
+                workflowMode: 'SANDBOX',
+            },
+            include: { department: true },
+        });
+
+        await this.initializeLeaveBalances(user.id);
+
+        await this.auditService.log({
+            userId: user.id,
+            action: 'EMPLOYEE_CREATED',
+            entity: 'User',
+            entityId: user.id,
+            details: {
+                employeeNumber: user.employeeNumber,
+                email: user.email,
+                username,
+                selfRegistered: true,
+                workflowMode: user.workflowMode,
+            },
+        });
+
+        await this.notificationsService.createInApp({
+            receiverId: user.id,
+            type: 'ACCOUNT_CREATED',
+            title: 'Welcome to SPHINX HR',
+            titleAr: 'مرحبًا بك في SPHINX HR',
+            body: 'Your account is ready in Sandbox Mode. New requests will be approved automatically.',
+            bodyAr: 'حسابك جاهز في وضع التجربة. أي طلبات جديدة سيتم اعتمادها تلقائيًا.',
+            metadata: { workflowMode: user.workflowMode, selfRegistered: true },
+        });
+
+        return user;
     }
 
     async create(data: CreateUserDto, createdById?: string) {
@@ -152,6 +331,7 @@ export class UsersService {
                 jobTitleAr: data.jobTitleAr,
                 fingerprintId: data.fingerprintId || data.employeeNumber,
                 mustChangePass: true,
+                workflowMode: 'APPROVAL_WORKFLOW',
             },
             include: { department: true },
         });
@@ -164,20 +344,7 @@ export class UsersService {
             details: { employeeNumber: user.employeeNumber, email: user.email, username: generatedUsername },
         });
 
-        const year = new Date().getFullYear();
-        for (const leaveType of ['ANNUAL', 'CASUAL', 'EMERGENCY', 'MISSION'] as const) {
-            const totalDays = leaveType === 'ANNUAL' ? 21 : leaveType === 'CASUAL' ? 7 : leaveType === 'EMERGENCY' ? 3 : 10;
-            await this.prisma.leaveBalance.create({
-                data: {
-                    userId: user.id,
-                    year,
-                    leaveType,
-                    totalDays,
-                    usedDays: 0,
-                    remainingDays: totalDays,
-                },
-            });
-        }
+        await this.initializeLeaveBalances(user.id);
 
         await this.notificationsService.createInApp({
             receiverId: user.id,

@@ -267,6 +267,7 @@ export class NotificationsService {
     async notifyLeaveAction(
         leaveRequest: any,
         action: 'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected',
+        options?: { body?: string; bodyAr?: string; sendExternal?: boolean },
     ) {
         const user = await this.prisma.user.findUnique({ where: { id: leaveRequest.userId } });
         if (!user) return;
@@ -310,25 +311,29 @@ export class NotificationsService {
             rejected: 'LEAVE_REJECTED',
         };
 
+        const body = options?.body?.trim() || bodies[action].en;
+        const bodyAr = options?.bodyAr?.trim() || bodies[action].ar;
+
         await this.createInApp({
             receiverId: user.id,
             type: typeMap[action],
             title: titles[action].en,
             titleAr: titles[action].ar,
-            body: bodies[action].en,
-            bodyAr: bodies[action].ar,
+            body,
+            bodyAr,
             metadata: { leaveRequestId: leaveRequest.id },
         });
 
-        if (['submitted', 'approved', 'rejected'].includes(action)) {
+        const sendExternal = options?.sendExternal ?? ['submitted', 'approved', 'rejected'].includes(action);
+        if (sendExternal) {
             const jobs: Promise<unknown>[] = [];
             if (user.phone) {
-                jobs.push(this.sendWhatsApp(user.phone, `SPHINX HR: ${titles[action].en}\n${bodies[action].en}`));
+                jobs.push(this.sendWhatsApp(user.phone, `SPHINX HR: ${titles[action].en}\n${body}`));
             }
             jobs.push(this.sendEmail({
                 to: user.email,
                 subject: `SPHINX HR - ${titles[action].en}`,
-                html: `<div style="font-family:sans-serif;max-width:600px"><h2>${titles[action].en}</h2><p>${bodies[action].en}</p><p>Login to SPHINX HR for details.</p></div>`,
+                html: `<div style="font-family:sans-serif;max-width:600px"><h2>${titles[action].en}</h2><p>${body}</p><p>Login to SPHINX HR for details.</p></div>`,
             }));
 
             this.runInBackground(Promise.allSettled(jobs), `Deferred leave external notifications (${action}) failed`);
@@ -338,7 +343,7 @@ export class NotificationsService {
     async notifyPermissionAction(
         permissionRequest: any,
         action: 'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected',
-        options?: { comment?: string; sendExternal?: boolean },
+        options?: { comment?: string; body?: string; bodyAr?: string; sendExternal?: boolean },
     ) {
         const user = permissionRequest.user
             || (await this.prisma.user.findUnique({ where: { id: permissionRequest.userId } }));
@@ -383,8 +388,9 @@ export class NotificationsService {
             rejected: 'PERMISSION_REJECTED',
         };
 
-        const body = options?.comment?.trim() ? options.comment : bodies[action].en;
-        const bodyAr = options?.comment?.trim() ? options.comment : bodies[action].ar;
+        const commentBody = options?.comment?.trim();
+        const body = options?.body?.trim() || commentBody || bodies[action].en;
+        const bodyAr = options?.bodyAr?.trim() || commentBody || bodies[action].ar;
 
         await this.createInApp({
             receiverId: user.id,

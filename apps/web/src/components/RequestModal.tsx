@@ -69,6 +69,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
     const tm = useTranslations('requestModal');
     const { user } = useAuthStore();
     const isSecretary = user?.role === 'BRANCH_SECRETARY';
+    const isSandbox = user?.workflowMode === 'SANDBOX';
     const [type, setType] = useState<RequestType | null>(null);
     const [formData, setFormData] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(false);
@@ -312,6 +313,8 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                 toast.success(tm('noteSaved'));
             } else if (type === 'lateness') {
                 toast.success(tm('latenessSaved'));
+            } else if (!isSecretary && isSandbox) {
+                toast.success(tm('autoApprovedToast'));
             } else {
                 toast.success(tm('pendingToast'));
             }
@@ -359,6 +362,12 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                 })}
                             </select>
                         </label>
+                    </div>
+                )}
+
+                {!isSecretary && isSandbox && (
+                    <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                        {tm('sandboxBanner')}
                     </div>
                 )}
 

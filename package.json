@@ -12,9 +12,9 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "db:push": "cd apps/api && ../../node_modules/.bin/prisma db push",
-    "db:generate": "cd apps/api && ../../node_modules/.bin/prisma generate",
-    "db:seed": "cd apps/api && ../../node_modules/.bin/ts-node prisma/seed.ts"
+    "db:push": "npm --prefix apps/api run prisma:push",
+    "db:generate": "npm --prefix apps/api run prisma:generate",
+    "db:seed": "npm --prefix apps/api run prisma:seed"
   },
   "devDependencies": {
     "turbo": "^1.13.0"
@@ -22,5 +22,6 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
-  }
+  },
+  "packageManager": "npm@9.4.0"
 }

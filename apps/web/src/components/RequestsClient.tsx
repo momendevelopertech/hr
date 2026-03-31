@@ -32,6 +32,7 @@ type LeaveRequest = {
     createdAt: string;
     status: string;
     approvedByMgrId?: string | null;
+    approvedByHrId?: string | null;
     user: RequestUser;
 };
 
@@ -43,6 +44,7 @@ type PermissionRequest = {
     hoursUsed: number;
     status: string;
     approvedByMgrId?: string | null;
+    approvedByHrId?: string | null;
     user: RequestUser;
 };
 
@@ -63,6 +65,7 @@ type RequestRow = {
     details: string;
     printUrl: string;
     approvedByMgrId?: string | null;
+    approvedByHrId?: string | null;
     employeeGovernorate?: 'CAIRO' | 'ALEXANDRIA' | null;
     employeeDepartmentId?: string | null;
     searchKey: string;
@@ -368,6 +371,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     details: `${new Date(leave.startDate).toLocaleDateString(dateLocale)} - ${new Date(leave.endDate).toLocaleDateString(dateLocale)}`,
                     printUrl: `/${locale}/requests/print/leave/${leave.id}`,
                     approvedByMgrId: leave.approvedByMgrId,
+                    approvedByHrId: leave.approvedByHrId,
                     employeeGovernorate: leave.user.governorate ?? null,
                     employeeDepartmentId: leave.user.department?.id ?? null,
                     searchKey,
@@ -401,6 +405,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     details: `${perm.hoursUsed}h`,
                     printUrl: `/${locale}/requests/print/permission/${perm.id}`,
                     approvedByMgrId: perm.approvedByMgrId,
+                    approvedByHrId: perm.approvedByHrId,
                     employeeGovernorate: perm.user.governorate ?? null,
                     employeeDepartmentId: perm.user.department?.id ?? null,
                     searchKey,
@@ -809,6 +814,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                                 {enumLabels.status(row.status, locale as 'en' | 'ar', {
                                                     requestType: row.requestType,
                                                     approvedByMgrId: row.approvedByMgrId,
+                                                    approvedByHrId: row.approvedByHrId,
                                                 })}
                                             </span>
                                         </td>
@@ -1007,6 +1013,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                                         {enumLabels.status(row.status, locale as 'en' | 'ar', {
                                                             requestType: row.requestType,
                                                             approvedByMgrId: row.approvedByMgrId,
+                                                            approvedByHrId: row.approvedByHrId,
                                                         })}
                                                     </span>
                                                 </td>

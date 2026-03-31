@@ -83,6 +83,11 @@ enum WorkScheduleMode {
   RAMADAN
 }
 
+enum WorkflowMode {
+  APPROVAL_WORKFLOW
+  SANDBOX
+}
+
 enum AuditAction {
   LOGIN
   LOGOUT
@@ -170,6 +175,7 @@ model User {
   fingerprintId    String?
   isActive         Boolean   @default(true)
   mustChangePass   Boolean   @default(true)
+  workflowMode     WorkflowMode @default(APPROVAL_WORKFLOW)
   failedLoginCount Int       @default(0)
   lockedUntil      DateTime?
   profileImage     String?

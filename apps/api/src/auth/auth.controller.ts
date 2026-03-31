@@ -2,6 +2,7 @@ import {
     Controller,
     Post,
     Body,
+    Patch,
     Req,
     Res,
     UseGuards,
@@ -11,10 +12,10 @@ import {
 } from '@nestjs/common';
 import { CookieOptions, Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { LoginDto, ChangePasswordDto, ResetPasswordRequestDto, ResetPasswordDto } from './dto/auth.dto';
+import { LoginDto, ChangePasswordDto, ResetPasswordRequestDto, ResetPasswordDto, RegisterDto, UpdateWorkflowModeDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { getCookieSettings } from '../shared/cookie-settings';
 
 @ApiTags('auth')
@@ -84,6 +85,25 @@ export class AuthController {
         return { user: result.user, accessToken: result.accessToken };
     }
 
+    @Get('registration-options')
+    async getRegistrationOptions() {
+        return this.authService.getRegistrationOptions();
+    }
+
+    @Post('register')
+    @UseGuards(ThrottlerGuard)
+    @HttpCode(HttpStatus.CREATED)
+    async register(@Body() dto: RegisterDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+        const result = await this.authService.register(dto, req.ip, req.headers['user-agent']);
+        const ages = this.getCookieAges(false);
+
+        res.cookie('access_token', result.accessToken, this.getHttpOnlyCookieOptions(ages.accessMs));
+        res.cookie('refresh_token', result.refreshToken, this.getHttpOnlyCookieOptions(ages.refreshMs));
+        res.clearCookie('remember_me', this.getClearCookieOptions());
+
+        return { user: result.user, accessToken: result.accessToken };
+    }
+
     @Post('logout')
     @HttpCode(HttpStatus.OK)
     async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
@@ -128,6 +148,13 @@ export class AuthController {
         return { message: 'Password changed successfully' };
     }
 
+    @Patch('workflow-mode')
+    @UseGuards(JwtAuthGuard)
+    async updateWorkflowMode(@Body() dto: UpdateWorkflowModeDto, @Req() req: Request) {
+        const user = await this.authService.updateWorkflowMode((req as any).user.id, dto.workflowMode);
+        return { user };
+    }
+
     @Post('forgot-password')
     @UseGuards(ThrottlerGuard)
     @HttpCode(HttpStatus.OK)
@@ -162,6 +189,7 @@ export class AuthController {
             employeeNumber: user.employeeNumber,
             jobTitle: user.jobTitle,
             jobTitleAr: user.jobTitleAr,
+            workflowMode: user.workflowMode,
         };
     }
 

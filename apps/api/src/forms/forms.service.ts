@@ -88,17 +88,60 @@ export class FormsService {
         });
         if (!form) throw new Error('Form not found');
 
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                workflowMode: true,
+            },
+        });
+        if (!user) throw new NotFoundException('User not found');
+        const isSandbox = user.workflowMode === 'SANDBOX';
+
         const submission = await this.prisma.formSubmission.create({
             data: {
                 formId,
                 userId,
                 data,
-                status: 'PENDING',
+                status: isSandbox ? 'HR_APPROVED' : 'PENDING',
+                ...(isSandbox ? { approvedByHrAt: new Date() } : {}),
             },
             include: { user: { include: { department: true } }, form: true },
         });
 
-        await this.auditService.log({ userId, action: 'FORM_SUBMITTED', entity: 'FormSubmission', entityId: submission.id });
+        await this.auditService.log({
+            userId,
+            action: 'FORM_SUBMITTED',
+            entity: 'FormSubmission',
+            entityId: submission.id,
+            details: isSandbox ? { autoApproved: true, workflowMode: 'SANDBOX' } : undefined,
+        });
+
+        if (isSandbox) {
+            await this.auditService.log({
+                userId,
+                action: 'FORM_APPROVED',
+                entity: 'FormSubmission',
+                entityId: submission.id,
+                details: { autoApproved: true, workflowMode: 'SANDBOX' },
+            });
+
+            await this.notificationsService.createInApp({
+                receiverId: submission.userId,
+                type: 'FORM_APPROVED',
+                title: `Form Approved: ${submission.form.name}`,
+                titleAr: 'تمت الموافقة على النموذج تلقائيًا',
+                body: 'Your form was auto-approved in Sandbox Mode.',
+                bodyAr: 'تم اعتماد النموذج تلقائيًا في وضع التجربة.',
+                metadata: { submissionId: submission.id, formId },
+            });
+            await this.notificationsService.emitRealtimeToUsers([submission.userId], {
+                type: 'REQUEST_UPDATED',
+                requestType: 'form',
+                requestId: submission.id,
+            });
+            return submission;
+        }
 
         // Notify managers
         if (submission.user.departmentId) {
@@ -228,13 +271,6 @@ export class FormsService {
         if (!submission) throw new NotFoundException('Not found');
         if (role === 'EMPLOYEE' && submission.userId !== actorId) throw new ForbiddenException();
 
-        return this.prisma.formSubmission.create({
-            data: {
-                formId: submission.formId,
-                userId: submission.userId,
-                data: submission.data,
-                status: 'PENDING',
-            },
-        });
+        return this.submitForm(submission.formId, submission.userId, submission.data as Record<string, any>);
     }
 }

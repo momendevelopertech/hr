@@ -172,8 +172,20 @@ export class LeavesService {
 
     async createRequest(userId: string, data: CreateLeaveDto, actor?: { id: string; role: string }) {
         const targetUserId = await this.resolveTargetUserId(userId, actor);
+        const targetUser = await this.prisma.user.findUnique({
+            where: { id: targetUserId },
+            select: {
+                id: true,
+                workflowMode: true,
+            },
+        });
+        if (!targetUser) {
+            throw new NotFoundException('Employee not found');
+        }
+
         const year = new Date(data.startDate).getFullYear();
         await this.ensureYearBalances(targetUserId, year);
+        const isSandbox = targetUser.workflowMode === 'SANDBOX';
 
         const days = differenceInBusinessDays(new Date(data.endDate), new Date(data.startDate)) + 1;
         if (days <= 0) {
@@ -206,10 +218,27 @@ export class LeavesService {
                 totalDays: days,
                 reason: data.reason,
                 attachmentUrl: data.attachmentUrl,
-                status: 'PENDING',
+                status: isSandbox ? 'HR_APPROVED' : 'PENDING',
+                ...(isSandbox ? { approvedByHrAt: new Date() } : {}),
             },
             include: { user: { include: { department: true } } },
         });
+
+        if (isSandbox && data.leaveType !== 'ABSENCE_WITH_PERMISSION') {
+            await this.prisma.leaveBalance.update({
+                where: {
+                    userId_year_leaveType: {
+                        userId: targetUserId,
+                        year,
+                        leaveType: data.leaveType,
+                    },
+                },
+                data: {
+                    usedDays: { increment: days },
+                    remainingDays: { decrement: days },
+                },
+            });
+        }
 
         const actorId = actor?.id || targetUserId;
         await this.auditService.log({
@@ -217,8 +246,33 @@ export class LeavesService {
             action: 'LEAVE_REQUESTED',
             entity: 'LeaveRequest',
             entityId: request.id,
-            details: actorId === targetUserId ? undefined : { requestFor: targetUserId },
+            details: {
+                ...(actorId === targetUserId ? {} : { requestFor: targetUserId }),
+                ...(isSandbox ? { autoApproved: true, workflowMode: 'SANDBOX' } : {}),
+            },
         });
+
+        if (isSandbox) {
+            await this.auditService.log({
+                userId: actorId,
+                action: 'LEAVE_APPROVED',
+                entity: 'LeaveRequest',
+                entityId: request.id,
+                details: { autoApproved: true, workflowMode: 'SANDBOX' },
+            });
+
+            await this.notificationsService.notifyLeaveAction(request, 'approved', {
+                sendExternal: false,
+                body: 'Your leave request was auto-approved in Sandbox Mode.',
+                bodyAr: 'تم اعتماد طلب الإجازة تلقائيًا في وضع التجربة.',
+            });
+            await this.notificationsService.emitRealtimeToUsers([targetUserId, actorId], {
+                type: 'REQUEST_UPDATED',
+                requestType: 'leave',
+                requestId: request.id,
+            });
+            return request;
+        }
 
         await this.notificationsService.notifyLeaveAction(request, 'submitted');
 
@@ -254,6 +308,11 @@ export class LeavesService {
         const secretaryStatuses = ['PENDING', 'MANAGER_APPROVED', 'HR_APPROVED'];
         const managerStatuses = ['MANAGER_APPROVED', 'HR_APPROVED'];
         const hrStatuses = ['MANAGER_APPROVED', 'HR_APPROVED'];
+        const sandboxAutoApprovedWhere = {
+            status: 'HR_APPROVED',
+            approvedByMgrId: null,
+            approvedByHrId: null,
+        };
 
         if (role === 'EMPLOYEE') {
             where.userId = userId;
@@ -277,14 +336,24 @@ export class LeavesService {
             where.status = { in: managerStatuses };
         } else if (role === 'HR_ADMIN' || role === 'SUPER_ADMIN') {
             where.status = { in: hrStatuses };
-            where.approvedByMgrId = { not: null };
+            where.OR = [
+                { approvedByMgrId: { not: null } },
+                sandboxAutoApprovedWhere,
+            ];
         }
 
         if (filters?.status && (role === 'HR_ADMIN' || role === 'SUPER_ADMIN')) {
             if (hrStatuses.includes(filters.status)) {
                 where.status = filters.status;
+                where.OR = filters.status === 'HR_APPROVED'
+                    ? [
+                        { approvedByMgrId: { not: null } },
+                        sandboxAutoApprovedWhere,
+                    ]
+                    : [{ approvedByMgrId: { not: null } }];
             } else {
                 where.status = { in: [] };
+                where.OR = undefined;
             }
         }
         if (filters?.userId && (role === 'HR_ADMIN' || role === 'SUPER_ADMIN')) {

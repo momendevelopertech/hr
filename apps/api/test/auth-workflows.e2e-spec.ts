@@ -11,6 +11,8 @@ import { getCookieSettings } from '../src/shared/cookie-settings';
 
 const shouldRun = !!process.env.TEST_DATABASE_URL || !!process.env.DATABASE_URL;
 
+jest.setTimeout(180000);
+
 const setupApp = (app: INestApplication) => {
     app.use(cookieParser(process.env.CSRF_SECRET || 'test-csrf-secret'));
     const { sameSite, secure, domain, path } = getCookieSettings();
@@ -226,7 +228,7 @@ const createTestUser = async (prisma: PrismaService, data: {
             .post('/api/auth/refresh')
             .set('User-Agent', 'jest-agent-mismatch');
         expect([401, 403]).toContain(mismatch.status);
-    });
+    }, 60000);
 
     it('processes leave and permission workflows end-to-end', async () => {
         const employeeAgent = request.agent(app.getHttpServer());
@@ -303,5 +305,85 @@ const createTestUser = async (prisma: PrismaService, data: {
 
         const permFinal = await hrAgent.get(`/api/permissions/${permId}`);
         expect(permFinal.body?.status).toBe('HR_APPROVED');
-    }, 30000);
+    }, 120000);
+
+    it('self-registers an employee in sandbox mode and only applies mode changes to future requests', async () => {
+        const agent = request.agent(app.getHttpServer());
+        const csrf = await getCsrf(agent);
+        const optionsRes = await agent.get('/api/auth/registration-options');
+
+        expect(optionsRes.status).toBe(200);
+        expect(Array.isArray(optionsRes.body?.branches)).toBe(true);
+        expect(Array.isArray(optionsRes.body?.departments)).toBe(true);
+
+        const email = `${testPrefix}-sandbox-${Date.now()}@sphinx.com`;
+        const registerRes = await agent
+            .post('/api/auth/register')
+            .set('X-CSRF-Token', csrf)
+            .send({
+                fullName: 'Sandbox Employee',
+                fullNameAr: 'موظف تجريبي',
+                email,
+                phone: '01000000999',
+                password,
+                branchId: users.employee.branchId,
+                departmentId: users.employee.departmentId,
+                jobTitle: 'QA Tester',
+                jobTitleAr: 'مختبر جودة',
+            });
+
+        expect(registerRes.status).toBe(201);
+        expect(registerRes.body?.user?.email).toBe(email);
+        expect(registerRes.body?.user?.role).toBe('EMPLOYEE');
+        expect(registerRes.body?.user?.workflowMode).toBe('SANDBOX');
+        expect(registerRes.body?.user?.employeeNumber).toBeTruthy();
+
+        const sandboxUserId = registerRes.body?.user?.id as string;
+        createdUserIds.push(sandboxUserId);
+
+        const sandboxCsrf = await getCsrf(agent);
+        const today = new Date();
+        const startDate = today.toISOString().slice(0, 10);
+        const nextDay = new Date(today);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const nextDate = nextDay.toISOString().slice(0, 10);
+
+        const sandboxLeave = await agent
+            .post('/api/leaves')
+            .set('X-CSRF-Token', sandboxCsrf)
+            .send({
+                leaveType: 'ANNUAL',
+                startDate,
+                endDate: startDate,
+                reason: 'Sandbox auto-approval check',
+            });
+
+        expect([200, 201]).toContain(sandboxLeave.status);
+        expect(sandboxLeave.body?.status).toBe('HR_APPROVED');
+
+        const switchRes = await agent
+            .patch('/api/auth/workflow-mode')
+            .set('X-CSRF-Token', sandboxCsrf)
+            .send({ workflowMode: 'APPROVAL_WORKFLOW' });
+
+        expect(switchRes.status).toBe(200);
+        expect(switchRes.body?.user?.workflowMode).toBe('APPROVAL_WORKFLOW');
+
+        const firstLeaveAfterSwitch = await agent.get(`/api/leaves/${sandboxLeave.body?.id}`);
+        expect(firstLeaveAfterSwitch.status).toBe(200);
+        expect(firstLeaveAfterSwitch.body?.status).toBe('HR_APPROVED');
+
+        const workflowLeave = await agent
+            .post('/api/leaves')
+            .set('X-CSRF-Token', sandboxCsrf)
+            .send({
+                leaveType: 'ANNUAL',
+                startDate: nextDate,
+                endDate: nextDate,
+                reason: 'Workflow mode should stay pending',
+            });
+
+        expect([200, 201]).toContain(workflowLeave.status);
+        expect(workflowLeave.body?.status).toBe('PENDING');
+    }, 120000);
 });

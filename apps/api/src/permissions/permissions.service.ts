@@ -173,8 +173,20 @@ export class PermissionsService {
 
     async createRequest(userId: string, data: CreatePermissionDto, actor?: { id: string; role: string }) {
         const targetUserId = await this.resolveTargetUserId(userId, actor);
+        const targetUser = await this.prisma.user.findUnique({
+            where: { id: targetUserId },
+            select: {
+                id: true,
+                workflowMode: true,
+            },
+        });
+        if (!targetUser) {
+            throw new NotFoundException('Employee not found');
+        }
+
         const requestDate = new Date(data.requestDate);
         const cycle = await this.getOrCreateCycle(targetUserId, requestDate);
+        const isSandbox = targetUser.workflowMode === 'SANDBOX';
 
         let hoursUsed = this.parseHours(data.arrivalTime, data.leaveTime);
         let arrivalTime = data.arrivalTime;
@@ -217,10 +229,21 @@ export class PermissionsService {
                 leaveTime,
                 hoursUsed,
                 reason: data.reason,
-                status: 'PENDING',
+                status: isSandbox ? 'HR_APPROVED' : 'PENDING',
+                ...(isSandbox ? { approvedByHrAt: new Date() } : {}),
             },
             include: { user: { include: { department: true } } },
         });
+
+        if (isSandbox) {
+            await this.prisma.permissionCycle.update({
+                where: { id: cycle.id },
+                data: {
+                    usedHours: { increment: hoursUsed },
+                    remainingHours: { decrement: hoursUsed },
+                },
+            });
+        }
 
         const actorId = actor?.id || targetUserId;
         await this.auditService.log({
@@ -228,8 +251,33 @@ export class PermissionsService {
             action: 'PERMISSION_REQUESTED',
             entity: 'PermissionRequest',
             entityId: request.id,
-            details: actorId === targetUserId ? undefined : { requestFor: targetUserId },
+            details: {
+                ...(actorId === targetUserId ? {} : { requestFor: targetUserId }),
+                ...(isSandbox ? { autoApproved: true, workflowMode: 'SANDBOX' } : {}),
+            },
         });
+
+        if (isSandbox) {
+            await this.auditService.log({
+                userId: actorId,
+                action: 'PERMISSION_APPROVED',
+                entity: 'PermissionRequest',
+                entityId: request.id,
+                details: { autoApproved: true, workflowMode: 'SANDBOX' },
+            });
+
+            await this.notificationsService.notifyPermissionAction(request, 'approved', {
+                sendExternal: false,
+                body: 'Your permission request was auto-approved in Sandbox Mode.',
+                bodyAr: 'تم اعتماد طلب الإذن تلقائيًا في وضع التجربة.',
+            });
+            await this.notificationsService.emitRealtimeToUsers([targetUserId, actorId], {
+                type: 'REQUEST_UPDATED',
+                requestType: 'permission',
+                requestId: request.id,
+            });
+            return request;
+        }
 
         await this.notificationsService.notifyPermissionAction(request, 'submitted');
 
@@ -265,6 +313,11 @@ export class PermissionsService {
         const secretaryStatuses = ['PENDING', 'MANAGER_APPROVED', 'HR_APPROVED'];
         const managerStatuses = ['MANAGER_APPROVED', 'HR_APPROVED'];
         const hrStatuses = ['MANAGER_APPROVED', 'HR_APPROVED'];
+        const sandboxAutoApprovedWhere = {
+            status: 'HR_APPROVED',
+            approvedByMgrId: null,
+            approvedByHrId: null,
+        };
         if (role === 'EMPLOYEE') where.userId = userId;
         else if (role === 'BRANCH_SECRETARY') {
             const secretary = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -280,7 +333,10 @@ export class PermissionsService {
             where.status = { in: managerStatuses };
         } else if (role === 'HR_ADMIN' || role === 'SUPER_ADMIN') {
             where.status = { in: hrStatuses };
-            where.approvedByMgrId = { not: null };
+            where.OR = [
+                { approvedByMgrId: { not: null } },
+                sandboxAutoApprovedWhere,
+            ];
         }
         if (!where.userId && !(role === 'HR_ADMIN' || role === 'SUPER_ADMIN')) {
             where.userId = userId;

@@ -504,6 +504,7 @@ export default function ReportsClient({ locale }: { locale: string }) {
                                     const statusLabel = enumLabels.status(status, locale as 'en' | 'ar', {
                                         requestType: tab === 'permissions' ? 'permission' : 'leave',
                                         approvedByMgrId: item.approvedByMgrId ?? null,
+                                        approvedByHrId: item.approvedByHrId ?? null,
                                     });
                                     const typeLabel = item.leaveType
                                         ? enumLabels.leaveType(type, locale as 'en' | 'ar')

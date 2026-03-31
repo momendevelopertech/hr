@@ -8,6 +8,7 @@ export type UserProfile = {
     fullName: string;
     fullNameAr?: string;
     role: 'SUPER_ADMIN' | 'HR_ADMIN' | 'MANAGER' | 'BRANCH_SECRETARY' | 'SUPPORT' | 'EMPLOYEE';
+    workflowMode?: 'SANDBOX' | 'APPROVAL_WORKFLOW';
     governorate?: 'CAIRO' | 'ALEXANDRIA' | null;
     branchId?: number | null;
     mustChangePass?: boolean;

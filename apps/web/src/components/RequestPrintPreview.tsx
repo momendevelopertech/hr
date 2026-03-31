@@ -29,6 +29,7 @@ type LeaveDetails = {
     reason?: string | null;
     status: string;
     approvedByMgrId?: string | null;
+    approvedByHrId?: string | null;
     user: UserInfo;
     approvedByMgr?: ManagerInfo;
 };
@@ -43,6 +44,7 @@ type PermissionDetails = {
     reason?: string | null;
     status: string;
     approvedByMgrId?: string | null;
+    approvedByHrId?: string | null;
     user: UserInfo;
     approvedByMgr?: ManagerInfo;
 };
@@ -103,8 +105,9 @@ export default function RequestPrintPreview({
         const data = details as LeaveDetails | PermissionDetails;
         const employeeName = (data.user.fullNameAr || data.user.fullName || '').trim();
         const statusLabel = enumLabels.status(data.status, 'ar', {
-            requestType: requestType,
+            requestType,
             approvedByMgrId: data.approvedByMgrId ?? null,
+            approvedByHrId: data.approvedByHrId ?? null,
         });
         const managerName = (data.approvedByMgr?.fullNameAr || data.approvedByMgr?.fullName || '').trim();
 
@@ -156,12 +159,15 @@ export default function RequestPrintPreview({
         );
     }
 
-    if (!viewModel) return null;
+    if (!viewModel || !details) return null;
 
-    const isApproved = details?.status === 'MANAGER_APPROVED' || details?.status === 'HR_APPROVED';
-    const approvalText = isApproved
-        ? `تمت الموافقة على هذا الطلب بواسطة المدير${viewModel.managerName ? `: ${viewModel.managerName}` : ' المختص'}.`
-        : 'لم يتم اعتماد هذا الطلب بعد.';
+    const isSandboxApproved = details.status === 'HR_APPROVED' && !details.approvedByHrId;
+    const isApproved = details.status === 'MANAGER_APPROVED' || details.status === 'HR_APPROVED';
+    const approvalText = !isApproved
+        ? 'لم يتم اعتماد هذا الطلب بعد.'
+        : isSandboxApproved
+            ? 'تم اعتماد هذا الطلب تلقائيًا في وضع التجربة.'
+            : `تمت الموافقة على هذا الطلب بواسطة المدير${viewModel.managerName ? `: ${viewModel.managerName}` : ' المختص'}.`;
 
     return (
         <main className="min-h-screen bg-white px-6 py-8 text-ink print:py-0 print:px-0" dir="rtl">

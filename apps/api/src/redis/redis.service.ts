@@ -4,10 +4,21 @@ import Redis from 'ioredis';
 @Injectable()
 export class RedisService implements OnModuleDestroy {
     private readonly logger = new Logger(RedisService.name);
-    private client: Redis;
+    private client: Redis | null;
     private connectPromise: Promise<void> | null = null;
+    private readonly disabled: boolean;
 
     constructor() {
+        this.disabled =
+            process.env.DISABLE_REDIS === '1'
+            || (process.env.NODE_ENV === 'test' && process.env.DISABLE_REDIS !== '0');
+
+        if (this.disabled) {
+            this.client = null;
+            this.logger.warn('Redis is disabled for the current environment.');
+            return;
+        }
+
         this.client = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
             lazyConnect: true,
             enableOfflineQueue: false,
@@ -17,6 +28,7 @@ export class RedisService implements OnModuleDestroy {
     }
 
     private async ensureConnected(): Promise<void> {
+        if (!this.client) return;
         if (this.client.status !== 'wait') return;
         if (!this.connectPromise) {
             this.connectPromise = this.client.connect().catch(() => undefined).finally(() => {
@@ -31,6 +43,7 @@ export class RedisService implements OnModuleDestroy {
     }
 
     async getJSON<T>(key: string): Promise<T | null> {
+        if (!this.client) return null;
         try {
             await this.ensureConnected();
             const value = await this.client.get(key);
@@ -41,6 +54,7 @@ export class RedisService implements OnModuleDestroy {
     }
 
     async setJSON(key: string, value: any, ttlSeconds = 30) {
+        if (!this.client) return;
         try {
             await this.ensureConnected();
             await this.client.set(key, JSON.stringify(value), 'EX', ttlSeconds);
@@ -50,6 +64,7 @@ export class RedisService implements OnModuleDestroy {
     }
 
     async del(key: string) {
+        if (!this.client) return;
         try {
             await this.ensureConnected();
             await this.client.del(key);
@@ -59,6 +74,7 @@ export class RedisService implements OnModuleDestroy {
     }
 
     async onModuleDestroy() {
+        if (!this.client) return;
         await this.client.quit().catch(() => undefined);
     }
 }
