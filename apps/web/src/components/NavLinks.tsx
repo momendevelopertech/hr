@@ -74,19 +74,19 @@ export default function NavLinks({ locale, collapsed = false }: { locale: string
     usePusherChannel(user ? `user-${user.id}` : null, pusherHandlers);
 
     const links = useMemo(() => [
-        { href: `/${locale}`, label: t('dashboard'), icon: LayoutDashboard },
-        { href: `/${locale}/requests`, label: t('requests'), icon: ClipboardList },
-        { href: `/${locale}/chat`, label: t('chat'), badge: unreadChats, icon: MessageCircle },
-        ...(canManageEmployees ? [{ href: `/${locale}/employees`, label: t('employees'), icon: Users }] : []),
+        { href: `/${locale}`, label: t('dashboard'), icon: LayoutDashboard, tone: 'dashboard' },
+        { href: `/${locale}/requests`, label: t('requests'), icon: ClipboardList, tone: 'requests' },
+        { href: `/${locale}/chat`, label: t('chat'), badge: unreadChats, icon: MessageCircle, tone: 'chat' },
+        ...(canManageEmployees ? [{ href: `/${locale}/employees`, label: t('employees'), icon: Users, tone: 'employees' }] : []),
         ...(isAdmin
             ? [
-                { href: `/${locale}/departments`, label: t('departments'), icon: Building2 },
-                { href: `/${locale}/forms`, label: t('forms'), icon: FileText },
+                { href: `/${locale}/departments`, label: t('departments'), icon: Building2, tone: 'departments' },
+                { href: `/${locale}/forms`, label: t('forms'), icon: FileText, tone: 'forms' },
             ]
             : []),
-        ...(canViewReports ? [{ href: `/${locale}/reports`, label: t('reports'), icon: BarChart3 }] : []),
-        ...(isAdmin ? [{ href: `/${locale}/settings`, label: t('settings'), icon: Settings }] : []),
-        { href: `/${locale}/notifications`, label: t('notifications'), badge: unreadNotifications, icon: Bell },
+        ...(canViewReports ? [{ href: `/${locale}/reports`, label: t('reports'), icon: BarChart3, tone: 'reports' }] : []),
+        ...(isAdmin ? [{ href: `/${locale}/settings`, label: t('settings'), icon: Settings, tone: 'settings' }] : []),
+        { href: `/${locale}/notifications`, label: t('notifications'), badge: unreadNotifications, icon: Bell, tone: 'notifications' },
     ], [
         canManageEmployees,
         isAdmin,
@@ -135,7 +135,7 @@ export default function NavLinks({ locale, collapsed = false }: { locale: string
                         title={collapsed ? label : undefined}
                         aria-label={collapsed ? label : undefined}
                     >
-                        {link.icon && <link.icon size={14} className="nav-ic" />}
+                        {link.icon && <link.icon size={14} className={`nav-ic nav-icon--${link.tone || 'settings'}`} />}
                         <span className="nav-text">{label}</span>
                         {!!link.badge && (
                             <span className="nb">

@@ -79,7 +79,7 @@ export default function DateRangeFilter({ locale, from = '', to = '', onChange, 
         <div ref={rootRef} className={`relative ${className}`}>
             <button
                 type="button"
-                className="w-full rounded-xl border border-ink/20 bg-white px-3 py-2 text-start"
+                className="field-button w-full rounded-xl px-3 py-2 text-start"
                 onClick={() => setOpen((prev) => !prev)}
                 aria-expanded={open}
                 aria-haspopup="dialog"
@@ -89,11 +89,11 @@ export default function DateRangeFilter({ locale, from = '', to = '', onChange, 
             </button>
 
             {open && (
-                <div id={panelId} className="absolute z-30 mt-2 w-full min-w-[280px] max-w-[min(92vw,420px)] rounded-2xl border border-ink/10 bg-white p-3 shadow-lg">
+                <div id={panelId} className="dropdown-panel absolute z-30 mt-2 w-full min-w-[280px] max-w-[min(92vw,420px)] rounded-2xl p-3">
                     <div className="mb-3 flex items-center gap-2">
                         <button
                             type="button"
-                            className={`rounded-lg border px-3 py-1 text-sm ${mode === 'single' ? 'border-ink/40 bg-ink/10' : 'border-ink/15'}`}
+                            className={`toggle-option tone-neutral rounded-lg px-3 py-1 text-sm ${mode === 'single' ? 'is-active' : ''}`}
                             onClick={() => {
                                 setMode('single');
                                 if (from && to && from !== to) onChange({ from, to: from });
@@ -103,7 +103,7 @@ export default function DateRangeFilter({ locale, from = '', to = '', onChange, 
                         </button>
                         <button
                             type="button"
-                            className={`rounded-lg border px-3 py-1 text-sm ${mode === 'range' ? 'border-ink/40 bg-ink/10' : 'border-ink/15'}`}
+                            className={`toggle-option tone-neutral rounded-lg px-3 py-1 text-sm ${mode === 'range' ? 'is-active' : ''}`}
                             onClick={() => setMode('range')}
                         >
                             {locale === 'ar' ? 'فترة زمنية' : 'Date range'}
@@ -113,7 +113,7 @@ export default function DateRangeFilter({ locale, from = '', to = '', onChange, 
                     <div className="space-y-2">
                         <input
                             type="date"
-                            className="w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                            className="field w-full px-3 py-2"
                             value={from}
                             onChange={(e) => {
                                 const nextFrom = e.target.value;
@@ -128,7 +128,7 @@ export default function DateRangeFilter({ locale, from = '', to = '', onChange, 
                         {mode === 'range' && (
                             <input
                                 type="date"
-                                className="w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                className="field w-full px-3 py-2"
                                 value={to}
                                 min={from || undefined}
                                 onChange={(e) => {

@@ -204,18 +204,18 @@ export default function NotificationsClient({ locale }: { locale: string }) {
 
                 <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
                     <input
-                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                        className="field px-3 py-2"
                         placeholder={t('search')}
                         value={filters.search}
                         onChange={(e) => setFilters((p: any) => ({ ...p, search: e.target.value }))}
                     />
-                    <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.type} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, type: e.target.value })); }}>
+                    <select className="field px-3 py-2" value={filters.type} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, type: e.target.value })); }}>
                         <option value="">{t('type')}</option>
                         {notificationTypes.map((type) => (
                             <option key={type} value={type}>{typeLabels[type]}</option>
                         ))}
                     </select>
-                    <select className="rounded-xl border border-ink/20 bg-white px-3 py-2" value={filters.status} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, status: e.target.value })); }}>
+                    <select className="field px-3 py-2" value={filters.status} onChange={(e) => { setPage(1); setFilters((p: any) => ({ ...p, status: e.target.value })); }}>
                         <option value="">{t('status')}</option>
                         <option value="read">{t('read')}</option>
                         <option value="unread">{t('unread')}</option>
@@ -231,7 +231,7 @@ export default function NotificationsClient({ locale }: { locale: string }) {
                     />
                     <label className="text-sm">
                         {t('rowsPerPage')}
-                        <select className="ms-2 rounded-lg border border-ink/20 px-2 py-1" value={limit} onChange={(e) => { setPage(1); setLimit(parseInt(e.target.value, 10)); }}>
+                        <select className="field ms-2 px-2 py-1" value={limit} onChange={(e) => { setPage(1); setLimit(parseInt(e.target.value, 10)); }}>
                             <option value={20}>20</option>
                             <option value={50}>50</option>
                             <option value={100}>100</option>

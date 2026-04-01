@@ -138,7 +138,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <div className="space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-4">
+                    <div className="surface-panel space-y-3 rounded-2xl p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('activeModeLabel')}</p>
                         <label className="flex items-center gap-3 text-sm">
                             <input
@@ -166,7 +166,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                                     {t('ramadanStart')}
                                     <input
                                         type="date"
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={settings.ramadanStartDate || ''}
                                         onChange={(e) => update('ramadanStartDate', e.target.value)}
                                     />
@@ -175,7 +175,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                                     {t('ramadanEnd')}
                                     <input
                                         type="date"
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={settings.ramadanEndDate || ''}
                                         onChange={(e) => update('ramadanEndDate', e.target.value)}
                                     />
@@ -187,7 +187,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                         </div>
                     </div>
 
-                    <div className="space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-4">
+                    <div className="surface-panel space-y-3 rounded-2xl p-4">
                         <div className="space-y-2">
                             <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('weekdayHours')}</p>
                             <div className="grid gap-3 md:grid-cols-2">
@@ -196,7 +196,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                                     <input
                                         type="time"
                                         step={900}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={settings.weekdayStart}
                                         onChange={(e) => update('weekdayStart', e.target.value)}
                                     />
@@ -206,7 +206,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                                     <input
                                         type="time"
                                         step={900}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={settings.weekdayEnd}
                                         onChange={(e) => update('weekdayEnd', e.target.value)}
                                     />
@@ -222,7 +222,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                                     <input
                                         type="time"
                                         step={900}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={settings.saturdayStart}
                                         onChange={(e) => update('saturdayStart', e.target.value)}
                                     />
@@ -232,7 +232,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                                     <input
                                         type="time"
                                         step={900}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={settings.saturdayEnd}
                                         onChange={(e) => update('saturdayEnd', e.target.value)}
                                     />
@@ -248,7 +248,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                                     <input
                                         type="time"
                                         step={900}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={settings.ramadanStart}
                                         onChange={(e) => update('ramadanStart', e.target.value)}
                                     />
@@ -258,7 +258,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                                     <input
                                         type="time"
                                         step={900}
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={settings.ramadanEnd}
                                         onChange={(e) => update('ramadanEnd', e.target.value)}
                                     />
@@ -267,7 +267,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                         </div>
                     </div>
 
-                    <div className="space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-4">
+                    <div className="surface-panel space-y-3 rounded-2xl p-4">
                         <div className="space-y-1">
                             <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('pwaTitle')}</p>
                             <p className="text-sm text-ink/60">{t('pwaDescription')}</p>
@@ -283,7 +283,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                         <p className="text-xs text-ink/60">{t('pwaInstallHint')}</p>
                     </div>
 
-                    <div className="space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-4">
+                    <div className="surface-panel space-y-3 rounded-2xl p-4">
                         <div className="space-y-1">
                             <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('evolutionTitle')}</p>
                             <p className="text-sm text-ink/60">{t('evolutionDescription')}</p>
@@ -292,7 +292,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                             {t('evolutionBaseUrl')}
                             <input
                                 type="url"
-                                className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                className="field mt-1 w-full px-3 py-2"
                                 value={settings.evolutionApiBaseUrl}
                                 onChange={(e) => update('evolutionApiBaseUrl', e.target.value)}
                                 placeholder="http://YOUR_VPS_IP:8080"
@@ -302,7 +302,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                             {t('evolutionApiKey')}
                             <input
                                 type="password"
-                                className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                className="field mt-1 w-full px-3 py-2"
                                 value={evolutionApiKey}
                                 onChange={(e) => setEvolutionApiKey(e.target.value)}
                                 placeholder={settings.evolutionApiKeyConfigured ? t('evolutionApiKeyConfigured') : ''}
@@ -340,7 +340,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                     <p className="text-sm text-ink/60">{t('dataResetDescription')}</p>
                 </div>
                 <div className="flex justify-end">
-                    <button className="btn-outline text-red-600" onClick={() => setResetOpen(true)}>
+                    <button className="btn-danger" onClick={() => setResetOpen(true)}>
                         {t('dataResetCta')}
                     </button>
                 </div>

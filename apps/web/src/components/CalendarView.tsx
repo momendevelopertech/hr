@@ -38,6 +38,16 @@ const parseDateOnly = (value?: string | null) => {
 
 const dateOnly = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate());
 
+const calendarEventToneClass: Record<string, string> = {
+    leave: 'calendar-event-tone-leave',
+    absence: 'calendar-event-tone-absence',
+    mission: 'calendar-event-tone-mission',
+    personal: 'calendar-event-tone-personal',
+    form: 'calendar-event-tone-form',
+    note: 'calendar-event-tone-note',
+    lateness: 'calendar-event-tone-lateness',
+};
+
 export default function CalendarView({
     locale,
     events,
@@ -142,15 +152,9 @@ export default function CalendarView({
 
     const eventPropGetter = (event: CalendarEvent) => {
         const key = event.resource?.key;
-        const base = { className: 'rbc-event-clickable' };
-        if (key === 'leave') return { ...base, style: { backgroundColor: '#eff4ff', borderColor: '#dbeafe', color: '#2563eb' } };
-        if (key === 'absence') return { ...base, style: { backgroundColor: '#fffbeb', borderColor: '#fde68a', color: '#d97706' } };
-        if (key === 'mission') return { ...base, style: { backgroundColor: '#f0fdfa', borderColor: '#99f6e4', color: '#0d9488' } };
-        if (key === 'personal') return { ...base, style: { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe', color: '#7c3aed' } };
-        if (key === 'form') return { ...base, style: { backgroundColor: '#eef2ff', borderColor: '#c7d2fe', color: '#4f46e5' } };
-        if (key === 'note') return { ...base, style: { backgroundColor: '#fff7ed', borderColor: '#fdba74', color: '#c2410c' } };
-        if (key === 'lateness') return { ...base, style: { backgroundColor: '#fff1f2', borderColor: '#fecdd3', color: '#e11d48' } };
-        return { ...base, style: { backgroundColor: '#f1f5f9', borderColor: '#cbd5e1', color: '#475569' } };
+        return {
+            className: `rbc-event-clickable ${calendarEventToneClass[key || ''] || 'calendar-event-tone-default'}`,
+        };
     };
 
     const title = useMemo(() => {

@@ -128,7 +128,7 @@ export default function SidebarFooter({
                         <KeyRound size={14} />
                         {locale === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
                     </button>
-                    <button className="sidebar-menu-item text-rose-600" type="button" onClick={() => { setMenuOpen(false); logout(); }}>
+                    <button className="sidebar-menu-item is-danger" type="button" onClick={() => { setMenuOpen(false); logout(); }}>
                         <LogOut size={14} />
                         {t('logout')}
                     </button>

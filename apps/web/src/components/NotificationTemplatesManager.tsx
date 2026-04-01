@@ -157,7 +157,7 @@ export default function NotificationTemplatesManager({
 
     return (
         <section className="card overflow-hidden">
-            <div className="border-b border-ink/10 bg-[radial-gradient(circle_at_top_left,_rgba(15,118,110,0.15),_transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(240,253,250,0.96))] p-5">
+            <div className="template-hero p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div className="space-y-2">
                         <p className="text-xs uppercase tracking-[0.26em] text-ink/45">{labels.eyebrow}</p>
@@ -317,7 +317,7 @@ export default function NotificationTemplatesManager({
                     </div>
 
                     <div className="space-y-4">
-                        <div className="rounded-[2rem] border border-emerald-100 bg-[linear-gradient(180deg,#ecfdf5_0%,#f8fafc_100%)] p-4 shadow-sm">
+                        <div className="template-preview-shell rounded-[2rem] p-4 shadow-sm">
                             <div className="mb-3 flex items-center justify-between">
                                 <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm">
                                     <MessageSquareText className="h-3.5 w-3.5" />
@@ -328,16 +328,16 @@ export default function NotificationTemplatesManager({
                                 </span>
                             </div>
 
-                            <div className="rounded-[1.7rem] bg-[#0b141a] p-3 shadow-inner">
-                                <div className="space-y-3 rounded-[1.4rem] bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 32 32%22%3E%3Cg fill=%22none%22 stroke=%22rgba(255,255,255,0.06)%22%3E%3Cpath d=%22M0 16h32M16 0v32%22/%3E%3C/g%3E%3C/svg%3E')] bg-[#111b21] p-4">
+                            <div className="template-preview-phone rounded-[1.7rem] p-3 shadow-inner">
+                                <div className="template-preview-phone-screen space-y-3 rounded-[1.4rem] p-4">
                                     <div
                                         dir={editorLocale === 'ar' ? 'rtl' : 'ltr'}
-                                        className="rounded-[1.2rem] bg-[#d9fdd3] px-4 py-3 text-sm leading-7 text-slate-900 shadow-sm"
+                                        className="template-preview-phone-bubble rounded-[1.2rem] px-4 py-3 text-sm leading-7 shadow-sm"
                                     >
                                         <p className={`font-semibold ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>{previewTitle}</p>
                                         <p className={`mt-2 whitespace-pre-line ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>{previewIntro}</p>
 
-                                        <div className="mt-3 space-y-1.5 rounded-2xl bg-white/55 px-3 py-2">
+                                        <div className="template-preview-phone-detail mt-3 space-y-1.5 rounded-2xl px-3 py-2">
                                             {activeDefinition.previewDetails.map((detail) => (
                                                 <p key={`${detail.labelAr}-${detail.valueAr}`} className={editorLocale === 'ar' ? 'text-right' : 'text-left'}>
                                                     <span className="me-1">{detail.icon}</span>
@@ -352,26 +352,26 @@ export default function NotificationTemplatesManager({
                                             <p className={`mt-3 whitespace-pre-line ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>{previewFooter}</p>
                                         ) : null}
 
-                                        <div className={`mt-3 rounded-2xl bg-white/75 px-3 py-2 text-xs text-slate-700 ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>
+                                        <div className={`template-preview-phone-link mt-3 rounded-2xl px-3 py-2 text-xs ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>
                                             <p className="font-semibold">{labels.requestLink}</p>
-                                            <p className="mt-1 break-all text-slate-600">{previewLink}</p>
+                                            <p className="mt-1 break-all">{previewLink}</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="rounded-[2rem] border border-ink/10 bg-white p-4 shadow-sm">
+                        <div className="template-preview-email-shell rounded-[2rem] p-4 shadow-sm">
                             <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                                 <Mail className="h-3.5 w-3.5" />
                                 Email Preview
                             </div>
-                            <div dir={editorLocale === 'ar' ? 'rtl' : 'ltr'} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-                                <p className={`text-xs uppercase tracking-[0.24em] text-slate-400 ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>SPHINX HR</p>
-                                <h3 className={`mt-3 text-lg font-semibold text-slate-900 ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>{previewTitle}</h3>
-                                <p className={`mt-3 whitespace-pre-line text-sm leading-7 text-slate-700 ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>{previewIntro}</p>
+                            <div dir={editorLocale === 'ar' ? 'rtl' : 'ltr'} className="template-preview-email-body rounded-[1.5rem] p-4">
+                                <p className={`template-preview-email-kicker text-xs uppercase tracking-[0.24em] ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>SPHINX HR</p>
+                                <h3 className={`template-preview-email-heading mt-3 text-lg font-semibold ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>{previewTitle}</h3>
+                                <p className={`template-preview-email-text mt-3 whitespace-pre-line text-sm leading-7 ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>{previewIntro}</p>
                                 {previewFooter ? (
-                                    <p className={`mt-3 whitespace-pre-line text-sm leading-7 text-slate-600 ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>{previewFooter}</p>
+                                    <p className={`template-preview-email-text mt-3 whitespace-pre-line text-sm leading-7 ${editorLocale === 'ar' ? 'text-right' : 'text-left'}`}>{previewFooter}</p>
                                 ) : null}
                             </div>
                         </div>

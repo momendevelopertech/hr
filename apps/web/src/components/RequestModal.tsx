@@ -326,8 +326,8 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="card w-full max-w-2xl p-6">
+        <div className="overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="modal-shell w-full max-w-2xl rounded-3xl p-6">
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold">{t('new')}</h2>
                     <button className="btn-outline" onClick={onClose}>{tm('close')}</button>
@@ -339,11 +339,11 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                 </p>
 
                 {isSecretary && (
-                    <div className="mt-3 rounded-2xl border border-ink/10 bg-white/70 p-3">
+                    <div className="surface-panel mt-3 rounded-2xl p-3">
                         <label className="text-sm">
                             {tm('employeeLabel')}
                             <select
-                                className="mt-2 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                className="field mt-2 w-full px-3 py-2"
                                 value={selectedEmployeeId}
                                 onChange={(e) => setSelectedEmployeeId(e.target.value)}
                                 disabled={employeesLoading}
@@ -375,16 +375,16 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{tm('pickTypeTitle')}</p>
-                            <button className={`btn-outline w-full ${type === 'leave' ? 'bg-ink/10' : ''}`} onClick={() => setType('leave')}>
+                            <button className={`toggle-option w-full rounded-xl px-4 py-2.5 text-sm font-semibold ${type === 'leave' ? 'is-active' : ''}`} onClick={() => setType('leave')}>
                                 {tm('leaveRequest')}
                             </button>
-                            <button className={`btn-outline w-full ${type === 'absence' ? 'bg-ink/10' : ''}`} onClick={() => setType('absence')}>
+                            <button className={`toggle-option w-full rounded-xl px-4 py-2.5 text-sm font-semibold ${type === 'absence' ? 'is-active' : ''}`} onClick={() => setType('absence')}>
                                 {tm('absenceRequest')}
                             </button>
-                            <button className={`btn-outline w-full ${type === 'mission' ? 'bg-ink/10' : ''}`} onClick={() => setType('mission')}>
+                            <button className={`toggle-option w-full rounded-xl px-4 py-2.5 text-sm font-semibold ${type === 'mission' ? 'is-active' : ''}`} onClick={() => setType('mission')}>
                                 {tm('missionRequest')}
                             </button>
-                            <button className={`btn-outline w-full ${type === 'permission' ? 'bg-ink/10' : ''}`} onClick={() => setType('permission')}>
+                            <button className={`toggle-option w-full rounded-xl px-4 py-2.5 text-sm font-semibold ${type === 'permission' ? 'is-active' : ''}`} onClick={() => setType('permission')}>
                                 {tm('personalPermission')}
                             </button>
                         </div>
@@ -393,18 +393,18 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                             <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-amber-900/70">{tm('employeeActionsTitle')}</p>
                             <div className="space-y-2">
                                 <button
-                                    className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold transition ${type === 'lateness'
-                                        ? 'border-amber-300 bg-amber-200/70 text-amber-900 shadow-sm'
-                                        : 'border-amber-200 bg-white/70 text-amber-900 hover:bg-amber-100'
+                                    className={`toggle-option tone-amber w-full rounded-xl px-3 py-2 text-sm font-semibold ${type === 'lateness'
+                                        ? 'is-active'
+                                        : ''
                                         }`}
                                     onClick={() => setType('lateness')}
                                 >
                                     {tm('latenessRequest')}
                                 </button>
                                 <button
-                                    className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold transition ${type === 'note'
-                                        ? 'border-amber-300 bg-amber-200/70 text-amber-900 shadow-sm'
-                                        : 'border-amber-200 bg-white/70 text-amber-900 hover:bg-amber-100'
+                                    className={`toggle-option tone-amber w-full rounded-xl px-3 py-2 text-sm font-semibold ${type === 'note'
+                                        ? 'is-active'
+                                        : ''
                                         }`}
                                     onClick={() => setType('note')}
                                 >
@@ -417,7 +417,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">
+                    <div className="surface-panel rounded-2xl p-4">
                         {!type && (
                             <p className="text-sm text-ink/60">{tm('pickTypeHint')}</p>
                         )}
@@ -429,7 +429,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                 <label className="text-sm">
                                     {tm('leaveType')}
                                     <select
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={formData.leaveType || 'ANNUAL'}
                                         onChange={(e) => update('leaveType', e.target.value)}
                                     >
@@ -482,7 +482,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                 <label className="text-sm">
                                     {tm('permissionScope')}
                                     <select
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={formData.permissionScope || 'ARRIVAL'}
                                         onChange={(e) => update('permissionScope', e.target.value)}
                                     >
@@ -496,7 +496,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                         <input
                                             type="number"
                                             min={0}
-                                            className="w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                            className="field w-full px-3 py-2"
                                             placeholder={tm('durationHours')}
                                             value={formData.durationHours || ''}
                                             onChange={(e) => update('durationHours', e.target.value)}
@@ -505,7 +505,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                             type="number"
                                             min={0}
                                             max={59}
-                                            className="w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                            className="field w-full px-3 py-2"
                                             placeholder={tm('durationMinutes')}
                                             value={formData.durationMinutes || ''}
                                             onChange={(e) => update('durationMinutes', e.target.value)}
@@ -529,7 +529,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                     {[2, 5, 10, 15, 30].map((minutes) => (
                                         <button
                                             key={minutes}
-                                            className={`btn-outline ${Number(formData.latenessMinutes) === minutes ? 'bg-ink/10' : ''}`}
+                                            className={`toggle-option tone-neutral rounded-xl px-4 py-2 text-sm font-semibold ${Number(formData.latenessMinutes) === minutes ? 'is-active' : ''}`}
                                             onClick={() => update('latenessMinutes', minutes)}
                                         >
                                             {tm('latenessMinutesValue', { minutes })}
@@ -542,7 +542,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                 <input
                                     type="number"
                                     min={1}
-                                    className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                    className="field mt-1 w-full px-3 py-2"
                                     placeholder={tm('durationMinutes')}
                                     value={formData.latenessMinutes || ''}
                                     onChange={(e) => update('latenessMinutes', e.target.value)}
@@ -562,7 +562,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                 <label className="text-sm">
                                     {tm('missionType')}
                                     <select
-                                        className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                        className="field mt-1 w-full px-3 py-2"
                                         value={formData.missionType || 'ALL_DAY'}
                                         onChange={(e) => update('missionType', e.target.value)}
                                     >
@@ -590,7 +590,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                 {tm('missionTo')}
                                 <textarea
                                     rows={2}
-                                    className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                    className="field mt-1 w-full px-3 py-2"
                                     onChange={(e) => update('missionTo', e.target.value)}
                                 />
                             </label>
@@ -598,7 +598,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                 {tm('missionPurpose')}
                                 <textarea
                                     rows={3}
-                                    className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                    className="field mt-1 w-full px-3 py-2"
                                     onChange={(e) => update('missionPurpose', e.target.value)}
                                 />
                             </label>
@@ -610,7 +610,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                             <label className="text-sm">
                                 {tm('noteTitle')}
                                 <input
-                                    className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                    className="field mt-1 w-full px-3 py-2"
                                     placeholder={tm('noteTitlePlaceholder')}
                                     value={formData.noteTitle || ''}
                                     onChange={(e) => update('noteTitle', e.target.value)}
@@ -620,7 +620,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                 {tm('noteBody')}
                                 <textarea
                                     rows={4}
-                                    className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                    className="field mt-1 w-full px-3 py-2"
                                     placeholder={tm('noteBodyPlaceholder')}
                                     value={formData.noteBody || ''}
                                     onChange={(e) => update('noteBody', e.target.value)}

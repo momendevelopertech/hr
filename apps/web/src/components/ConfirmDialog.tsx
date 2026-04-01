@@ -53,12 +53,12 @@ export default function ConfirmDialog({
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
+            className="overlay-backdrop fixed inset-0 z-[100] flex items-center justify-center px-4"
             onClick={onCancel}
             role="presentation"
         >
             <div
-                className="card w-full max-w-md p-6"
+                className="modal-shell w-full max-w-md rounded-3xl p-6"
                 onClick={(event) => event.stopPropagation()}
                 role="dialog"
                 aria-modal="true"

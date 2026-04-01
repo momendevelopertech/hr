@@ -84,10 +84,7 @@ export default function WorkflowModeSwitch({
         <>
             {collapsed ? (
                 <button
-                    className={`mb-2 w-full rounded-xl border px-2 py-2 text-[11px] font-semibold ${isSandbox
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 bg-slate-50 text-slate-700'
-                        }`}
+                    className={`workflow-mode-pill mb-2 w-full rounded-xl px-2 py-2 text-[11px] font-semibold ${isSandbox ? 'is-active' : ''}`}
                     type="button"
                     onClick={requestToggle}
                     title={`${labels.title}: ${isSandbox ? labels.sandbox : labels.workflow}`}
@@ -96,10 +93,7 @@ export default function WorkflowModeSwitch({
                     {compactLabel}
                 </button>
             ) : (
-                <div className={`mb-3 rounded-2xl border px-3 py-3 ${isSandbox
-                    ? 'border-emerald-200 bg-emerald-50/90'
-                    : 'border-slate-200 bg-slate-50/90'
-                    }`}>
+                <div className={`workflow-mode-card mb-3 rounded-2xl px-3 py-3 ${isSandbox ? 'is-active' : ''}`}>
                     <div className="flex items-center justify-between gap-3">
                         <div>
                             <p className="text-[11px] uppercase tracking-[0.2em] text-ink/50">{labels.title}</p>
@@ -108,16 +102,13 @@ export default function WorkflowModeSwitch({
                         </div>
                         <button
                             type="button"
-                            className={`relative h-7 w-14 shrink-0 rounded-full border transition-all duration-200 ${isSandbox
-                                ? 'border-emerald-500 bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.16)]'
-                                : 'border-slate-300 bg-slate-200'
-                                }`}
+                            className={`workflow-mode-toggle relative h-7 w-14 shrink-0 rounded-full transition-all duration-200 ${isSandbox ? 'is-active' : ''}`}
                             onClick={requestToggle}
                             aria-label={labels.title}
                             aria-pressed={isSandbox}
                         >
                             <span
-                                className="absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-200"
+                                className="workflow-mode-toggle-knob absolute top-1 h-5 w-5 rounded-full shadow-sm transition-all duration-200"
                                 style={{ insetInlineStart: isSandbox ? '2rem' : '0.25rem' }}
                             />
                         </button>

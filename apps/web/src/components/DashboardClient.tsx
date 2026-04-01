@@ -573,10 +573,10 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             )}
             {noticeContent && (
                 <div className="px-6 mt-6">
-                    <div className="rounded-2xl border border-ink/10 bg-white/80 p-4 shadow-sm">
+                    <div className="surface-panel rounded-2xl p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-start gap-3">
-                                <div className={`flex h-11 w-11 items-center justify-center rounded-full ${noticeContent.isPayroll ? 'bg-amber-100 text-amber-700' : 'bg-cactus/15 text-cactus'}`}>
+                                <div className={`flex h-11 w-11 items-center justify-center rounded-full border ${noticeContent.isPayroll ? 'tone-amber' : 'tone-teal'}`}>
                                     {noticeContent.isPayroll ? <Wallet size={20} /> : <Megaphone size={20} />}
                                 </div>
                                 <div>
@@ -624,21 +624,21 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                 onSubmitted={fetchAll}
             />
             {announcementOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-                    <div className="card w-full max-w-2xl p-6">
+                <div className="overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4">
+                    <div className="modal-shell w-full max-w-2xl rounded-3xl p-6">
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg font-semibold">{t('announcementTitle')}</h3>
                             <button className="btn-outline" onClick={() => setAnnouncementOpen(false)}>{t('close')}</button>
                         </div>
                         <div className="mt-4 grid gap-3 md:grid-cols-3">
                             <input
-                                className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-1"
+                                className="field px-3 py-2 md:col-span-1"
                                 placeholder={t('announcementTitlePlaceholder')}
                                 value={announcement.title}
                                 onChange={(e) => setAnnouncement((prev) => ({ ...prev, title: e.target.value }))}
                             />
                             <input
-                                className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-2"
+                                className="field px-3 py-2 md:col-span-2"
                                 placeholder={t('announcementBodyPlaceholder')}
                                 value={announcement.body}
                                 onChange={(e) => setAnnouncement((prev) => ({ ...prev, body: e.target.value }))}
@@ -646,7 +646,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                         </div>
                         <div className="mt-3 grid gap-3 md:grid-cols-3">
                             <select
-                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                className="field px-3 py-2"
                                 value={announcementTarget.scope}
                                 onChange={(e) => setAnnouncementTarget((prev) => ({ ...prev, scope: e.target.value as any, departmentId: '', governorate: '', userIds: [] }))}
                             >
@@ -657,7 +657,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                             </select>
                             {announcementTarget.scope === 'GOVERNORATE' && (
                                 <select
-                                    className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-2"
+                                    className="field px-3 py-2 md:col-span-2"
                                     value={announcementTarget.governorate}
                                     onChange={(e) => setAnnouncementTarget((prev) => ({ ...prev, governorate: e.target.value }))}
                                 >
@@ -668,7 +668,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                             )}
                             {announcementTarget.scope === 'DEPARTMENT' && (
                                 <select
-                                    className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-2"
+                                    className="field px-3 py-2 md:col-span-2"
                                     value={announcementTarget.departmentId}
                                     onChange={(e) => setAnnouncementTarget((prev) => ({ ...prev, departmentId: e.target.value }))}
                                 >
@@ -681,7 +681,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                             {announcementTarget.scope === 'USERS' && (
                                 <select
                                     multiple
-                                    className="rounded-xl border border-ink/20 bg-white px-3 py-2 md:col-span-2 min-h-[110px]"
+                                    className="field min-h-[110px] px-3 py-2 md:col-span-2"
                                     value={announcementTarget.userIds}
                                     onChange={(e) => setAnnouncementTarget((prev) => ({ ...prev, userIds: Array.from(e.target.selectedOptions).map((o) => o.value) }))}
                                 >

@@ -728,13 +728,13 @@ export default function RequestsClient({ locale }: { locale: string }) {
 
                 <div className={`mt-4 grid gap-2 md:grid-cols-2 ${canAdmin ? 'xl:grid-cols-7' : 'xl:grid-cols-5'}`}>
                     <input
-                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                        className="field px-3 py-2"
                         placeholder={t('search')}
                         value={filters.search}
                         onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
                     />
                     <select
-                        className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                        className="field px-3 py-2"
                         value={filters.status}
                         onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
                     >
@@ -747,7 +747,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     </select>
                     {canAdmin && (
                         <select
-                            className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                            className="field px-3 py-2"
                             value={filters.governorate}
                             onChange={(e) => setFilters((prev) => ({ ...prev, governorate: e.target.value }))}
                         >
@@ -758,7 +758,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     )}
                     {canAdmin && (
                         <select
-                            className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                            className="field px-3 py-2"
                             value={filters.departmentId}
                             onChange={(e) => setFilters((prev) => ({ ...prev, departmentId: e.target.value }))}
                         >
@@ -846,14 +846,14 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                                         {((isSecretary && row.status === 'PENDING') ||
                                                             (isManager && row.status === 'MANAGER_APPROVED' && !row.approvedByMgrId) ||
                                                             (isHr && row.status === 'MANAGER_APPROVED' && !!row.approvedByMgrId)) && (
-                                                            <AsyncActionButton className="btn-primary" onClick={() => onApprove(row)} externalPending={rowBusy}>
+                                                            <AsyncActionButton className="btn-success" onClick={() => onApprove(row)} externalPending={rowBusy}>
                                                                 {isSecretary ? t('verify') : t('approve')}
                                                             </AsyncActionButton>
                                                         )}
                                                         {((isSecretary && row.status === 'PENDING') ||
                                                             (isManager && row.status === 'MANAGER_APPROVED' && !row.approvedByMgrId) ||
                                                             (isHr && row.status === 'MANAGER_APPROVED' && !!row.approvedByMgrId)) && (
-                                                            <AsyncActionButton className="btn-secondary" onClick={() => onReject(row)} externalPending={rowBusy}>
+                                                            <AsyncActionButton className="btn-danger" onClick={() => onReject(row)} externalPending={rowBusy}>
                                                                 {t('reject')}
                                                             </AsyncActionButton>
                                                         )}
@@ -881,32 +881,32 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     </div>
                 ) : (
                     <div className="mt-4 space-y-4">
-                        <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">
+                        <div className="surface-panel rounded-2xl p-4">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <h3 className="text-base font-semibold">{t('deductionsTitle')}</h3>
                             </div>
                             <div className="mt-3 grid gap-3 md:grid-cols-4">
-                                <div className="rounded-xl border border-ink/10 bg-white p-3">
+                                <div className="surface-panel rounded-xl p-3">
                                     <p className="text-xs text-ink/60">{t('latenessCount')}</p>
                                     <p className="text-lg font-semibold">{latenessSummary.totalCount}</p>
                                 </div>
-                                <div className="rounded-xl border border-ink/10 bg-white p-3">
+                                <div className="surface-panel rounded-xl p-3">
                                     <p className="text-xs text-ink/60">{t('latenessMinutes')}</p>
                                     <p className="text-lg font-semibold">{latenessSummary.totalMinutes}</p>
                                 </div>
-                                <div className="rounded-xl border border-ink/10 bg-white p-3">
+                                <div className="surface-panel rounded-xl p-3">
                                     <p className="text-xs text-ink/60">{t('latenessDeduction')}</p>
                                     <p className="text-lg font-semibold">{latenessSummary.deductionDays}</p>
                                 </div>
-                                <div className="rounded-xl border border-ink/10 bg-white p-3">
+                                <div className="surface-panel rounded-xl p-3">
                                     <p className="text-xs text-ink/60">{t('absenceDeductionDays')}</p>
                                     <p className="text-lg font-semibold">{absenceDeductionDays}</p>
                                 </div>
                             </div>
-                            <div className="mt-3 rounded-xl border border-ink/10 bg-white p-3">
+                            <div className="surface-panel mt-3 rounded-xl p-3">
                                 <label className="text-xs text-ink/60">{t('latenessSalary')}</label>
                                 <input
-                                    className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2 text-sm"
+                                    className="field mt-1 w-full px-3 py-2 text-sm"
                                     type="number"
                                     min={0}
                                     placeholder="0"
@@ -927,7 +927,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                             <p className="mt-3 text-xs text-ink/50">{t('latenessPolicy')}</p>
                         </div>
 
-                        <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">
+                        <div className="surface-panel rounded-2xl p-4">
                             <h4 className="text-sm font-semibold">{t('latenessSectionTitle')}</h4>
                             <div className="mt-3 overflow-x-auto">
                                 <table className={`min-w-[720px] w-full text-sm ${tableAlignClass}`}>
@@ -982,7 +982,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">
+                        <div className="surface-panel rounded-2xl p-4">
                             <h4 className="text-sm font-semibold">{t('absenceSectionTitle')}</h4>
                             <div className="mt-3 overflow-x-auto">
                                 <table className={`min-w-[980px] w-full text-sm ${tableAlignClass}`}>
@@ -1045,14 +1045,14 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                                                 {((isSecretary && row.status === 'PENDING') ||
                                                                     (isManager && row.status === 'MANAGER_APPROVED' && !row.approvedByMgrId) ||
                                                                     (isHr && row.status === 'MANAGER_APPROVED' && !!row.approvedByMgrId)) && (
-                                                                    <AsyncActionButton className="btn-primary" onClick={() => onApprove(row)} externalPending={rowBusy}>
+                                                                    <AsyncActionButton className="btn-success" onClick={() => onApprove(row)} externalPending={rowBusy}>
                                                                         {isSecretary ? t('verify') : t('approve')}
                                                                     </AsyncActionButton>
                                                                 )}
                                                                 {((isSecretary && row.status === 'PENDING') ||
                                                                     (isManager && row.status === 'MANAGER_APPROVED' && !row.approvedByMgrId) ||
                                                                     (isHr && row.status === 'MANAGER_APPROVED' && !!row.approvedByMgrId)) && (
-                                                                    <AsyncActionButton className="btn-secondary" onClick={() => onReject(row)} externalPending={rowBusy}>
+                                                                    <AsyncActionButton className="btn-danger" onClick={() => onReject(row)} externalPending={rowBusy}>
                                                                         {t('reject')}
                                                                     </AsyncActionButton>
                                                                 )}
