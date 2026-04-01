@@ -267,6 +267,13 @@ export class LeavesService {
             requestLabelAr: receiptLabel.ar,
             requestLabelEn: receiptLabel.en,
             status: isSandbox ? 'HR_APPROVED' : 'PENDING',
+            requestDetails: {
+                leaveType: request.leaveType,
+                startDate: request.startDate,
+                endDate: request.endDate,
+                totalDays: request.totalDays,
+                reason: request.reason,
+            },
         });
 
         if (isSandbox) {
@@ -498,7 +505,7 @@ export class LeavesService {
         });
 
         if (action === 'reject') {
-            await this.notificationsService.notifyLeaveAction(request, 'rejected');
+            await this.notificationsService.notifyLeaveAction(request, 'rejected', { comment });
             return updated;
         }
 

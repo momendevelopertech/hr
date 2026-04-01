@@ -270,6 +270,14 @@ export class PermissionsService {
             requestLabelAr: receiptLabel.ar,
             requestLabelEn: receiptLabel.en,
             status: isSandbox ? 'HR_APPROVED' : 'PENDING',
+            requestDetails: {
+                permissionType: request.permissionType,
+                requestDate: request.requestDate,
+                arrivalTime: request.arrivalTime,
+                leaveTime: request.leaveTime,
+                hoursUsed: request.hoursUsed,
+                reason: request.reason,
+            },
         });
 
         if (isSandbox) {

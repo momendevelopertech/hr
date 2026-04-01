@@ -411,17 +411,17 @@ export class UsersService {
             bodyAr: `تم إنشاء حسابك. رقم الموظف: ${user.employeeNumber}. يرجى تغيير كلمة المرور عند أول تسجيل دخول.`,
         });
 
-        const whatsAppDelivery = user.phone
-            ? await this.notificationsService.sendWhatsApp(
-                user.phone,
-                `Welcome to SPHINX HR System!\nEmployee #: ${user.employeeNumber}\nUsername: ${generatedUsername}\nTemporary Password: ${password}\nPlease login and change your password immediately: ${process.env.FRONTEND_URL}`,
-            )
-            : null;
-
-        await this.notificationsService.sendEmail({
-            to: user.email,
-            subject: 'Welcome to SPHINX HR System',
-            html: `<div style="font-family:sans-serif"><h2>Welcome to SPHINX HR, ${user.fullName}!</h2><p>Your account has been created.</p><ul><li>Employee #: ${user.employeeNumber}</li><li>Username: ${generatedUsername}</li><li>Temporary Password: ${password}</li></ul><p><a href="${process.env.FRONTEND_URL}">Login here</a> and change your password immediately.</p></div>`,
+        const whatsAppDelivery = await this.notificationsService.sendAccountCreatedMessage({
+            fullName: user.fullName,
+            fullNameAr: user.fullNameAr,
+            email: user.email,
+            phone: user.phone,
+            employeeNumber: user.employeeNumber,
+            username: generatedUsername,
+            workflowMode: user.workflowMode,
+        }, {
+            temporaryPassword: password,
+            syncWhatsApp: Boolean(user.phone),
         });
 
         await this.clearUserCaches();

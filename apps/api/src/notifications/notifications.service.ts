@@ -5,6 +5,26 @@ import { PusherService } from '../pusher/pusher.service';
 import * as nodemailer from 'nodemailer';
 import { WhatsAppDeliveryResult, WhatsAppService } from './whatsapp.service';
 
+type NotificationLocale = 'ar' | 'en';
+type RequestDetails = {
+    leaveType?: string | null;
+    startDate?: Date | string | null;
+    endDate?: Date | string | null;
+    totalDays?: number | null;
+    permissionType?: string | null;
+    requestDate?: Date | string | null;
+    arrivalTime?: string | null;
+    leaveTime?: string | null;
+    hoursUsed?: number | null;
+    reason?: string | null;
+};
+
+type MessageDetail = {
+    icon: string;
+    label: string;
+    value: string;
+};
+
 @Injectable()
 export class NotificationsService {
     private readonly logger = new Logger(NotificationsService.name);
@@ -31,8 +51,256 @@ export class NotificationsService {
         return `${baseUrl}/${locale}`;
     }
 
-    private getPreferredLocale(user?: { fullNameAr?: string | null }) {
+    private getPreferredLocale(user?: { fullNameAr?: string | null }): NotificationLocale {
         return user?.fullNameAr ? 'ar' : 'en';
+    }
+
+    private getDisplayName(
+        user?: { fullName?: string | null; fullNameAr?: string | null },
+        locale: NotificationLocale = 'ar',
+    ) {
+        const preferredName = locale === 'ar'
+            ? user?.fullNameAr || user?.fullName
+            : user?.fullName || user?.fullNameAr;
+        return (preferredName || (locale === 'ar' ? 'زميلنا العزيز' : 'there')).trim();
+    }
+
+    private getGreeting(
+        user?: { fullName?: string | null; fullNameAr?: string | null },
+        locale: NotificationLocale = 'ar',
+    ) {
+        const name = this.getDisplayName(user, locale);
+        return locale === 'ar' ? `عزيزي ${name}،` : `Dear ${name},`;
+    }
+
+    private toDate(value?: Date | string | null) {
+        if (!value) return null;
+        const parsed = value instanceof Date ? value : new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    private formatDate(value?: Date | string | null, locale: NotificationLocale = 'ar') {
+        const date = this.toDate(value);
+        if (!date) {
+            return locale === 'ar' ? 'غير محدد' : 'Not specified';
+        }
+
+        return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', {
+            dateStyle: 'medium',
+        }).format(date);
+    }
+
+    private formatNumber(value: number, locale: NotificationLocale = 'ar', maximumFractionDigits = 1) {
+        return new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-US', {
+            maximumFractionDigits,
+        }).format(value);
+    }
+
+    private formatDays(value?: number | null, locale: NotificationLocale = 'ar') {
+        if (value === null || value === undefined || !Number.isFinite(value)) {
+            return locale === 'ar' ? 'غير محدد' : 'Not specified';
+        }
+
+        const formatted = this.formatNumber(value, locale, Number.isInteger(value) ? 0 : 1);
+        return locale === 'ar' ? `${formatted} يوم` : `${formatted} day${value === 1 ? '' : 's'}`;
+    }
+
+    private formatHours(value?: number | null, locale: NotificationLocale = 'ar') {
+        if (value === null || value === undefined || !Number.isFinite(value)) {
+            return locale === 'ar' ? 'غير محدد' : 'Not specified';
+        }
+
+        const formatted = this.formatNumber(value, locale, Number.isInteger(value) ? 0 : 1);
+        return locale === 'ar' ? `${formatted} ساعة` : `${formatted} hour${value === 1 ? '' : 's'}`;
+    }
+
+    private getWorkflowModeLabel(workflowMode?: string | null, locale: NotificationLocale = 'ar') {
+        if (workflowMode === 'SANDBOX') {
+            return locale === 'ar' ? 'وضع التجربة' : 'Sandbox Mode';
+        }
+        return locale === 'ar' ? 'سير الموافقات' : 'Approval Workflow';
+    }
+
+    private getLeaveTypeLabel(leaveType?: string | null, locale: NotificationLocale = 'ar') {
+        const labels: Record<string, Record<NotificationLocale, string>> = {
+            ANNUAL: { ar: 'إجازة اعتيادية', en: 'Annual leave' },
+            CASUAL: { ar: 'إجازة عارضة', en: 'Casual leave' },
+            EMERGENCY: { ar: 'إجازة طارئة', en: 'Emergency leave' },
+            MISSION: { ar: 'مأمورية', en: 'Mission' },
+            ABSENCE_WITH_PERMISSION: { ar: 'غياب بإذن', en: 'Absence with permission' },
+        };
+
+        return labels[leaveType || '']?.[locale] || (locale === 'ar' ? 'طلب إجازة' : 'Leave request');
+    }
+
+    private getPermissionTypeLabel(permissionType?: string | null, locale: NotificationLocale = 'ar') {
+        const labels: Record<string, Record<NotificationLocale, string>> = {
+            PERSONAL: { ar: 'إذن شخصي', en: 'Personal permission' },
+            LATE_ARRIVAL: { ar: 'إذن تأخير', en: 'Late arrival permission' },
+            EARLY_LEAVE: { ar: 'إذن انصراف مبكر', en: 'Early leave permission' },
+        };
+
+        return labels[permissionType || '']?.[locale] || (locale === 'ar' ? 'طلب إذن' : 'Permission request');
+    }
+
+    private buildRequestDetailItems(
+        requestType: 'leave' | 'permission',
+        details: RequestDetails,
+        locale: NotificationLocale = 'ar',
+    ): MessageDetail[] {
+        const items: Array<MessageDetail | null> = [];
+        const reason = details.reason?.trim();
+
+        if (requestType === 'leave') {
+            items.push({
+                icon: '🗂️',
+                label: locale === 'ar' ? 'نوع الطلب' : 'Request type',
+                value: this.getLeaveTypeLabel(details.leaveType, locale),
+            });
+
+            const startDate = this.toDate(details.startDate);
+            const endDate = this.toDate(details.endDate);
+            if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
+                items.push(
+                    {
+                        icon: '📅',
+                        label: locale === 'ar' ? 'من' : 'From',
+                        value: this.formatDate(startDate, locale),
+                    },
+                    {
+                        icon: '📅',
+                        label: locale === 'ar' ? 'إلى' : 'To',
+                        value: this.formatDate(endDate, locale),
+                    },
+                );
+            } else {
+                items.push({
+                    icon: '📅',
+                    label: locale === 'ar' ? 'التاريخ' : 'Date',
+                    value: this.formatDate(startDate || endDate, locale),
+                });
+            }
+
+            if (details.totalDays !== null && details.totalDays !== undefined) {
+                items.push({
+                    icon: '⏳',
+                    label: locale === 'ar' ? 'المدة' : 'Duration',
+                    value: this.formatDays(details.totalDays, locale),
+                });
+            }
+        } else {
+            items.push({
+                icon: '🗂️',
+                label: locale === 'ar' ? 'نوع الطلب' : 'Request type',
+                value: this.getPermissionTypeLabel(details.permissionType, locale),
+            });
+            items.push({
+                icon: '📅',
+                label: locale === 'ar' ? 'التاريخ' : 'Date',
+                value: this.formatDate(details.requestDate, locale),
+            });
+
+            if (details.arrivalTime && details.leaveTime) {
+                items.push({
+                    icon: '⏰',
+                    label: locale === 'ar' ? 'الوقت' : 'Time',
+                    value: `${details.arrivalTime} - ${details.leaveTime}`,
+                });
+            }
+
+            if (details.hoursUsed !== null && details.hoursUsed !== undefined) {
+                items.push({
+                    icon: '⏳',
+                    label: locale === 'ar' ? 'المدة' : 'Duration',
+                    value: this.formatHours(details.hoursUsed, locale),
+                });
+            }
+        }
+
+        if (reason) {
+            items.push({
+                icon: '📝',
+                label: locale === 'ar' ? 'التفاصيل' : 'Details',
+                value: reason,
+            });
+        }
+
+        return items.filter((item): item is MessageDetail => Boolean(item));
+    }
+
+    private composeWhatsAppMessage(options: {
+        locale: NotificationLocale;
+        user?: { fullName?: string | null; fullNameAr?: string | null };
+        title: string;
+        intro: string;
+        details?: MessageDetail[];
+        linkLabel?: string;
+        linkUrl?: string;
+        footer?: string;
+    }) {
+        const lines: string[] = [
+            '*SPHINX HR*',
+            `👋 ${this.getGreeting(options.user, options.locale)}`,
+            '',
+            `*${options.title}*`,
+            options.intro,
+        ];
+
+        if (options.details?.length) {
+            lines.push('', ...options.details.map((item) => `${item.icon} ${item.label}: ${item.value}`));
+        }
+
+        if (options.linkUrl) {
+            lines.push('', options.linkLabel || (options.locale === 'ar' ? '🔗 رابط الطلب:' : '🔗 Request link:'), options.linkUrl);
+        }
+
+        if (options.footer) {
+            lines.push('', options.footer);
+        }
+
+        return lines.join('\n');
+    }
+
+    private escapeHtml(value: string) {
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    private buildEmailHtml(options: {
+        locale: NotificationLocale;
+        user?: { fullName?: string | null; fullNameAr?: string | null };
+        title: string;
+        intro: string;
+        details?: MessageDetail[];
+        ctaLabel?: string;
+        ctaUrl?: string;
+        footer?: string;
+    }) {
+        const greeting = this.escapeHtml(this.getGreeting(options.user, options.locale));
+        const intro = this.escapeHtml(options.intro);
+        const detailItems = (options.details || [])
+            .map((item) => `<li style="margin:0 0 8px"><strong>${this.escapeHtml(item.label)}:</strong> ${this.escapeHtml(item.value)}</li>`)
+            .join('');
+
+        return `
+            <div style="font-family:Tahoma,Arial,sans-serif;max-width:640px;color:#0f172a;line-height:1.8">
+                <div style="border:1px solid #e2e8f0;border-radius:18px;padding:24px;background:#ffffff">
+                    <p style="margin:0 0 12px;font-size:12px;letter-spacing:0.18em;color:#64748b">SPHINX HR</p>
+                    <h2 style="margin:0 0 12px;font-size:24px">${this.escapeHtml(options.title)}</h2>
+                    <p style="margin:0 0 10px">${greeting}</p>
+                    <p style="margin:0 0 18px">${intro}</p>
+                    ${detailItems ? `<ul style="padding-${options.locale === 'ar' ? 'right' : 'left'}:18px;margin:0 0 18px">${detailItems}</ul>` : ''}
+                    ${options.ctaUrl && options.ctaLabel
+                ? `<p style="margin:0 0 18px"><a href="${this.escapeHtml(options.ctaUrl)}" style="display:inline-block;padding:10px 16px;background:#0f766e;color:#ffffff;text-decoration:none;border-radius:999px">${this.escapeHtml(options.ctaLabel)}</a></p>`
+                : ''}
+                    ${options.footer ? `<p style="margin:0;color:#475569">${this.escapeHtml(options.footer)}</p>` : ''}
+                </div>
+            </div>
+        `;
     }
 
     private buildRequestPrintUrl(
@@ -41,6 +309,59 @@ export class NotificationsService {
         locale = 'ar',
     ) {
         return `${this.getPublicAppUrl(locale)}/requests/print/${requestType}/${requestId}`;
+    }
+
+    private buildRequestExternalContent(options: {
+        locale: NotificationLocale;
+        user?: { fullName?: string | null; fullNameAr?: string | null };
+        requestType: 'leave' | 'permission';
+        requestId: string;
+        title: string;
+        intro: string;
+        statusLabel: string;
+        requestDetails: RequestDetails;
+        comment?: string;
+    }) {
+        const isArabic = options.locale === 'ar';
+        const printUrl = this.buildRequestPrintUrl(options.requestType, options.requestId, options.locale);
+        const details = [
+            ...this.buildRequestDetailItems(options.requestType, options.requestDetails, options.locale),
+            {
+                icon: '📌',
+                label: isArabic ? 'الحالة' : 'Status',
+                value: options.statusLabel,
+            },
+        ];
+        const comment = options.comment?.trim();
+        if (comment) {
+            details.push({
+                icon: '💬',
+                label: isArabic ? 'ملاحظة' : 'Comment',
+                value: comment,
+            });
+        }
+
+        return {
+            printUrl,
+            whatsAppMessage: this.composeWhatsAppMessage({
+                locale: options.locale,
+                user: options.user,
+                title: options.title,
+                intro: options.intro,
+                details,
+                linkLabel: isArabic ? '🔗 رابط الطلب:' : '🔗 Request link:',
+                linkUrl: printUrl,
+            }),
+            emailHtml: this.buildEmailHtml({
+                locale: options.locale,
+                user: options.user,
+                title: options.title,
+                intro: options.intro,
+                details,
+                ctaLabel: isArabic ? 'عرض الطلب' : 'Open request',
+                ctaUrl: printUrl,
+            }),
+        };
     }
 
     async createInApp(data: {
@@ -255,34 +576,101 @@ export class NotificationsService {
         employeeNumber?: string | null;
         username?: string | null;
         workflowMode?: string | null;
+    }, options?: {
+        temporaryPassword?: string | null;
+        syncWhatsApp?: boolean;
     }) {
         const locale = this.getPreferredLocale(user);
-        const loginUrl = this.getPublicAppUrl(locale);
         const isArabic = locale === 'ar';
-        const message = isArabic
-            ? `تم إنشاء حسابك في SPHINX HR بنجاح.\nرقم الموظف: ${user.employeeNumber || '-'}\nاسم المستخدم: ${user.username || user.email}\nوضع الطلبات الحالي: ${user.workflowMode === 'SANDBOX' ? 'وضع التجربة' : 'سير الموافقات'}\nرابط الدخول: ${loginUrl}`
-            : `Welcome to SPHINX HR.\nEmployee #: ${user.employeeNumber || '-'}\nUsername: ${user.username || user.email}\nCurrent request mode: ${user.workflowMode === 'SANDBOX' ? 'Sandbox Mode' : 'Approval Workflow'}\nLogin: ${loginUrl}`;
+        const loginUrl = this.getPublicAppUrl(locale);
+        const title = isArabic ? 'تم إنشاء حسابك بنجاح' : 'Your account is ready';
+        const intro = isArabic
+            ? 'تم تجهيز حسابك على SPHINX HR ويمكنك تسجيل الدخول من الرابط التالي.'
+            : 'Your SPHINX HR account is ready and you can sign in from the link below.';
+        const details: MessageDetail[] = [
+            {
+                icon: '🆔',
+                label: isArabic ? 'رقم الموظف' : 'Employee #',
+                value: user.employeeNumber || '-',
+            },
+            {
+                icon: '👤',
+                label: isArabic ? 'اسم المستخدم' : 'Username',
+                value: user.username || user.email,
+            },
+            {
+                icon: '📌',
+                label: isArabic ? 'وضع الطلبات' : 'Request mode',
+                value: this.getWorkflowModeLabel(user.workflowMode, locale),
+            },
+        ];
 
+        if (options?.temporaryPassword) {
+            details.splice(2, 0, {
+                icon: '🔐',
+                label: isArabic ? 'كلمة المرور المؤقتة' : 'Temporary password',
+                value: options.temporaryPassword,
+            });
+        }
+
+        const footer = options?.temporaryPassword
+            ? (isArabic ? 'يرجى تغيير كلمة المرور بعد أول تسجيل دخول.' : 'Please change your password after your first login.')
+            : (isArabic ? 'يمكنك الآن الدخول ومتابعة طلباتك بكل سهولة.' : 'You can now sign in and track your requests easily.');
+        const message = this.composeWhatsAppMessage({
+            locale,
+            user,
+            title,
+            intro,
+            details,
+            linkLabel: isArabic ? '🔗 رابط الدخول:' : '🔗 Login link:',
+            linkUrl: loginUrl,
+            footer,
+        });
         const emailSubject = isArabic ? 'تم إنشاء حسابك على SPHINX HR' : 'Your SPHINX HR account is ready';
-        const emailBody = isArabic
-            ? `<div style="font-family:sans-serif;max-width:600px"><h2>تم إنشاء حسابك بنجاح</h2><p>رقم الموظف: ${user.employeeNumber || '-'}</p><p>اسم المستخدم: ${user.username || user.email}</p><p>وضع الطلبات الحالي: ${user.workflowMode === 'SANDBOX' ? 'وضع التجربة' : 'سير الموافقات'}</p><p><a href="${loginUrl}">الدخول إلى النظام</a></p></div>`
-            : `<div style="font-family:sans-serif;max-width:600px"><h2>Your account is ready</h2><p>Employee #: ${user.employeeNumber || '-'}</p><p>Username: ${user.username || user.email}</p><p>Request mode: ${user.workflowMode === 'SANDBOX' ? 'Sandbox Mode' : 'Approval Workflow'}</p><p><a href="${loginUrl}">Open SPHINX HR</a></p></div>`;
+        const emailBody = this.buildEmailHtml({
+            locale,
+            user,
+            title,
+            intro,
+            details,
+            ctaLabel: isArabic ? 'الدخول إلى النظام' : 'Open SPHINX HR',
+            ctaUrl: loginUrl,
+            footer,
+        });
+
+        const emailJob = user.email
+            ? this.sendEmail({
+                to: user.email,
+                subject: emailSubject,
+                html: emailBody,
+            })
+            : null;
+
+        if (options?.syncWhatsApp) {
+            const whatsAppDelivery = user.phone
+                ? await this.sendWhatsApp(user.phone, message)
+                : null;
+
+            if (emailJob) {
+                this.runInBackground(emailJob, 'Deferred account-created email failed');
+            }
+
+            return whatsAppDelivery;
+        }
 
         const jobs: Promise<unknown>[] = [];
         if (user.phone) {
             jobs.push(this.sendWhatsApp(user.phone, message));
         }
-        if (user.email) {
-            jobs.push(this.sendEmail({
-                to: user.email,
-                subject: emailSubject,
-                html: emailBody,
-            }));
+        if (emailJob) {
+            jobs.push(emailJob);
         }
 
         if (jobs.length) {
             this.runInBackground(Promise.allSettled(jobs), 'Deferred account-created notification failed');
         }
+
+        return null;
     }
 
     async sendPasswordResetCode(options: {
@@ -328,16 +716,29 @@ export class NotificationsService {
         requestLabelAr: string;
         requestLabelEn: string;
         status: 'PENDING' | 'HR_APPROVED';
+        requestDetails: RequestDetails;
     }) {
         const locale = this.getPreferredLocale(options.user);
-        const printUrl = this.buildRequestPrintUrl(options.requestType, options.requestId, locale);
         const isArabic = locale === 'ar';
         const statusLabel = options.status === 'HR_APPROVED'
             ? (isArabic ? 'تم الاعتماد تلقائيًا' : 'Auto-approved')
             : (isArabic ? 'تم تسجيل الطلب وهو قيد المراجعة' : 'Submitted and pending review');
-        const message = isArabic
-            ? `تم استلام ${options.requestLabelAr} بنجاح.\nالحالة: ${statusLabel}\nرابط الطباعة: ${printUrl}`
-            : `Your ${options.requestLabelEn} has been received.\nStatus: ${statusLabel}\nPrint link: ${printUrl}`;
+        const title = isArabic
+            ? `تم استلام ${options.requestLabelAr}`
+            : `${options.requestLabelEn} received`;
+        const intro = isArabic
+            ? 'تم تسجيل طلبك بنجاح ويمكنك مراجعة التفاصيل من الرابط التالي.'
+            : 'Your request has been recorded successfully and you can review the details from the link below.';
+        const externalContent = this.buildRequestExternalContent({
+            locale,
+            user: options.user,
+            requestType: options.requestType,
+            requestId: options.requestId,
+            title,
+            intro,
+            statusLabel,
+            requestDetails: options.requestDetails,
+        });
 
         const emailSubject = isArabic
             ? `تم استلام ${options.requestLabelAr}`
@@ -345,15 +746,13 @@ export class NotificationsService {
 
         const jobs: Promise<unknown>[] = [];
         if (options.user.phone) {
-            jobs.push(this.sendWhatsApp(options.user.phone, message));
+            jobs.push(this.sendWhatsApp(options.user.phone, externalContent.whatsAppMessage));
         }
         if (options.user.email) {
             jobs.push(this.sendEmail({
                 to: options.user.email,
                 subject: emailSubject,
-                html: isArabic
-                    ? `<div style="font-family:sans-serif;max-width:600px"><h2>تم استلام ${options.requestLabelAr}</h2><p>الحالة: ${statusLabel}</p><p><a href="${printUrl}">رابط الطباعة</a></p></div>`
-                    : `<div style="font-family:sans-serif;max-width:600px"><h2>${options.requestLabelEn} received</h2><p>Status: ${statusLabel}</p><p><a href="${printUrl}">Open print preview</a></p></div>`,
+                html: externalContent.emailHtml,
             }));
         }
 
@@ -389,12 +788,12 @@ export class NotificationsService {
     async notifyLeaveAction(
         leaveRequest: any,
         action: 'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected',
-        options?: { body?: string; bodyAr?: string; sendExternal?: boolean },
+        options?: { comment?: string; body?: string; bodyAr?: string; sendExternal?: boolean },
     ) {
         const user = await this.prisma.user.findUnique({ where: { id: leaveRequest.userId } });
         if (!user) return;
 
-        const titles = {
+        const titles: Record<'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected', Record<NotificationLocale, string>> = {
             submitted: { en: 'Leave Request Submitted', ar: 'تم تقديم طلب الإجازة' },
             verified: { en: 'Leave Request Verified', ar: 'تم التحقق من طلب الإجازة' },
             managerApproved: { en: 'Leave Approved by Manager', ar: 'موافقة المدير على طلب الإجازة' },
@@ -404,28 +803,28 @@ export class NotificationsService {
 
         const bodies = {
             submitted: {
-                en: `Your ${leaveRequest.leaveType} leave request has been submitted and sent to the secretary.`,
-                ar: `تم إرسال طلب الإجازة إلى السكرتارية.`,
+                en: `Your ${this.getLeaveTypeLabel(leaveRequest.leaveType, 'en')} has been submitted and sent to the secretary.`,
+                ar: 'تم تسجيل طلب الإجازة وإرساله إلى السكرتارية للمراجعة.',
             },
             verified: {
                 en: 'Your leave request was verified and sent to your manager.',
-                ar: 'تم التحقق من طلب إجازتك وإرساله إلى المدير.',
+                ar: 'تمت مراجعة طلب الإجازة وإرساله إلى المدير.',
             },
             managerApproved: {
                 en: 'Your leave request was approved by your manager and sent to HR.',
-                ar: 'تمت موافقة المدير على طلب الإجازة وتم إرساله إلى الموارد البشرية.',
+                ar: 'وافق المدير على طلب الإجازة وتم تحويله إلى الموارد البشرية.',
             },
             approved: {
-                en: `Your leave request from ${leaveRequest.startDate?.toLocaleDateString()} has been approved.`,
-                ar: `تمت الموافقة على طلب إجازتك.`,
+                en: 'Your leave request has been approved.',
+                ar: 'تم اعتماد طلب الإجازة الخاص بك.',
             },
             rejected: {
-                en: `Your leave request has been rejected. Please contact your manager.`,
-                ar: `تم رفض طلب إجازتك. يرجى التواصل مع مديرك.`,
+                en: 'Your leave request has been rejected. Please contact your manager.',
+                ar: 'تم رفض طلب الإجازة. يرجى التواصل مع مديرك.',
             },
         };
 
-        const typeMap: Record<typeof action, string> = {
+        const typeMap: Record<'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected', string> = {
             submitted: 'LEAVE_REQUEST',
             verified: 'LEAVE_REQUEST',
             managerApproved: 'LEAVE_REQUEST',
@@ -448,14 +847,41 @@ export class NotificationsService {
 
         const sendExternal = options?.sendExternal ?? ['submitted', 'approved', 'rejected'].includes(action);
         if (sendExternal) {
+            const locale = this.getPreferredLocale(user);
+            const statusLabels: Record<'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected', Record<NotificationLocale, string>> = {
+                submitted: { ar: 'قيد المراجعة', en: 'Under review' },
+                verified: { ar: 'تمت المراجعة المبدئية', en: 'Verified' },
+                managerApproved: { ar: 'موافقة المدير', en: 'Manager approved' },
+                approved: { ar: 'تم الاعتماد', en: 'Approved' },
+                rejected: { ar: 'مرفوض', en: 'Rejected' },
+            };
+            const intro = locale === 'ar' ? bodyAr : body;
+            const externalContent = this.buildRequestExternalContent({
+                locale,
+                user,
+                requestType: 'leave',
+                requestId: leaveRequest.id,
+                title: titles[action][locale],
+                intro,
+                statusLabel: statusLabels[action][locale],
+                requestDetails: {
+                    leaveType: leaveRequest.leaveType,
+                    startDate: leaveRequest.startDate,
+                    endDate: leaveRequest.endDate,
+                    totalDays: leaveRequest.totalDays,
+                    reason: leaveRequest.reason,
+                },
+                comment: options?.comment,
+            });
+
             const jobs: Promise<unknown>[] = [];
             if (user.phone) {
-                jobs.push(this.sendWhatsApp(user.phone, `SPHINX HR: ${titles[action].en}\n${body}`));
+                jobs.push(this.sendWhatsApp(user.phone, externalContent.whatsAppMessage));
             }
             jobs.push(this.sendEmail({
                 to: user.email,
                 subject: `SPHINX HR - ${titles[action].en}`,
-                html: `<div style="font-family:sans-serif;max-width:600px"><h2>${titles[action].en}</h2><p>${body}</p><p>Login to SPHINX HR for details.</p></div>`,
+                html: externalContent.emailHtml,
             }));
 
             this.runInBackground(Promise.allSettled(jobs), `Deferred leave external notifications (${action}) failed`);
@@ -471,7 +897,7 @@ export class NotificationsService {
             || (await this.prisma.user.findUnique({ where: { id: permissionRequest.userId } }));
         if (!user) return;
 
-        const titles = {
+        const titles: Record<'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected', Record<NotificationLocale, string>> = {
             submitted: { en: 'Permission Request Submitted', ar: 'تم إرسال طلب الإذن' },
             verified: { en: 'Permission Request Verified', ar: 'تم التحقق من طلب الإذن' },
             managerApproved: { en: 'Permission Approved by Manager', ar: 'موافقة المدير على طلب الإذن' },
@@ -482,19 +908,19 @@ export class NotificationsService {
         const bodies = {
             submitted: {
                 en: 'Your permission request has been submitted and sent to the secretary.',
-                ar: 'تم إرسال طلب الإذن إلى السكرتارية.',
+                ar: 'تم تسجيل طلب الإذن وإرساله إلى السكرتارية للمراجعة.',
             },
             verified: {
                 en: 'Your permission request was verified and sent to your manager.',
-                ar: 'تم التحقق من طلب الإذن وإرساله إلى المدير.',
+                ar: 'تمت مراجعة طلب الإذن وإرساله إلى المدير.',
             },
             managerApproved: {
                 en: 'Your permission request was approved by your manager and sent to HR.',
-                ar: 'تمت موافقة المدير على طلب الإذن وتم إرساله إلى الموارد البشرية.',
+                ar: 'وافق المدير على طلب الإذن وتم تحويله إلى الموارد البشرية.',
             },
             approved: {
                 en: 'Your permission request has been approved.',
-                ar: 'تمت الموافقة على طلب الإذن.',
+                ar: 'تم اعتماد طلب الإذن الخاص بك.',
             },
             rejected: {
                 en: 'Your permission request has been rejected. Please contact your manager.',
@@ -502,7 +928,7 @@ export class NotificationsService {
             },
         };
 
-        const typeMap: Record<typeof action, string> = {
+        const typeMap: Record<'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected', string> = {
             submitted: 'PERMISSION_REQUEST',
             verified: 'PERMISSION_REQUEST',
             managerApproved: 'PERMISSION_REQUEST',
@@ -525,8 +951,36 @@ export class NotificationsService {
         });
 
         if (options?.sendExternal && user.phone) {
+            const locale = this.getPreferredLocale(user);
+            const statusLabels: Record<'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected', Record<NotificationLocale, string>> = {
+                submitted: { ar: 'قيد المراجعة', en: 'Under review' },
+                verified: { ar: 'تمت المراجعة المبدئية', en: 'Verified' },
+                managerApproved: { ar: 'موافقة المدير', en: 'Manager approved' },
+                approved: { ar: 'تم الاعتماد', en: 'Approved' },
+                rejected: { ar: 'مرفوض', en: 'Rejected' },
+            };
+            const intro = locale === 'ar' ? bodyAr : body;
+            const externalContent = this.buildRequestExternalContent({
+                locale,
+                user,
+                requestType: 'permission',
+                requestId: permissionRequest.id,
+                title: titles[action][locale],
+                intro,
+                statusLabel: statusLabels[action][locale],
+                requestDetails: {
+                    permissionType: permissionRequest.permissionType,
+                    requestDate: permissionRequest.requestDate,
+                    arrivalTime: permissionRequest.arrivalTime,
+                    leaveTime: permissionRequest.leaveTime,
+                    hoursUsed: permissionRequest.hoursUsed,
+                    reason: permissionRequest.reason,
+                },
+                comment: commentBody,
+            });
+
             this.runInBackground(
-                this.sendWhatsApp(user.phone, `SPHINX HR: ${titles[action].en}\n${body}`),
+                this.sendWhatsApp(user.phone, externalContent.whatsAppMessage),
                 `Deferred permission external notification (${action}) failed`,
             );
         }
