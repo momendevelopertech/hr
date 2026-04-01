@@ -434,7 +434,7 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
                                         {t('edit')}
                                     </button>
                                     <button
-                                        className={`btn-outline text-xs text-red-600 ${deleteBlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        className={`btn-danger text-xs ${deleteBlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         onClick={() => requestDeleteBranch(branch)}
                                         disabled={deleteBlocked}
                                     >
@@ -523,7 +523,7 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
                                                 </button>
                                                 <button className="btn-outline" onClick={() => openEdit(dept)}>{t('edit')}</button>
                                                 <button
-                                                    className={`btn-outline text-red-600 ${dept.totalEmployees > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    className={`btn-danger ${dept.totalEmployees > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                     onClick={() => requestDeleteDepartment(dept)}
                                                     disabled={dept.totalEmployees > 0}
                                                 >
@@ -832,7 +832,7 @@ export default function DepartmentsClient({ locale }: { locale: string }) {
                         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex flex-col gap-1">
                                 <button
-                                    className={`btn-outline text-red-600 ${editingDept.totalEmployees > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`btn-danger ${editingDept.totalEmployees > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     onClick={() => requestDeleteDepartment(editingDept)}
                                     disabled={editingDept.totalEmployees > 0}
                                 >

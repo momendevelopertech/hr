@@ -467,20 +467,20 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                         <td className="py-2">
                                             <div className="flex flex-wrap gap-2">
                                                 <button
-                                                    className="btn-outline border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300 hover:bg-sky-100"
+                                                    className="btn-outline"
                                                     onClick={() => openStats(emp)}
                                                 >
                                                     {t('view')}
                                                 </button>
                                                 <button
-                                                    className="btn-outline border-indigo-200 bg-indigo-50 text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100"
+                                                    className="btn-outline"
                                                     onClick={() => openHistory(emp)}
                                                 >
                                                     {t('history')}
                                                 </button>
                                                 {canAdmin && (
                                                     <button
-                                                        className="btn-outline border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100"
+                                                        className="btn-outline"
                                                         onClick={() => openEdit(emp)}
                                                     >
                                                         {t('edit')}
@@ -488,10 +488,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                                 )}
                                                 {canAdmin && (
                                                     <button
-                                                        className={`btn-outline ${emp.isActive
-                                                            ? 'border-orange-200 bg-orange-50 text-orange-700 hover:border-orange-300 hover:bg-orange-100'
-                                                            : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100'
-                                                        }`}
+                                                        className={emp.isActive ? 'btn-danger' : 'btn-success'}
                                                         onClick={() => toggleActive(emp)}
                                                     >
                                                         {emp.isActive ? t('deactivate') : t('activate')}
@@ -499,7 +496,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                                 )}
                                                 {canAdmin && (
                                                     <button
-                                                        className="btn-outline border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100"
+                                                        className="btn-danger"
                                                         onClick={() => resetEmployeeData(emp)}
                                                     >
                                                         {resetLabel}
@@ -507,7 +504,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                                 )}
                                                 {canAdmin && canDeleteEmployee(emp) && (
                                                     <button
-                                                        className="btn-outline border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        className="btn-danger"
                                                         onClick={() => deleteEmployee(emp)}
                                                         disabled={deletingId === emp.id}
                                                     >

@@ -635,12 +635,14 @@ body {
 }
 
 :root[data-theme='dark'] .btn-outline {
-    border-color: rgba(148, 163, 184, 0.35);
-    color: #e2e8f0;
+    border-color: var(--action-neutral-border);
+    color: var(--action-neutral-text);
 }
 
 :root[data-theme='dark'] .btn-outline:hover {
-    background: rgba(148, 163, 184, 0.1);
+    background: var(--action-neutral-fill);
+    border-color: var(--action-neutral-fill);
+    color: var(--action-neutral-hover-text);
 }
 
 :root[data-theme='dark'] .btn-secondary {
@@ -988,6 +990,32 @@ body {
     --danger-contrast: #fff8fa;
     --neutral-soft: #eef2f6;
     --neutral-soft-border: #d4dde7;
+    --action-button-shadow: 0 1px 2px rgba(24, 32, 42, 0.08);
+    --action-button-shadow-hover: 0 12px 20px rgba(24, 32, 42, 0.12);
+    --action-neutral-border: #c7d0dc;
+    --action-neutral-text: #5f6b79;
+    --action-neutral-fill: #edf2f6;
+    --action-neutral-hover-text: #1f2933;
+    --action-approve-border: #2f8a5f;
+    --action-approve-text: #1e6d49;
+    --action-approve-fill: #2f8a5f;
+    --action-approve-hover-text: #fbfffd;
+    --action-reject-border: #c66c7e;
+    --action-reject-text: #9f495b;
+    --action-reject-fill: #c66c7e;
+    --action-reject-hover-text: #fffafb;
+    --chip-success-bg: #edf8f2;
+    --chip-success-border: #b7dcc6;
+    --chip-success-text: #165b3d;
+    --chip-pending-bg: #f2f5f8;
+    --chip-pending-border: #d2dbe6;
+    --chip-pending-text: #516071;
+    --chip-danger-bg: #fbf0f3;
+    --chip-danger-border: #e9c2cb;
+    --chip-danger-text: #9a495b;
+    --chip-neutral-bg: #eff2f5;
+    --chip-neutral-border: #d5dce5;
+    --chip-neutral-text: #5c6876;
     --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
     --shadow-soft: 0 10px 24px rgba(15, 23, 42, 0.08);
     --shadow-popover: 0 18px 44px rgba(15, 23, 42, 0.16);
@@ -1087,6 +1115,32 @@ body {
     --danger-contrast: #2c0a14;
     --neutral-soft: #2a303a;
     --neutral-soft-border: rgba(211, 220, 231, 0.18);
+    --action-button-shadow: 0 1px 2px rgba(2, 6, 23, 0.34);
+    --action-button-shadow-hover: 0 14px 24px rgba(2, 6, 23, 0.38);
+    --action-neutral-border: rgba(189, 199, 214, 0.42);
+    --action-neutral-text: #d6dde7;
+    --action-neutral-fill: #48515f;
+    --action-neutral-hover-text: #f8fbff;
+    --action-approve-border: #7fd3a3;
+    --action-approve-text: #bae9cf;
+    --action-approve-fill: #389163;
+    --action-approve-hover-text: #f7fffa;
+    --action-reject-border: #e2a2b0;
+    --action-reject-text: #ffd4dc;
+    --action-reject-fill: #c77888;
+    --action-reject-hover-text: #fffafb;
+    --chip-success-bg: rgba(24, 92, 62, 0.36);
+    --chip-success-border: rgba(136, 214, 170, 0.42);
+    --chip-success-text: #bfeccf;
+    --chip-pending-bg: rgba(76, 88, 103, 0.3);
+    --chip-pending-border: rgba(195, 204, 217, 0.24);
+    --chip-pending-text: #dde4ee;
+    --chip-danger-bg: rgba(129, 44, 66, 0.32);
+    --chip-danger-border: rgba(231, 176, 188, 0.38);
+    --chip-danger-text: #ffd7de;
+    --chip-neutral-bg: rgba(70, 79, 93, 0.28);
+    --chip-neutral-border: rgba(186, 196, 210, 0.24);
+    --chip-neutral-text: #d4dce6;
     --shadow-card: 0 22px 52px rgba(2, 6, 23, 0.34);
     --shadow-soft: 0 12px 26px rgba(2, 6, 23, 0.28);
     --shadow-popover: 0 24px 60px rgba(2, 6, 23, 0.42);
@@ -1334,37 +1388,110 @@ input[type='radio'] {
 }
 
 .btn-outline {
-    background: var(--surface);
-    border-color: var(--border-strong);
-    color: var(--ink2);
-    box-shadow: var(--shadow-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    text-align: center;
+    white-space: nowrap;
+    border-width: 1.5px;
+    border-radius: 9999px;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.875rem;
+    background: transparent;
+    border-color: var(--action-neutral-border);
+    color: var(--action-neutral-text);
+    box-shadow: var(--action-button-shadow);
+    transition: all 0.15s ease;
 }
 
-.btn-outline:hover:not(:disabled) {
-    background: var(--surface2);
-    color: var(--ink);
+.btn-outline:hover:not(:disabled),
+.btn-outline:active:not(:disabled) {
+    background: var(--action-neutral-fill);
+    border-color: var(--action-neutral-fill);
+    color: var(--action-neutral-hover-text);
+    box-shadow: var(--action-button-shadow-hover);
+}
+
+.btn-success,
+.btn-danger,
+.act-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .btn-success {
-    background: var(--success-solid);
-    border-color: var(--success-solid);
-    color: var(--success-contrast);
-    box-shadow: 0 12px 24px rgba(23, 111, 73, 0.18);
+    border-width: 1.5px;
+    border-radius: 9999px;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.875rem;
+    background: transparent;
+    border-color: var(--action-approve-border);
+    color: var(--action-approve-text);
+    box-shadow: var(--action-button-shadow);
+    transition: all 0.15s ease;
 }
 
-.btn-success:hover:not(:disabled) {
-    filter: brightness(0.98);
+.btn-success:hover:not(:disabled),
+.btn-success:active:not(:disabled) {
+    background: var(--action-approve-fill);
+    border-color: var(--action-approve-fill);
+    color: var(--action-approve-hover-text);
+    box-shadow: var(--action-button-shadow-hover);
 }
 
 .btn-danger {
-    background: var(--danger-solid);
-    border-color: var(--danger-solid);
-    color: var(--danger-contrast);
-    box-shadow: 0 12px 24px rgba(189, 51, 80, 0.18);
+    border-width: 1.5px;
+    border-radius: 9999px;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.875rem;
+    background: transparent;
+    border-color: var(--action-reject-border);
+    color: var(--action-reject-text);
+    box-shadow: var(--action-button-shadow);
+    transition: all 0.15s ease;
 }
 
-.btn-danger:hover:not(:disabled) {
-    filter: brightness(0.98);
+.btn-danger:hover:not(:disabled),
+.btn-danger:active:not(:disabled) {
+    background: var(--action-reject-fill);
+    border-color: var(--action-reject-fill);
+    color: var(--action-reject-hover-text);
+    box-shadow: var(--action-button-shadow-hover);
+}
+
+.btn-outline:focus-visible,
+.btn-success:focus-visible,
+.btn-danger:focus-visible,
+.act-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--focus-ring), var(--action-button-shadow-hover);
+}
+
+.btn-outline[aria-disabled='true'],
+.btn-success[aria-disabled='true'],
+.btn-danger[aria-disabled='true'] {
+    pointer-events: none;
+    opacity: 0.62;
+    box-shadow: none;
+}
+
+.btn-outline.border-0 {
+    border-width: 0;
+    min-height: auto;
+    box-shadow: none;
+}
+
+.btn-outline.border-0:hover:not(:disabled),
+.btn-outline.border-0:active:not(:disabled) {
+    border-width: 0;
 }
 
 .app-sidebar {
@@ -1508,32 +1635,101 @@ input[type='radio'] {
 }
 
 .pend-tag {
-    background: var(--tone-amber-bg);
-    color: var(--tone-amber-fg);
-    border: 1px solid var(--tone-amber-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    padding: 0.3rem 0.7rem;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    margin-inline-start: auto;
+    background: var(--chip-pending-bg);
+    color: var(--chip-pending-text);
+    border: 1px solid var(--chip-pending-border);
+}
+
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    padding: 0.3rem 0.7rem;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.status-chip--success {
+    background: var(--chip-success-bg);
+    color: var(--chip-success-text);
+    border-color: var(--chip-success-border);
+}
+
+.status-chip--pending {
+    background: var(--chip-pending-bg);
+    color: var(--chip-pending-text);
+    border-color: var(--chip-pending-border);
+}
+
+.status-chip--danger {
+    background: var(--chip-danger-bg);
+    color: var(--chip-danger-text);
+    border-color: var(--chip-danger-border);
+}
+
+.status-chip--neutral {
+    background: var(--chip-neutral-bg);
+    color: var(--chip-neutral-text);
+    border-color: var(--chip-neutral-border);
 }
 
 .act-btn {
-    border-color: var(--border-strong);
-    background: var(--surface);
-    color: var(--ink2);
-    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    flex: 1;
+    min-height: 2rem;
+    border-width: 1.5px;
+    border-radius: 9999px;
+    padding: 0.375rem 0.875rem;
+    font-size: 0.75rem;
+    background: transparent;
+    border-color: var(--action-neutral-border);
+    color: var(--action-neutral-text);
+    box-shadow: var(--action-button-shadow);
+    transition: all 0.15s ease;
 }
 
 .act-btn:hover:not(:disabled) {
     transform: translateY(-1px);
+    box-shadow: var(--action-button-shadow-hover);
 }
 
 .act-btn.approve {
-    background: var(--success-bg);
-    border-color: var(--success-border);
-    color: var(--success);
+    background: transparent;
+    border-color: var(--action-approve-border);
+    color: var(--action-approve-text);
+}
+
+.act-btn.approve:hover:not(:disabled),
+.act-btn.approve:active:not(:disabled) {
+    background: var(--action-approve-fill);
+    border-color: var(--action-approve-fill);
+    color: var(--action-approve-hover-text);
 }
 
 .act-btn.reject {
-    background: var(--danger-bg);
-    border-color: var(--danger-border);
-    color: var(--danger);
+    background: transparent;
+    border-color: var(--action-reject-border);
+    color: var(--action-reject-text);
+}
+
+.act-btn.reject:hover:not(:disabled),
+.act-btn.reject:active:not(:disabled) {
+    background: var(--action-reject-fill);
+    border-color: var(--action-reject-fill);
+    color: var(--action-reject-hover-text);
 }
 
 .tone-accent {

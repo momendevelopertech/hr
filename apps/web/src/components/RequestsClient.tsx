@@ -97,6 +97,14 @@ const parseDateOnlyTs = (value: string) => {
     return new Date(year, month - 1, day).getTime();
 };
 
+const getRequestStatusChipClass = (row: Pick<RequestRow, 'status' | 'approvedByMgrId' | 'approvedByHrId'>) => {
+    if (row.status === 'REJECTED') return 'status-chip status-chip--danger';
+    if (row.status === 'CANCELLED') return 'status-chip status-chip--neutral';
+    if (row.status === 'HR_APPROVED') return 'status-chip status-chip--success';
+    if (row.status === 'MANAGER_APPROVED' && row.approvedByMgrId) return 'status-chip status-chip--success';
+    return 'status-chip status-chip--pending';
+};
+
 export default function RequestsClient({ locale }: { locale: string }) {
     const t = useTranslations('requestsPage');
     const tEmployees = useTranslations('employees');
@@ -811,7 +819,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                         <td className="py-2">{row.details}</td>
                                         <td className="py-2">{new Date(row.requestDate).toLocaleDateString(dateLocale)}</td>
                                         <td className="py-2">
-                                            <span className="pill bg-ink/10 text-ink">
+                                            <span className={getRequestStatusChipClass(row)}>
                                                 {enumLabels.status(row.status, locale as 'en' | 'ar', {
                                                     requestType: row.requestType,
                                                     approvedByMgrId: row.approvedByMgrId,
@@ -1010,7 +1018,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                                                 <td className="py-2">{row.details}</td>
                                                 <td className="py-2">{new Date(row.requestDate).toLocaleDateString(dateLocale)}</td>
                                                 <td className="py-2">
-                                                    <span className="pill bg-ink/10 text-ink">
+                                                    <span className={getRequestStatusChipClass(row)}>
                                                         {enumLabels.status(row.status, locale as 'en' | 'ar', {
                                                             requestType: row.requestType,
                                                             approvedByMgrId: row.approvedByMgrId,
