@@ -81,18 +81,7 @@ export class AuthService {
     }
 
     private async hasWhatsAppConfig() {
-        if (process.env.WHAPI_TOKEN) return true;
-        try {
-            const settings = await this.prisma.workScheduleSettings.findFirst({
-                select: { whapiToken: true },
-            });
-            return !!settings?.whapiToken;
-        } catch (error: any) {
-            if (error?.code === 'P2022') {
-                return !!process.env.WHAPI_TOKEN;
-            }
-            throw error;
-        }
+        return this.notificationsService.hasWhatsAppConfig();
     }
 
     private async getResetDeliveryChannel(
@@ -214,9 +203,10 @@ export class AuthService {
 
             if (failedCount >= MAX_FAILED_ATTEMPTS) {
                 // Send WhatsApp notification about locked account
-                await this.notificationsService.sendWhatsApp(
+                this.notificationsService.sendWhatsAppInBackground(
                     user.phone,
                     `⚠️ SPHINX HR: Your account has been locked due to ${MAX_FAILED_ATTEMPTS} failed login attempts. Contact HR to unlock.`,
+                    `Deferred account lock WhatsApp failed for user ${user.id}`,
                 );
                 throw new ForbiddenException('Account locked after too many failed attempts.');
             }
@@ -417,9 +407,10 @@ export class AuthService {
 
         const resetUrl = '';
         if (process.env.NODE_ENV === 'legacy-reset-link' && user.phone) {
-            await this.notificationsService.sendWhatsApp(
+            this.notificationsService.sendWhatsAppInBackground(
                 user.phone,
                 `🔐 SPHINX HR: A password reset was requested for your account. If you didn't request this, please contact HR immediately. Reset link: ${resetUrl}`,
+                `Deferred legacy password reset alert failed for user ${user.id}`,
             );
         }
     }

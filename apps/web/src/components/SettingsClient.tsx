@@ -21,8 +21,8 @@ type WorkScheduleSettings = {
     ramadanStartDate: string | null;
     ramadanEndDate: string | null;
     pwaInstallEnabled: boolean;
-    whapiBaseUrl: string;
-    whapiTokenConfigured?: boolean;
+    evolutionApiBaseUrl: string;
+    evolutionApiKeyConfigured?: boolean;
 };
 
 const DEFAULT_SETTINGS: WorkScheduleSettings = {
@@ -37,8 +37,8 @@ const DEFAULT_SETTINGS: WorkScheduleSettings = {
     ramadanStartDate: null,
     ramadanEndDate: null,
     pwaInstallEnabled: false,
-    whapiBaseUrl: 'https://gate.whapi.cloud/',
-    whapiTokenConfigured: false,
+    evolutionApiBaseUrl: '',
+    evolutionApiKeyConfigured: false,
 };
 
 export default function SettingsClient({ locale }: { locale: string }) {
@@ -49,7 +49,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [settings, setSettings] = useState<WorkScheduleSettings>(DEFAULT_SETTINGS);
-    const [whapiToken, setWhapiToken] = useState('');
+    const [evolutionApiKey, setEvolutionApiKey] = useState('');
     const [resetOpen, setResetOpen] = useState(false);
     const [resetting, setResetting] = useState(false);
 
@@ -60,7 +60,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
         try {
             const res = await api.get('/settings/work-schedule');
             setSettings((prev) => ({ ...prev, ...res.data }));
-            setWhapiToken('');
+            setEvolutionApiKey('');
         } finally {
             setLoading(false);
         }
@@ -95,10 +95,10 @@ export default function SettingsClient({ locale }: { locale: string }) {
         }
         setSaving(true);
         try {
-            const { whapiTokenConfigured: _whapiTokenConfigured, ...payload } = settings;
+            const { evolutionApiKeyConfigured: _evolutionApiKeyConfigured, ...payload } = settings;
             await api.put('/settings/work-schedule', {
                 ...payload,
-                ...(whapiToken.trim() ? { whapiToken: whapiToken.trim() } : {}),
+                ...(evolutionApiKey.trim() ? { evolutionApiKey: evolutionApiKey.trim() } : {}),
             });
             toast.success(t('saved'));
             fetchSettings();
@@ -277,32 +277,32 @@ export default function SettingsClient({ locale }: { locale: string }) {
 
                     <div className="space-y-3 rounded-2xl border border-ink/10 bg-white/70 p-4">
                         <div className="space-y-1">
-                            <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('whapiTitle')}</p>
-                            <p className="text-sm text-ink/60">{t('whapiDescription')}</p>
+                            <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('evolutionTitle')}</p>
+                            <p className="text-sm text-ink/60">{t('evolutionDescription')}</p>
                         </div>
                         <label className="text-sm">
-                            {t('whapiBaseUrl')}
+                            {t('evolutionBaseUrl')}
                             <input
                                 type="url"
                                 className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                value={settings.whapiBaseUrl}
-                                onChange={(e) => update('whapiBaseUrl', e.target.value)}
-                                placeholder="https://gate.whapi.cloud/"
+                                value={settings.evolutionApiBaseUrl}
+                                onChange={(e) => update('evolutionApiBaseUrl', e.target.value)}
+                                placeholder="http://YOUR_VPS_IP:8080"
                             />
                         </label>
                         <label className="text-sm">
-                            {t('whapiToken')}
+                            {t('evolutionApiKey')}
                             <input
                                 type="password"
                                 className="mt-1 w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                value={whapiToken}
-                                onChange={(e) => setWhapiToken(e.target.value)}
-                                placeholder={settings.whapiTokenConfigured ? t('whapiTokenConfigured') : ''}
+                                value={evolutionApiKey}
+                                onChange={(e) => setEvolutionApiKey(e.target.value)}
+                                placeholder={settings.evolutionApiKeyConfigured ? t('evolutionApiKeyConfigured') : ''}
                                 autoComplete="new-password"
                             />
                         </label>
                         <p className="text-xs text-ink/60">
-                            {settings.whapiTokenConfigured ? t('whapiTokenSaved') : t('whapiTokenHint')}
+                            {settings.evolutionApiKeyConfigured ? t('evolutionApiKeySaved') : t('evolutionApiKeyHint')}
                         </p>
                     </div>
                 </div>

@@ -2,7 +2,7 @@ import { PrismaClient, Role, Governorate } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { DEFAULT_WHAPI_SETTINGS } from '../src/settings/whapi-defaults';
+import { DEFAULT_WHATSAPP_SETTINGS } from '../src/settings/whatsapp-defaults';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -418,19 +418,19 @@ async function resetLeaveBalances(userIds: string[], year: number) {
 
 async function syncWorkScheduleSettings() {
     const existing = await prisma.workScheduleSettings.findFirst({
-        select: { id: true, whapiBaseUrl: true },
+        select: { id: true, evolutionApiBaseUrl: true },
     });
 
     if (existing) {
         await prisma.workScheduleSettings.update({
             where: { id: existing.id },
-            data: { whapiBaseUrl: DEFAULT_WHAPI_SETTINGS.whapiBaseUrl },
+            data: { evolutionApiBaseUrl: DEFAULT_WHATSAPP_SETTINGS.evolutionApiBaseUrl },
         });
         return;
     }
 
     await prisma.workScheduleSettings.create({
-        data: DEFAULT_WHAPI_SETTINGS,
+        data: DEFAULT_WHATSAPP_SETTINGS,
     });
 }
 

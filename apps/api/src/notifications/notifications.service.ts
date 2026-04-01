@@ -2,23 +2,8 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { endOfDay, startOfDay } from 'date-fns';
 import { PusherService } from '../pusher/pusher.service';
-import axios from 'axios';
 import * as nodemailer from 'nodemailer';
-import { formatEgyptMobileForWhatsApp } from '../shared/egypt-phone';
-
-type WhatsAppConfigCandidate = {
-    token: string;
-    baseUrl: string;
-    source: 'database' | 'environment';
-};
-
-export type WhatsAppDeliveryResult = {
-    ok: boolean;
-    phone: string;
-    source?: WhatsAppConfigCandidate['source'];
-    status?: number;
-    error?: string;
-};
+import { WhatsAppDeliveryResult, WhatsAppService } from './whatsapp.service';
 
 @Injectable()
 export class NotificationsService {
@@ -28,6 +13,7 @@ export class NotificationsService {
     constructor(
         private prisma: PrismaService,
         private pusher: PusherService,
+        private whatsAppService: WhatsAppService,
     ) {
         this.transporter = nodemailer.createTransport({
             host: process.env.MAIL_HOST,
@@ -38,37 +24,6 @@ export class NotificationsService {
                 pass: process.env.MAIL_PASS,
             },
         });
-    }
-
-    private async getWhatsAppConfigCandidates() {
-        const envToken = process.env.WHAPI_TOKEN?.trim();
-        const envBaseUrl = process.env.WHAPI_BASE_URL?.trim() || 'https://gate.whapi.cloud/';
-        const candidates: WhatsAppConfigCandidate[] = [];
-        const pushCandidate = (token?: string | null, baseUrl?: string | null, source: WhatsAppConfigCandidate['source'] = 'environment') => {
-            const trimmedToken = token?.trim();
-            const trimmedBaseUrl = baseUrl?.trim() || envBaseUrl;
-            if (!trimmedToken) return;
-            if (candidates.some((item) => item.token === trimmedToken && item.baseUrl === trimmedBaseUrl)) return;
-            candidates.push({ token: trimmedToken, baseUrl: trimmedBaseUrl, source });
-        };
-
-        try {
-            const settings = await this.prisma.workScheduleSettings.findFirst({
-                select: { whapiToken: true, whapiBaseUrl: true },
-            });
-            pushCandidate(settings?.whapiToken, settings?.whapiBaseUrl, 'database');
-        } catch (error: any) {
-            if (error?.code !== 'P2022') {
-                throw error;
-            }
-        }
-
-        pushCandidate(envToken, envBaseUrl, 'environment');
-        return candidates;
-    }
-
-    private normalizeWhatsAppPhone(phone?: string | null) {
-        return formatEgyptMobileForWhatsApp(phone);
     }
 
     private getPublicAppUrl(locale = 'ar') {
@@ -279,85 +234,17 @@ export class NotificationsService {
         });
     }
 
+    async hasWhatsAppConfig() {
+        return this.whatsAppService.hasConfig();
+    }
+
     async sendWhatsApp(phone: string, message: string): Promise<WhatsAppDeliveryResult> {
-        if (!phone) {
-            this.logger.warn('WhatsApp phone is missing');
-            return { ok: false, phone: '', error: 'WhatsApp phone is missing' };
-        }
+        return this.whatsAppService.sendWhatsApp(phone, message);
+    }
 
-        const formattedPhone = this.normalizeWhatsAppPhone(phone);
-        if (!formattedPhone) {
-            this.logger.warn('WhatsApp phone is invalid');
-            return { ok: false, phone, error: 'WhatsApp phone is invalid' };
-        }
-
-        const configs = await this.getWhatsAppConfigCandidates();
-        if (!configs.length) {
-            this.logger.warn('WhatsApp not configured or phone missing');
-            return { ok: false, phone: formattedPhone, error: 'WhatsApp is not configured' };
-        }
-
-        let lastFailure: WhatsAppDeliveryResult = {
-            ok: false,
-            phone: formattedPhone,
-            error: 'Unknown WhatsApp delivery failure',
-        };
-
-        for (const config of configs) {
-            try {
-                const baseUrl = config.baseUrl.replace(/\/?$/, '/');
-                const response = await axios.post(
-                    `${baseUrl}messages/text`,
-                    { to: formattedPhone, body: message },
-                    {
-                        headers: {
-                            Authorization: `Bearer ${config.token}`,
-                            'Content-Type': 'application/json',
-                        },
-                        validateStatus: () => true,
-                    },
-                );
-
-                if (response.status >= 200 && response.status < 300) {
-                    this.logger.log(`WhatsApp sent to ${formattedPhone} using ${config.source} config`);
-                    return {
-                        ok: true,
-                        phone: formattedPhone,
-                        source: config.source,
-                        status: response.status,
-                    };
-                }
-
-                const errorMessage =
-                    response.data?.error
-                    || response.data?.message
-                    || `WhatsApp send failed with status ${response.status}`;
-                this.logger.warn(`WhatsApp send failed via ${config.source}: ${errorMessage}`);
-                lastFailure = {
-                    ok: false,
-                    phone: formattedPhone,
-                    source: config.source,
-                    status: response.status,
-                    error: errorMessage,
-                };
-
-                if (![401, 403, 404].includes(response.status)) {
-                    return lastFailure;
-                }
-            } catch (err: any) {
-                const errorMessage = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Unknown WhatsApp error';
-                this.logger.error(`WhatsApp send failed via ${config.source}: ${errorMessage}`);
-                lastFailure = {
-                    ok: false,
-                    phone: formattedPhone,
-                    source: config.source,
-                    status: err?.response?.status,
-                    error: errorMessage,
-                };
-            }
-        }
-
-        return lastFailure;
+    sendWhatsAppInBackground(phone: string | null | undefined, message: string, context: string) {
+        if (!phone) return;
+        this.runInBackground(this.sendWhatsApp(phone, message), context);
     }
 
     async sendAccountCreatedMessage(user: {
@@ -412,7 +299,11 @@ export class NotificationsService {
             : `Your SPHINX HR password reset code is: ${options.code}\nThis code expires in 10 minutes.\nReset page: ${resetUrl}`;
 
         if (options.channel === 'WHATSAPP' && options.user.phone) {
-            await this.sendWhatsApp(options.user.phone, message);
+            this.sendWhatsAppInBackground(
+                options.user.phone,
+                message,
+                `Deferred password reset WhatsApp failed for user ${options.user.id}`,
+            );
             return;
         }
 

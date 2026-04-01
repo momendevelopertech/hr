@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, WorkScheduleMode } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { DEFAULT_WHAPI_BASE_URL } from './whapi-defaults';
+import { DEFAULT_EVOLUTION_API_BASE_URL } from './whatsapp-defaults';
 
 const DEFAULT_SETTINGS: Prisma.WorkScheduleSettingsCreateInput = {
     activeMode: WorkScheduleMode.NORMAL,
@@ -14,8 +14,8 @@ const DEFAULT_SETTINGS: Prisma.WorkScheduleSettingsCreateInput = {
     ramadanStartDate: null,
     ramadanEndDate: null,
     pwaInstallEnabled: false,
-    whapiBaseUrl: DEFAULT_WHAPI_BASE_URL,
-    whapiToken: null,
+    evolutionApiBaseUrl: DEFAULT_EVOLUTION_API_BASE_URL,
+    evolutionApiKey: null,
 };
 
 const BASE_SELECT = {
@@ -36,8 +36,8 @@ const BASE_SELECT = {
 const FULL_SELECT = {
     ...BASE_SELECT,
     pwaInstallEnabled: true,
-    whapiBaseUrl: true,
-    whapiToken: true,
+    evolutionApiBaseUrl: true,
+    evolutionApiKey: true,
 };
 
 const isMissingColumnError = (error: unknown) => {
@@ -56,10 +56,10 @@ const withPwaFallback = <T extends Record<string, any> | null>(data: T, value?: 
 
 const serializeSettings = <T extends Record<string, any> | null>(data: T) => {
     if (!data) return data;
-    const { whapiToken: _whapiToken, ...rest } = data;
+    const { evolutionApiKey: _evolutionApiKey, ...rest } = data;
     return {
         ...rest,
-        whapiTokenConfigured: !!_whapiToken,
+        evolutionApiKeyConfigured: !!_evolutionApiKey,
     };
 };
 
@@ -100,13 +100,13 @@ const toCreateInput = (
     if (typeof pwaValue === 'boolean') {
         result.pwaInstallEnabled = pwaValue;
     }
-    const whapiBaseUrl = (data as Record<string, unknown>).whapiBaseUrl;
-    if (typeof whapiBaseUrl === 'string' && whapiBaseUrl.trim()) {
-        result.whapiBaseUrl = whapiBaseUrl.trim();
+    const evolutionApiBaseUrl = (data as Record<string, unknown>).evolutionApiBaseUrl;
+    if (typeof evolutionApiBaseUrl === 'string') {
+        result.evolutionApiBaseUrl = evolutionApiBaseUrl.trim();
     }
-    const whapiToken = (data as Record<string, unknown>).whapiToken;
-    if (typeof whapiToken === 'string') {
-        result.whapiToken = whapiToken.trim() || null;
+    const evolutionApiKey = (data as Record<string, unknown>).evolutionApiKey;
+    if (typeof evolutionApiKey === 'string') {
+        result.evolutionApiKey = evolutionApiKey.trim() || null;
     }
     assignIfString('weekdayStart');
     assignIfString('weekdayEnd');
@@ -140,8 +140,8 @@ export class WorkScheduleService {
             if (!isMissingColumnError(error)) throw error;
             const legacyData = { ...data } as Record<string, any>;
             delete legacyData.pwaInstallEnabled;
-            delete legacyData.whapiBaseUrl;
-            delete legacyData.whapiToken;
+            delete legacyData.evolutionApiBaseUrl;
+            delete legacyData.evolutionApiKey;
             const legacy = await this.prisma.workScheduleSettings.create({ data: legacyData, select: BASE_SELECT });
             return withPwaFallback(legacy, false);
         }
@@ -154,8 +154,8 @@ export class WorkScheduleService {
             if (!isMissingColumnError(error)) throw error;
             const legacyData = { ...(data as Record<string, any>) };
             delete legacyData.pwaInstallEnabled;
-            delete legacyData.whapiBaseUrl;
-            delete legacyData.whapiToken;
+            delete legacyData.evolutionApiBaseUrl;
+            delete legacyData.evolutionApiKey;
             const legacy = await this.prisma.workScheduleSettings.update({ where: { id }, data: legacyData, select: BASE_SELECT });
             return withPwaFallback(legacy, false);
         }
@@ -174,15 +174,15 @@ export class WorkScheduleService {
 
     async updateSettings(data: Prisma.WorkScheduleSettingsUpdateInput) {
         const normalized = normalizeSettingsUpdate(data);
-        const rawWhapiBaseUrl = (data as Record<string, unknown>).whapiBaseUrl;
-        const rawWhapiToken = (data as Record<string, unknown>).whapiToken;
+        const rawEvolutionApiBaseUrl = (data as Record<string, unknown>).evolutionApiBaseUrl;
+        const rawEvolutionApiKey = (data as Record<string, unknown>).evolutionApiKey;
         const updateData: Prisma.WorkScheduleSettingsUpdateInput = {
             ...normalized,
-            ...(typeof rawWhapiBaseUrl === 'string' && rawWhapiBaseUrl.trim()
-                ? { whapiBaseUrl: rawWhapiBaseUrl.trim() }
+            ...(typeof rawEvolutionApiBaseUrl === 'string'
+                ? { evolutionApiBaseUrl: rawEvolutionApiBaseUrl.trim() }
                 : {}),
-            ...(typeof rawWhapiToken === 'string' && rawWhapiToken.trim()
-                ? { whapiToken: rawWhapiToken.trim() }
+            ...(typeof rawEvolutionApiKey === 'string'
+                ? { evolutionApiKey: rawEvolutionApiKey.trim() || null }
                 : {}),
         };
         const existing = await this.safeFindFirst();

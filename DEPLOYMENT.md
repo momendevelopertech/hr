@@ -6,7 +6,7 @@
 1. Redis instance.
 1. Cloudinary account.
 1. SMTP credentials for email.
-1. WHAPI token for WhatsApp.
+1. Evolution API base URL for WhatsApp.
 1. RSA keys for JWT (RS256).
 
 ## Environment
@@ -21,7 +21,9 @@ Set the required variables in `.env`:
 `CLOUDINARY_CLOUD_NAME`  
 `CLOUDINARY_API_KEY`  
 `CLOUDINARY_API_SECRET`  
-`WHAPI_TOKEN`  
+`EVOLUTION_API_BASE_URL`  
+`EVOLUTION_API_KEY`  
+`EVOLUTION_API_TIMEOUT_MS`  
 `MAIL_HOST`  
 `MAIL_PORT`  
 `MAIL_USER`  

@@ -52,9 +52,9 @@ export class UpdateWorkScheduleDto {
 
     @IsOptional()
     @IsString()
-    whapiBaseUrl?: string;
+    evolutionApiBaseUrl?: string;
 
     @IsOptional()
     @IsString()
-    whapiToken?: string;
+    evolutionApiKey?: string;
 }
