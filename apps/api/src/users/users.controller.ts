@@ -90,7 +90,7 @@ export class UsersController {
     @Delete(':id')
     @UseGuards(RolesGuard)
     @Roles('SUPER_ADMIN', 'HR_ADMIN')
-    deactivate(@Param('id') id: string, @Req() req: any) {
-        return this.usersService.deactivate(id, req.user.id);
+    deletePermanently(@Param('id') id: string, @Req() req: any) {
+        return this.usersService.deletePermanently(id, req.user.id, req.user.role);
     }
 }

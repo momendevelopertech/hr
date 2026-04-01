@@ -55,6 +55,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     const [editOpen, setEditOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [savingEdit, setSavingEdit] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [statsOpen, setStatsOpen] = useState(false);
     const [statsLoading, setStatsLoading] = useState(false);
     const [statsUser, setStatsUser] = useState<User | null>(null);
@@ -80,12 +81,21 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     const initialLoadRef = useRef(true);
 
     const cancelLabel = locale === 'ar' ? 'إلغاء' : 'Cancel';
-    const resetLabel = locale === 'ar' ? 'مسح البيانات' : 'Reset Data';
+    const resetLabel = t('resetData');
     const canAdmin = user?.role === 'HR_ADMIN' || user?.role === 'SUPER_ADMIN';
     const canViewEmployees = canAdmin || user?.role === 'MANAGER' || user?.role === 'BRANCH_SECRETARY';
+    const phoneValidationMessage = t('phoneInvalid');
 
     const normalizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 11);
     const isValidPhone = (value?: string) => !value || /^\d{11}$/.test(value);
+    const canDeleteEmployee = (emp: User) => {
+        if (!canAdmin || !user) return false;
+        if (emp.id === user.id) return false;
+        if (user.role === 'HR_ADMIN' && (emp.role === 'HR_ADMIN' || emp.role === 'SUPER_ADMIN')) {
+            return false;
+        }
+        return true;
+    };
 
     const queryParams = useMemo(() => ({
         page,
@@ -155,7 +165,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
 
     const createEmployee = async () => {
         if (!isValidPhone(form.phone)) {
-            alert(locale === 'ar' ? 'رقم الهاتف يجب أن يكون 11 رقمًا.' : 'Phone number must be exactly 11 digits.');
+            alert(phoneValidationMessage);
             return;
         }
         const role = form.role || 'EMPLOYEE';
@@ -223,7 +233,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     const saveEdit = async () => {
         if (!editingUser) return;
         if (!isValidPhone(editForm.phone)) {
-            alert(locale === 'ar' ? 'رقم الهاتف يجب أن يكون 11 رقمًا.' : 'Phone number must be exactly 11 digits.');
+            alert(phoneValidationMessage);
             return;
         }
         const role = editForm.role || 'EMPLOYEE';
@@ -290,8 +300,9 @@ export default function EmployeesClient({ locale }: { locale: string }) {
 
     const toggleActive = async (emp: User) => {
         await api.patch(`/users/${emp.id}`, { isActive: !emp.isActive });
-        fetchAll();
+        await fetchAll();
     };
+
     const resetEmployeeData = async (emp: User) => {
         const confirmText = locale === 'ar'
             ? 'هل أنت متأكد من مسح جميع بيانات الموظف؟ سيتم حذف الإجازات والأذونات والطلبات والسجلات.'
@@ -299,7 +310,47 @@ export default function EmployeesClient({ locale }: { locale: string }) {
         if (!window.confirm(confirmText)) return;
         await api.post(`/users/${emp.id}/reset-data`);
         alert(locale === 'ar' ? 'تم مسح بيانات الموظف بنجاح.' : 'Employee data has been reset.');
-        fetchAll();
+        await fetchAll();
+    };
+
+    const deleteEmployee = async (emp: User) => {
+        if (!canDeleteEmployee(emp)) {
+            alert(t('deleteProtected'));
+            return;
+        }
+        if (!window.confirm(t('deleteConfirm'))) return;
+
+        setDeletingId(emp.id);
+        try {
+            await api.delete(`/users/${emp.id}`);
+            alert(t('deleteSuccess'));
+
+            if (editingUser?.id === emp.id) {
+                setEditOpen(false);
+                setEditingUser(null);
+                setEditForm({});
+            }
+            if (statsUser?.id === emp.id) {
+                setStatsOpen(false);
+                setStatsUser(null);
+                setStatsData(null);
+            }
+            if (historyUser?.id === emp.id) {
+                setHistoryOpen(false);
+                setHistoryUser(null);
+            }
+
+            if (employees.length === 1 && page > 1) {
+                setPage((current) => Math.max(1, current - 1));
+            } else {
+                await fetchAll();
+            }
+        } catch (error) {
+            const err = error as { message?: string };
+            alert(err.message || t('deleteFailed'));
+        } finally {
+            setDeletingId(null);
+        }
     };
 
     return (
@@ -414,7 +465,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                                     className="btn-outline border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300 hover:bg-sky-100"
                                                     onClick={() => openStats(emp)}
                                                 >
-                                                    {locale === 'ar' ? 'عرض' : 'View'}
+                                                    {t('view')}
                                                 </button>
                                                 <button
                                                     className="btn-outline border-indigo-200 bg-indigo-50 text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100"
@@ -427,7 +478,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                                         className="btn-outline border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100"
                                                         onClick={() => openEdit(emp)}
                                                     >
-                                                        {locale === 'ar' ? 'تعديل' : 'Edit'}
+                                                        {t('edit')}
                                                     </button>
                                                 )}
                                                 {canAdmin && (
@@ -447,6 +498,17 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                                         onClick={() => resetEmployeeData(emp)}
                                                     >
                                                         {resetLabel}
+                                                    </button>
+                                                )}
+                                                {canAdmin && canDeleteEmployee(emp) && (
+                                                    <button
+                                                        className="btn-outline border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        onClick={() => deleteEmployee(emp)}
+                                                        disabled={deletingId === emp.id}
+                                                    >
+                                                        {deletingId === emp.id
+                                                            ? (locale === 'ar' ? 'جارٍ الحذف...' : 'Deleting...')
+                                                            : t('delete')}
                                                     </button>
                                                 )}
                                             </div>
@@ -477,11 +539,15 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                             <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('fullNameEn')} onChange={(e) => setForm((p: any) => ({ ...p, fullName: e.target.value }))} />
                             <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('fullNameArLabel')} onChange={(e) => setForm((p: any) => ({ ...p, fullNameAr: e.target.value }))} />
                             <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('email')} onChange={(e) => setForm((p: any) => ({ ...p, email: e.target.value }))} />
-                            <input className="rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('phone')}
-                                inputMode="numeric"
-                                maxLength={11}
-                                value={form.phone || ''}
-                                onChange={(e) => setForm((p: any) => ({ ...p, phone: normalizePhone(e.target.value) }))} />
+                            <div className="space-y-1">
+                                <input className="w-full rounded-xl border border-ink/20 bg-white px-3 py-2" placeholder={t('phone')}
+                                    inputMode="numeric"
+                                    maxLength={11}
+                                    title={t('phoneHint')}
+                                    value={form.phone || ''}
+                                    onChange={(e) => setForm((p: any) => ({ ...p, phone: normalizePhone(e.target.value) }))} />
+                                <p className="text-xs text-ink/60">{t('phoneHint')}</p>
+                            </div>
                             <select
                                 className="rounded-xl border border-ink/20 bg-white px-3 py-2"
                                 value={form.branchId || ''}
@@ -553,14 +619,18 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                 value={editForm.fullNameAr || ''}
                                 onChange={(e) => setEditForm((p: any) => ({ ...p, fullNameAr: e.target.value }))}
                             />
-                            <input
-                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
-                                placeholder={t('phone')}
-                                inputMode="numeric"
-                                maxLength={11}
-                                value={editForm.phone || ''}
-                                onChange={(e) => setEditForm((p: any) => ({ ...p, phone: normalizePhone(e.target.value) }))}
-                            />
+                            <div className="space-y-1">
+                                <input
+                                    className="w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                    placeholder={t('phone')}
+                                    inputMode="numeric"
+                                    maxLength={11}
+                                    title={t('phoneHint')}
+                                    value={editForm.phone || ''}
+                                    onChange={(e) => setEditForm((p: any) => ({ ...p, phone: normalizePhone(e.target.value) }))}
+                                />
+                                <p className="text-xs text-ink/60">{t('phoneHint')}</p>
+                            </div>
                             <select
                                 className="rounded-xl border border-ink/20 bg-white px-3 py-2"
                                 value={editForm.branchId || ''}

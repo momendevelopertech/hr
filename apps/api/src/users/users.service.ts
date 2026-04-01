@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
 import { RedisService } from '../redis/redis.service';
+import { isEgyptianMobilePhone, normalizeEgyptMobilePhone } from '../shared/egypt-phone';
 import { matchesEmployeeSearch, normalizeDigits, normalizeSearchText } from '../shared/search-normalization';
 import * as bcrypt from 'bcrypt';
 import { getCycleRange } from '../shared/cycle';
@@ -26,14 +27,15 @@ export class UsersService {
 
     private normalizePhone(phone?: string) {
         if (!phone) return undefined;
-        return normalizeDigits(phone).replace(/\D/g, '');
+        const normalized = normalizeEgyptMobilePhone(phone);
+        return normalized || undefined;
     }
 
     private validatePhone(phone?: string) {
         const normalizedPhone = this.normalizePhone(phone);
         if (!normalizedPhone) return undefined;
-        if (!/^\d{11}$/.test(normalizedPhone)) {
-            throw new BadRequestException('Phone number must be exactly 11 digits');
+        if (!isEgyptianMobilePhone(normalizedPhone)) {
+            throw new BadRequestException('Phone number must be a valid Egyptian mobile number');
         }
         return normalizedPhone;
     }
@@ -76,6 +78,13 @@ export class UsersService {
 
     private normalizeText(value?: string | null) {
         return (value || '').replace(/\s+/g, ' ').trim();
+    }
+
+    private async clearUserCaches() {
+        await Promise.all([
+            this.redisService.delByPrefix('users:'),
+            this.redisService.delByPrefix('reports:'),
+        ]);
     }
 
     private validateEnglishFullName(value?: string | null) {
@@ -291,6 +300,8 @@ export class UsersService {
             workflowMode: user.workflowMode,
         });
 
+        await this.clearUserCaches();
+
         return user;
     }
 
@@ -412,6 +423,8 @@ export class UsersService {
             subject: 'Welcome to SPHINX HR System',
             html: `<div style="font-family:sans-serif"><h2>Welcome to SPHINX HR, ${user.fullName}!</h2><p>Your account has been created.</p><ul><li>Employee #: ${user.employeeNumber}</li><li>Username: ${generatedUsername}</li><li>Temporary Password: ${password}</li></ul><p><a href="${process.env.FRONTEND_URL}">Login here</a> and change your password immediately.</p></div>`,
         });
+
+        await this.clearUserCaches();
 
         return {
             ...user,
@@ -696,12 +709,102 @@ export class UsersService {
             details: data,
         });
 
+        await this.clearUserCaches();
+
         return user;
     }
 
-    async deactivate(id: string, adminId: string) {
-        await this.prisma.user.update({ where: { id }, data: { isActive: false } });
-        await this.auditService.log({ userId: adminId, action: 'EMPLOYEE_DELETED', entity: 'User', entityId: id });
+    async deletePermanently(targetUserId: string, adminId: string, adminRole: string) {
+        const target = await this.prisma.user.findUnique({
+            where: { id: targetUserId },
+            select: {
+                id: true,
+                role: true,
+                employeeNumber: true,
+                fullName: true,
+            },
+        });
+        if (!target) throw new NotFoundException('Employee not found');
+
+        if (target.id === adminId) {
+            throw new BadRequestException('You cannot delete your own account');
+        }
+
+        if (adminRole === 'HR_ADMIN' && (target.role === 'HR_ADMIN' || target.role === 'SUPER_ADMIN')) {
+            throw new ForbiddenException('HR admins can only permanently delete non-admin accounts');
+        }
+
+        await this.prisma.$transaction(async (tx) => {
+            await tx.department.updateMany({
+                where: { managerId: targetUserId },
+                data: { managerId: null },
+            });
+
+            await tx.permissionRequest.updateMany({
+                where: { approvedByMgrId: targetUserId },
+                data: { approvedByMgrId: null, approvedByMgrAt: null },
+            });
+            await tx.permissionRequest.updateMany({
+                where: { approvedByHrId: targetUserId },
+                data: { approvedByHrId: null, approvedByHrAt: null },
+            });
+
+            await tx.leaveRequest.updateMany({
+                where: { approvedByMgrId: targetUserId },
+                data: { approvedByMgrId: null, approvedByMgrAt: null },
+            });
+            await tx.leaveRequest.updateMany({
+                where: { approvedByHrId: targetUserId },
+                data: { approvedByHrId: null, approvedByHrAt: null },
+            });
+
+            await tx.formSubmission.updateMany({
+                where: { approvedByMgrId: targetUserId },
+                data: { approvedByMgrId: null, approvedByMgrAt: null },
+            });
+            await tx.formSubmission.updateMany({
+                where: { approvedByHrId: targetUserId },
+                data: { approvedByHrId: null, approvedByHrAt: null },
+            });
+
+            await tx.notification.deleteMany({
+                where: {
+                    OR: [{ receiverId: targetUserId }, { senderId: targetUserId }],
+                },
+            });
+            await tx.message.deleteMany({
+                where: {
+                    OR: [{ senderId: targetUserId }, { receiverId: targetUserId }],
+                },
+            });
+            await tx.note.deleteMany({ where: { userId: targetUserId } });
+            await tx.lateness.deleteMany({ where: { userId: targetUserId } });
+            await tx.permissionRequest.deleteMany({ where: { userId: targetUserId } });
+            await tx.leaveRequest.deleteMany({ where: { userId: targetUserId } });
+            await tx.formSubmission.deleteMany({ where: { userId: targetUserId } });
+            await tx.permissionCycle.deleteMany({ where: { userId: targetUserId } });
+            await tx.leaveBalance.deleteMany({ where: { userId: targetUserId } });
+            await tx.refreshToken.deleteMany({ where: { userId: targetUserId } });
+            await tx.auditLog.deleteMany({ where: { userId: targetUserId } });
+            await tx.user.delete({ where: { id: targetUserId } });
+        });
+
+        await this.auditService.log({
+            userId: adminId,
+            action: 'EMPLOYEE_DELETED',
+            entity: 'User',
+            entityId: targetUserId,
+            details: {
+                permanentlyDeleted: true,
+                employeeNumber: target.employeeNumber,
+                fullName: target.fullName,
+                role: target.role,
+            },
+        });
+
+        await this.clearUserCaches();
+
+        return { message: 'Employee deleted permanently.' };
     }
 
     async updateLeaveBalance(userId: string, leaveType: string, year: number, totalDays: number) {
@@ -789,6 +892,8 @@ export class UsersService {
             entityId: targetUserId,
             details: { reset: true },
         });
+
+        await this.clearUserCaches();
 
         return { message: 'Employee data reset.' };
     }

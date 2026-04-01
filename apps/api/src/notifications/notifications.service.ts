@@ -4,7 +4,7 @@ import { endOfDay, startOfDay } from 'date-fns';
 import { PusherService } from '../pusher/pusher.service';
 import axios from 'axios';
 import * as nodemailer from 'nodemailer';
-import { normalizeDigits } from '../shared/search-normalization';
+import { formatEgyptMobileForWhatsApp } from '../shared/egypt-phone';
 
 @Injectable()
 export class NotificationsService {
@@ -46,12 +46,7 @@ export class NotificationsService {
     }
 
     private normalizeWhatsAppPhone(phone?: string | null) {
-        const digits = normalizeDigits(phone || '').replace(/\D/g, '');
-        if (!digits) return '';
-        if (digits.startsWith('20') && digits.length === 12) return digits;
-        if (digits.startsWith('0020') && digits.length === 14) return digits.slice(2);
-        if (digits.startsWith('0') && digits.length === 11) return `20${digits.slice(1)}`;
-        return digits;
+        return formatEgyptMobileForWhatsApp(phone);
     }
 
     private getPublicAppUrl(locale = 'ar') {

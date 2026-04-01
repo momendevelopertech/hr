@@ -14,7 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { addDays, addMinutes } from 'date-fns';
 import { getJwtKeys } from './jwt-keys';
 import { createHmac } from 'crypto';
-import { normalizeDigits } from '../shared/search-normalization';
+import { normalizeEgyptMobilePhone } from '../shared/egypt-phone';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MINUTES = 30;
@@ -69,16 +69,10 @@ export class AuthService {
     private normalizeResetIdentifier(identifier?: string | null) {
         const raw = (identifier || '').trim();
         if (!raw) return { raw: '', email: '', phone: '' };
-        const digits = normalizeDigits(raw).replace(/\D/g, '');
-        const phone = digits.startsWith('20') && digits.length === 12
-            ? `0${digits.slice(2)}`
-            : digits.startsWith('0020') && digits.length === 14
-                ? `0${digits.slice(4)}`
-                : digits;
         return {
             raw,
             email: raw.includes('@') ? raw.toLowerCase() : '',
-            phone,
+            phone: normalizeEgyptMobilePhone(raw),
         };
     }
 
