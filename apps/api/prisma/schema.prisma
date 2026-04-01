@@ -67,6 +67,17 @@ enum NotificationType {
   ACCOUNT_CREATED
 }
 
+enum ExternalDeliveryChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum ExternalDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 enum FormFieldType {
   TEXT
   TEXTAREA
@@ -441,6 +452,30 @@ model Notification {
 }
 
 // ─── AUDIT LOGS ──────────────────────────────────────────────────────────────
+
+model NotificationDelivery {
+  id                String                 @id @default(cuid())
+  channel           ExternalDeliveryChannel
+  workflowKey       String
+  templateKey       String?
+  recipient         String
+  subject           String?
+  status            ExternalDeliveryStatus @default(PENDING)
+  attempts          Int                    @default(0)
+  lastError         String?
+  providerMessageId String?
+  relatedEntityType String?
+  relatedEntityId   String?
+  metadata          Json?
+  sentAt            DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([channel, status, createdAt])
+  @@index([recipient, createdAt])
+  @@index([workflowKey, createdAt])
+  @@index([relatedEntityType, relatedEntityId])
+}
 
 model AuditLog {
   id         String      @id @default(cuid())

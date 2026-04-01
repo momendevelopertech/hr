@@ -291,6 +291,7 @@ export class UsersService {
         });
 
         await this.notificationsService.sendAccountCreatedMessage({
+            id: user.id,
             fullName: user.fullName,
             fullNameAr: user.fullNameAr,
             email: user.email,
@@ -412,6 +413,7 @@ export class UsersService {
         });
 
         const whatsAppDelivery = await this.notificationsService.sendAccountCreatedMessage({
+            id: user.id,
             fullName: user.fullName,
             fullNameAr: user.fullNameAr,
             email: user.email,

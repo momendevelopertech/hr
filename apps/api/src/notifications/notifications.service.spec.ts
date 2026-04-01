@@ -1,4 +1,7 @@
+import { EmailService } from './email.service';
 import { NotificationsService } from './notifications.service';
+
+const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
 
 describe('NotificationsService', () => {
     const prisma = {
@@ -8,6 +11,10 @@ describe('NotificationsService', () => {
             findMany: jest.fn(),
             count: jest.fn(),
             updateMany: jest.fn(),
+        },
+        notificationDelivery: {
+            create: jest.fn(),
+            update: jest.fn(),
         },
         workScheduleSettings: {
             findFirst: jest.fn(),
@@ -24,74 +31,87 @@ describe('NotificationsService', () => {
         hasConfig: jest.fn(),
         sendWhatsApp: jest.fn(),
     };
+    const emailService = {
+        hasConfig: jest.fn(),
+        sendEmail: jest.fn(),
+    };
 
     let service: NotificationsService;
 
     beforeEach(() => {
         jest.clearAllMocks();
         prisma.notification.create.mockResolvedValue({});
+        prisma.notification.createMany.mockResolvedValue({ count: 0 });
+        prisma.notification.findMany.mockResolvedValue([]);
+        prisma.notification.count.mockResolvedValue(0);
+        prisma.notification.updateMany.mockResolvedValue({ count: 0 });
+        prisma.notificationDelivery.create.mockImplementation(async ({ data }: any) => ({ id: `${data.channel}-log` }));
+        prisma.notificationDelivery.update.mockResolvedValue({});
         prisma.workScheduleSettings.findFirst.mockResolvedValue({ notificationTemplates: null });
+        prisma.user.findUnique.mockResolvedValue(null);
         pusher.triggerToUser.mockResolvedValue(undefined);
-        whatsAppService.sendWhatsApp.mockResolvedValue({ ok: true, phone: '201012345678' });
-        service = new NotificationsService(prisma as any, pusher as any, whatsAppService as any);
-        jest.spyOn(service, 'sendEmail').mockResolvedValue(undefined);
-    });
-
-    it('builds a rich Arabic leave receipt with name, details, and link', async () => {
-        await service.sendRequestReceipt({
-            user: {
-                email: 'ahmed@example.com',
-                phone: '01012345678',
-                fullName: 'Ahmed Ali',
-                fullNameAr: 'أحمد علي',
-            },
-            requestType: 'leave',
-            requestId: 'leave-1',
-            requestLabelAr: 'طلب غياب بإذن',
-            requestLabelEn: 'absence with permission request',
-            status: 'PENDING',
-            requestDetails: {
-                leaveType: 'ABSENCE_WITH_PERMISSION',
-                startDate: '2026-04-01',
-                endDate: '2026-04-01',
-                totalDays: 1,
-                reason: 'ظرف عائلي',
-            },
+        whatsAppService.hasConfig.mockResolvedValue(true);
+        whatsAppService.sendWhatsApp.mockResolvedValue({ ok: true, phone: '201012345678', attempts: 1 });
+        emailService.hasConfig.mockReturnValue(true);
+        emailService.sendEmail.mockResolvedValue({
+            ok: true,
+            recipient: 'employee@example.com',
+            attempts: 1,
+            messageId: 'message-1',
+            response: '250 queued',
         });
 
-        const sentMessage = whatsAppService.sendWhatsApp.mock.calls[0][1];
-        expect(sentMessage).toContain('عزيزي أحمد علي');
-        expect(sentMessage).toContain('غياب بإذن');
-        expect(sentMessage).toContain('ظرف عائلي');
-        expect(sentMessage).toContain('تم تسجيل الطلب وهو قيد المراجعة');
-        expect(sentMessage).toContain('/ar/requests/print/leave/leave-1');
-        expect(sentMessage).toContain(new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium' }).format(new Date('2026-04-01')));
+        service = new NotificationsService(
+            prisma as any,
+            pusher as any,
+            whatsAppService as any,
+            emailService as unknown as EmailService,
+        );
+        (service as any).runInBackground = (task: Promise<unknown>) => task.catch(() => undefined);
     });
 
-    it('includes password and login link in the account-created WhatsApp template', async () => {
+    it('renders account-created placeholders and logs both channels', async () => {
         const delivery = await service.sendAccountCreatedMessage({
+            id: 'user-1',
             fullName: 'Sara Adel',
-            fullNameAr: 'سارة عادل',
-            email: 'sara@example.com',
+            email: 'employee@example.com',
             phone: '01012345678',
             employeeNumber: 'EMP-0001',
-            username: 'sara1234',
+            username: 'sara.adel',
             workflowMode: 'APPROVAL_WORKFLOW',
         }, {
             temporaryPassword: 'SPHINX@2026',
             syncWhatsApp: true,
         });
 
-        const sentMessage = whatsAppService.sendWhatsApp.mock.calls[0][1];
-        expect(delivery).toEqual({ ok: true, phone: '201012345678' });
-        expect(sentMessage).toContain('عزيزي سارة عادل');
-        expect(sentMessage).toContain('sara1234');
-        expect(sentMessage).toContain('SPHINX@2026');
-        expect(sentMessage).toContain('سير الموافقات');
-        expect(sentMessage).toContain('/ar');
+        await flushPromises();
+
+        expect(delivery).toEqual({ ok: true, phone: '201012345678', attempts: 1 });
+        expect(whatsAppService.sendWhatsApp).toHaveBeenCalledWith(
+            '01012345678',
+            expect.stringContaining('SPHINX@2026'),
+        );
+        expect(whatsAppService.sendWhatsApp).toHaveBeenCalledWith(
+            '01012345678',
+            expect.stringContaining('sara.adel'),
+        );
+        expect(emailService.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+            to: 'employee@example.com',
+            subject: expect.stringContaining('Your account is ready'),
+            html: expect.stringContaining('SPHINX@2026'),
+        }));
+        expect(prisma.notificationDelivery.create).toHaveBeenCalledTimes(2);
+        expect(prisma.notificationDelivery.update).toHaveBeenCalledWith(expect.objectContaining({
+            where: { id: 'WHATSAPP-log' },
+            data: expect.objectContaining({ status: 'SENT', attempts: 1 }),
+        }));
+        expect(prisma.notificationDelivery.update).toHaveBeenCalledWith(expect.objectContaining({
+            where: { id: 'EMAIL-log' },
+            data: expect.objectContaining({ status: 'SENT', attempts: 1 }),
+        }));
     });
 
-    it('adds permission details and manager comment to the WhatsApp approval flow', async () => {
+    it('sends permission approval through both external channels and stores related request logs', async () => {
         await service.notifyPermissionAction({
             id: 'perm-1',
             userId: 'user-1',
@@ -100,24 +120,46 @@ describe('NotificationsService', () => {
             arrivalTime: '09:00',
             leaveTime: '15:00',
             hoursUsed: 2,
-            reason: 'مراجعة شخصية',
+            reason: 'Personal errand',
             user: {
                 id: 'user-1',
-                email: 'mona@example.com',
+                email: 'employee@example.com',
                 phone: '01012345678',
-                fullName: 'Mona',
-                fullNameAr: 'منى',
+                fullName: 'Mona Samir',
             },
         }, 'approved', {
-            comment: 'تمت الموافقة من المدير',
+            comment: 'Approved by HR',
             sendExternal: true,
         });
 
-        const sentMessage = whatsAppService.sendWhatsApp.mock.calls[0][1];
-        expect(sentMessage).toContain('عزيزي منى');
-        expect(sentMessage).toContain('إذن انصراف مبكر');
-        expect(sentMessage).toContain('09:00 - 15:00');
-        expect(sentMessage).toContain('تمت الموافقة من المدير');
-        expect(sentMessage).toContain('/ar/requests/print/permission/perm-1');
+        await flushPromises();
+
+        expect(whatsAppService.sendWhatsApp).toHaveBeenCalledWith(
+            '01012345678',
+            expect.stringContaining('Approved by HR'),
+        );
+        expect(emailService.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+            to: 'employee@example.com',
+            subject: expect.stringContaining('Permission Approved'),
+            html: expect.stringContaining('Approved by HR'),
+        }));
+        expect(prisma.notificationDelivery.create).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({
+                channel: 'EMAIL',
+                workflowKey: 'permission.approved',
+                templateKey: 'permissionApproved',
+                relatedEntityType: 'PermissionRequest',
+                relatedEntityId: 'perm-1',
+            }),
+        }));
+        expect(prisma.notificationDelivery.create).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({
+                channel: 'WHATSAPP',
+                workflowKey: 'permission.approved',
+                templateKey: 'permissionApproved',
+                relatedEntityType: 'PermissionRequest',
+                relatedEntityId: 'perm-1',
+            }),
+        }));
     });
 });

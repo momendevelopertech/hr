@@ -2,8 +2,8 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { endOfDay, startOfDay } from 'date-fns';
 import { PusherService } from '../pusher/pusher.service';
-import * as nodemailer from 'nodemailer';
 import { WhatsAppDeliveryResult, WhatsAppService } from './whatsapp.service';
+import { EmailDeliveryResult, EmailService } from './email.service';
 import {
     getDefaultNotificationTemplates,
     normalizeNotificationTemplates,
@@ -31,26 +31,29 @@ type MessageDetail = {
     value: string;
 };
 
+type ExternalDeliveryChannel = 'EMAIL' | 'WHATSAPP';
+
+type ExternalDeliveryLogOptions = {
+    channel: ExternalDeliveryChannel;
+    recipient?: string | null;
+    workflowKey: string;
+    templateKey?: string | null;
+    subject?: string | null;
+    relatedEntityType?: string | null;
+    relatedEntityId?: string | null;
+    metadata?: Record<string, any>;
+};
+
 @Injectable()
 export class NotificationsService {
     private readonly logger = new Logger(NotificationsService.name);
-    private transporter: nodemailer.Transporter;
 
     constructor(
         private prisma: PrismaService,
         private pusher: PusherService,
         private whatsAppService: WhatsAppService,
-    ) {
-        this.transporter = nodemailer.createTransport({
-            host: process.env.MAIL_HOST,
-            port: parseInt(process.env.MAIL_PORT || '587', 10),
-            secure: false,
-            auth: {
-                user: process.env.MAIL_USER,
-                pass: process.env.MAIL_PASS,
-            },
-        });
-    }
+        private emailService: EmailService,
+    ) { }
 
     private getPublicAppUrl(locale = 'ar') {
         const baseUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
@@ -431,6 +434,114 @@ export class NotificationsService {
         };
     }
 
+    private isMissingDeliveryLogSchemaError(error: unknown) {
+        const err = error as { code?: string; message?: string };
+        if (err?.code === 'P2021' || err?.code === 'P2022') {
+            return true;
+        }
+        return typeof err?.message === 'string' && err.message.includes('does not exist');
+    }
+
+    private async createDeliveryLog(options: ExternalDeliveryLogOptions) {
+        const recipient = options.recipient?.trim();
+        if (!recipient) return null;
+
+        try {
+            return await this.prisma.notificationDelivery.create({
+                data: {
+                    channel: options.channel,
+                    workflowKey: options.workflowKey,
+                    templateKey: options.templateKey || null,
+                    recipient,
+                    subject: options.subject || null,
+                    status: 'PENDING',
+                    attempts: 0,
+                    relatedEntityType: options.relatedEntityType || null,
+                    relatedEntityId: options.relatedEntityId || null,
+                    metadata: options.metadata || undefined,
+                },
+                select: { id: true },
+            });
+        } catch (error) {
+            if (this.isMissingDeliveryLogSchemaError(error)) {
+                this.logger.warn('Notification delivery log table is not available yet. Run prisma db push before relying on delivery tracking.');
+                return null;
+            }
+            throw error;
+        }
+    }
+
+    private async updateDeliveryLog(id: string | null | undefined, data: Record<string, any>) {
+        if (!id) return;
+
+        try {
+            await this.prisma.notificationDelivery.update({
+                where: { id },
+                data,
+            });
+        } catch (error) {
+            if (!this.isMissingDeliveryLogSchemaError(error)) {
+                throw error;
+            }
+        }
+    }
+
+    private async sendLoggedEmail(options: ExternalDeliveryLogOptions & { subject: string; html: string }) {
+        const recipient = options.recipient?.trim();
+        if (!recipient) return null;
+
+        const log = await this.createDeliveryLog({
+            ...options,
+            recipient,
+            subject: options.subject,
+        });
+        const result = await this.emailService.sendEmail({
+            to: recipient,
+            subject: options.subject,
+            html: options.html,
+        });
+
+        await this.updateDeliveryLog(log?.id, {
+            status: result.ok ? 'SENT' : 'FAILED',
+            attempts: result.attempts,
+            lastError: result.error || null,
+            providerMessageId: result.messageId || null,
+            sentAt: result.ok ? new Date() : null,
+            metadata: {
+                ...(options.metadata || {}),
+                response: result.response || null,
+            },
+        });
+
+        return result;
+    }
+
+    private async sendLoggedWhatsApp(options: ExternalDeliveryLogOptions & { message: string }) {
+        const recipient = options.recipient?.trim();
+        if (!recipient) return null;
+
+        const log = await this.createDeliveryLog({
+            ...options,
+            recipient,
+        });
+        const result = await this.whatsAppService.sendWhatsApp(recipient, options.message);
+
+        await this.updateDeliveryLog(log?.id, {
+            status: result.ok ? 'SENT' : 'FAILED',
+            attempts: result.attempts,
+            lastError: result.error || null,
+            providerMessageId: null,
+            sentAt: result.ok ? new Date() : null,
+            metadata: {
+                ...(options.metadata || {}),
+                source: result.source || null,
+                statusCode: result.status || null,
+            },
+        });
+
+        return result;
+    }
+
     async createInApp(data: {
         receiverId: string;
         senderId?: string;
@@ -626,16 +737,30 @@ export class NotificationsService {
         return this.whatsAppService.hasConfig();
     }
 
+    hasEmailConfig() {
+        return this.emailService.hasConfig();
+    }
+
     async sendWhatsApp(phone: string, message: string): Promise<WhatsAppDeliveryResult> {
         return this.whatsAppService.sendWhatsApp(phone, message);
     }
 
     sendWhatsAppInBackground(phone: string | null | undefined, message: string, context: string) {
         if (!phone) return;
-        this.runInBackground(this.sendWhatsApp(phone, message), context);
+        this.runInBackground(
+            this.sendLoggedWhatsApp({
+                channel: 'WHATSAPP',
+                recipient: phone,
+                message,
+                workflowKey: 'adHoc.whatsApp',
+                metadata: { context },
+            }),
+            context,
+        );
     }
 
     async sendAccountCreatedMessage(user: {
+        id?: string;
         fullName: string;
         fullNameAr?: string | null;
         email: string;
@@ -715,16 +840,31 @@ export class NotificationsService {
         });
 
         const emailJob = user.email
-            ? this.sendEmail({
-                to: user.email,
+            ? this.sendLoggedEmail({
+                channel: 'EMAIL',
+                recipient: user.email,
+                workflowKey: 'accountCreated',
+                templateKey: 'accountCreated',
                 subject: emailSubject,
                 html: emailBody,
+                relatedEntityType: 'User',
+                relatedEntityId: user.id,
+                metadata: { locale },
             })
             : null;
 
         if (options?.syncWhatsApp) {
             const whatsAppDelivery = user.phone
-                ? await this.sendWhatsApp(user.phone, message)
+                ? await this.sendLoggedWhatsApp({
+                    channel: 'WHATSAPP',
+                    recipient: user.phone,
+                    message,
+                    workflowKey: 'accountCreated',
+                    templateKey: 'accountCreated',
+                    relatedEntityType: 'User',
+                    relatedEntityId: user.id,
+                    metadata: { locale, syncWhatsApp: true },
+                })
                 : null;
 
             if (emailJob) {
@@ -736,7 +876,16 @@ export class NotificationsService {
 
         const jobs: Promise<unknown>[] = [];
         if (user.phone) {
-            jobs.push(this.sendWhatsApp(user.phone, message));
+            jobs.push(this.sendLoggedWhatsApp({
+                channel: 'WHATSAPP',
+                recipient: user.phone,
+                message,
+                workflowKey: 'accountCreated',
+                templateKey: 'accountCreated',
+                relatedEntityType: 'User',
+                relatedEntityId: user.id,
+                metadata: { locale },
+            }));
         }
         if (emailJob) {
             jobs.push(emailJob);
@@ -761,22 +910,36 @@ export class NotificationsService {
         const message = isArabic
             ? `رمز إعادة تعيين كلمة المرور في SPHINX HR هو: ${options.code}\nصلاحية الرمز: 10 دقائق.\nصفحة التعيين: ${resetUrl}`
             : `Your SPHINX HR password reset code is: ${options.code}\nThis code expires in 10 minutes.\nReset page: ${resetUrl}`;
+        const emailSubject = isArabic ? 'رمز إعادة تعيين كلمة المرور' : 'Password reset code';
+        const emailHtml = isArabic
+            ? `<div style="font-family:sans-serif;max-width:600px"><h2>رمز إعادة التعيين</h2><p>رمز التحقق: <strong>${options.code}</strong></p><p>صلاحية الرمز 10 دقائق.</p><p><a href="${resetUrl}">افتح صفحة إعادة التعيين</a></p></div>`
+            : `<div style="font-family:sans-serif;max-width:600px"><h2>Password reset code</h2><p>Your verification code is <strong>${options.code}</strong>.</p><p>The code expires in 10 minutes.</p><p><a href="${resetUrl}">Open reset page</a></p></div>`;
 
         if (options.channel === 'WHATSAPP' && options.user.phone) {
-            this.sendWhatsAppInBackground(
-                options.user.phone,
-                message,
+            this.runInBackground(
+                this.sendLoggedWhatsApp({
+                    channel: 'WHATSAPP',
+                    recipient: options.user.phone,
+                    message,
+                    workflowKey: 'passwordReset',
+                    relatedEntityType: 'User',
+                    relatedEntityId: options.user.id,
+                    metadata: { locale },
+                }),
                 `Deferred password reset WhatsApp failed for user ${options.user.id}`,
             );
             return;
         }
 
-        await this.sendEmail({
-            to: options.user.email,
-            subject: isArabic ? 'رمز إعادة تعيين كلمة المرور' : 'Password reset code',
-            html: isArabic
-                ? `<div style="font-family:sans-serif;max-width:600px"><h2>رمز إعادة التعيين</h2><p>رمز التحقق: <strong>${options.code}</strong></p><p>صلاحية الرمز 10 دقائق.</p><p><a href="${resetUrl}">افتح صفحة إعادة التعيين</a></p></div>`
-                : `<div style="font-family:sans-serif;max-width:600px"><h2>Password reset code</h2><p>Your verification code is <strong>${options.code}</strong>.</p><p>The code expires in 10 minutes.</p><p><a href="${resetUrl}">Open reset page</a></p></div>`,
+        await this.sendLoggedEmail({
+            channel: 'EMAIL',
+            recipient: options.user.email,
+            workflowKey: 'passwordReset',
+            subject: emailSubject,
+            html: emailHtml,
+            relatedEntityType: 'User',
+            relatedEntityId: options.user.id,
+            metadata: { locale },
         });
     }
 
@@ -796,7 +959,8 @@ export class NotificationsService {
     }) {
         const locale = this.getPreferredLocale(options.user);
         const isArabic = locale === 'ar';
-        const template = await this.getNotificationTemplate(options.requestType === 'leave' ? 'leaveReceipt' : 'permissionReceipt');
+        const templateKey = options.requestType === 'leave' ? 'leaveReceipt' : 'permissionReceipt';
+        const template = await this.getNotificationTemplate(templateKey);
         const statusLabel = options.status === 'HR_APPROVED'
             ? (isArabic ? 'تم الاعتماد تلقائيًا' : 'Auto-approved')
             : (isArabic ? 'تم تسجيل الطلب وهو قيد المراجعة' : 'Submitted and pending review');
@@ -834,16 +998,33 @@ export class NotificationsService {
         });
 
         const emailSubject = rendered.title;
+        const relatedEntityType = options.requestType === 'leave' ? 'LeaveRequest' : 'PermissionRequest';
+        const workflowKey = `${options.requestType}.receipt`;
 
         const jobs: Promise<unknown>[] = [];
         if (options.user.phone) {
-            jobs.push(this.sendWhatsApp(options.user.phone, externalContent.whatsAppMessage));
+            jobs.push(this.sendLoggedWhatsApp({
+                channel: 'WHATSAPP',
+                recipient: options.user.phone,
+                message: externalContent.whatsAppMessage,
+                workflowKey,
+                templateKey,
+                relatedEntityType,
+                relatedEntityId: options.requestId,
+                metadata: { locale, status: options.status },
+            }));
         }
         if (options.user.email) {
-            jobs.push(this.sendEmail({
-                to: options.user.email,
+            jobs.push(this.sendLoggedEmail({
+                channel: 'EMAIL',
+                recipient: options.user.email,
+                workflowKey,
+                templateKey,
                 subject: emailSubject,
                 html: externalContent.emailHtml,
+                relatedEntityType,
+                relatedEntityId: options.requestId,
+                metadata: { locale, status: options.status },
             }));
         }
 
@@ -859,21 +1040,8 @@ export class NotificationsService {
         });
     }
 
-    async sendEmail(options: { to: string; subject: string; html: string }) {
-        if (!process.env.MAIL_USER) {
-            this.logger.warn('Email not configured');
-            return;
-        }
-
-        try {
-            await this.transporter.sendMail({
-                from: process.env.MAIL_FROM || 'SPHINX HR <noreply@sphinx.com>',
-                ...options,
-            });
-            this.logger.log(`Email sent to ${options.to}`);
-        } catch (err: any) {
-            this.logger.error(`Email send failed: ${err.message}`);
-        }
+    async sendEmail(options: { to: string; subject: string; html: string }): Promise<EmailDeliveryResult> {
+        return this.emailService.sendEmail(options);
     }
 
     async notifyLeaveAction(
@@ -957,6 +1125,7 @@ export class NotificationsService {
         if (sendExternal) {
             const locale = this.getPreferredLocale(user);
             const rendered = locale === 'ar' ? renderedAr : renderedEn;
+            const workflowKey = `leave.${action}`;
             const externalContent = this.buildRequestExternalContent({
                 locale,
                 user,
@@ -978,12 +1147,27 @@ export class NotificationsService {
 
             const jobs: Promise<unknown>[] = [];
             if (user.phone) {
-                jobs.push(this.sendWhatsApp(user.phone, externalContent.whatsAppMessage));
+                jobs.push(this.sendLoggedWhatsApp({
+                    channel: 'WHATSAPP',
+                    recipient: user.phone,
+                    message: externalContent.whatsAppMessage,
+                    workflowKey,
+                    templateKey: templateKeyMap[action],
+                    relatedEntityType: 'LeaveRequest',
+                    relatedEntityId: leaveRequest.id,
+                    metadata: { locale, action },
+                }));
             }
-            jobs.push(this.sendEmail({
-                to: user.email,
+            jobs.push(this.sendLoggedEmail({
+                channel: 'EMAIL',
+                recipient: user.email,
+                workflowKey,
+                templateKey: templateKeyMap[action],
                 subject: `SPHINX HR - ${rendered.title}`,
                 html: externalContent.emailHtml,
+                relatedEntityType: 'LeaveRequest',
+                relatedEntityId: leaveRequest.id,
+                metadata: { locale, action },
             }));
 
             this.runInBackground(Promise.allSettled(jobs), `Deferred leave external notifications (${action}) failed`);
@@ -1069,9 +1253,10 @@ export class NotificationsService {
             metadata: { permissionRequestId: permissionRequest.id },
         });
 
-        if (options?.sendExternal && user.phone) {
+        if (options?.sendExternal) {
             const locale = this.getPreferredLocale(user);
             const rendered = locale === 'ar' ? renderedAr : renderedEn;
+            const workflowKey = `permission.${action}`;
             const externalContent = this.buildRequestExternalContent({
                 locale,
                 user,
@@ -1092,10 +1277,39 @@ export class NotificationsService {
                 comment: commentBody,
             });
 
-            this.runInBackground(
-                this.sendWhatsApp(user.phone, externalContent.whatsAppMessage),
-                `Deferred permission external notification (${action}) failed`,
-            );
+            const jobs: Promise<unknown>[] = [];
+            if (user.phone) {
+                jobs.push(this.sendLoggedWhatsApp({
+                    channel: 'WHATSAPP',
+                    recipient: user.phone,
+                    message: externalContent.whatsAppMessage,
+                    workflowKey,
+                    templateKey: templateKeyMap[action],
+                    relatedEntityType: 'PermissionRequest',
+                    relatedEntityId: permissionRequest.id,
+                    metadata: { locale, action },
+                }));
+            }
+            if (user.email) {
+                jobs.push(this.sendLoggedEmail({
+                    channel: 'EMAIL',
+                    recipient: user.email,
+                    workflowKey,
+                    templateKey: templateKeyMap[action],
+                    subject: `SPHINX HR - ${rendered.title}`,
+                    html: externalContent.emailHtml,
+                    relatedEntityType: 'PermissionRequest',
+                    relatedEntityId: permissionRequest.id,
+                    metadata: { locale, action },
+                }));
+            }
+
+            if (jobs.length) {
+                this.runInBackground(
+                    Promise.allSettled(jobs),
+                    `Deferred permission external notification (${action}) failed`,
+                );
+            }
         }
     }
 }

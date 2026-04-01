@@ -12,6 +12,7 @@ type WhatsAppConfigCandidate = {
 export type WhatsAppDeliveryResult = {
     ok: boolean;
     phone: string;
+    attempts: number;
     source?: WhatsAppConfigCandidate['source'];
     status?: number;
     error?: string;
@@ -19,6 +20,7 @@ export type WhatsAppDeliveryResult = {
 
 const EGYPT_LOCAL_MOBILE = /^01\d{9}$/;
 const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_RETRY_ATTEMPTS = 3;
 
 @Injectable()
 export class WhatsAppService {
@@ -41,12 +43,12 @@ export class WhatsAppService {
     async sendWhatsApp(phone: string, message: string): Promise<WhatsAppDeliveryResult> {
         if (!phone) {
             this.logger.warn('WhatsApp phone is missing');
-            return { ok: false, phone: '', error: 'WhatsApp phone is missing' };
+            return { ok: false, phone: '', attempts: 0, error: 'WhatsApp phone is missing' };
         }
 
         if (!message?.trim()) {
             this.logger.warn('WhatsApp message is empty');
-            return { ok: false, phone, error: 'WhatsApp message is empty' };
+            return { ok: false, phone, attempts: 0, error: 'WhatsApp message is empty' };
         }
 
         let formattedPhone = '';
@@ -55,23 +57,24 @@ export class WhatsAppService {
         } catch (error: any) {
             const errorMessage = error?.message || 'WhatsApp phone is invalid';
             this.logger.warn(`WhatsApp phone is invalid: ${phone}`);
-            return { ok: false, phone, error: errorMessage };
+            return { ok: false, phone, attempts: 0, error: errorMessage };
         }
 
         const configs = await this.getConfigCandidates();
         if (!configs.length) {
             this.logger.warn('Evolution API is not configured');
-            return { ok: false, phone: formattedPhone, error: 'Evolution API is not configured' };
+            return { ok: false, phone: formattedPhone, attempts: 0, error: 'Evolution API is not configured' };
         }
 
         let lastFailure: WhatsAppDeliveryResult = {
             ok: false,
             phone: formattedPhone,
+            attempts: 0,
             error: 'Unknown WhatsApp delivery failure',
         };
 
-        for (const config of configs) {
-            for (let attempt = 1; attempt <= 2; attempt += 1) {
+        for (let attempt = 1; attempt <= DEFAULT_RETRY_ATTEMPTS; attempt += 1) {
+            for (const config of configs) {
                 try {
                     const response = await axios.post(
                         `${config.baseUrl}/message/sendText`,
@@ -91,6 +94,7 @@ export class WhatsAppService {
                         return {
                             ok: true,
                             phone: formattedPhone,
+                            attempts: attempt,
                             source: config.source,
                             status: response.status,
                         };
@@ -100,39 +104,33 @@ export class WhatsAppService {
                     lastFailure = {
                         ok: false,
                         phone: formattedPhone,
+                        attempts: attempt,
                         source: config.source,
                         status: response.status,
                         error: errorMessage,
                     };
-
-                    if (attempt < 2) {
-                        this.logger.warn(`WhatsApp send failed via ${config.source} (attempt ${attempt}/2): ${errorMessage}. Retrying once.`);
-                        await this.waitBeforeRetry();
-                        continue;
-                    }
-
-                    this.logger.error(`WhatsApp send failed via ${config.source}: ${errorMessage}`);
+                    this.logger.warn(`WhatsApp send failed via ${config.source} (attempt ${attempt}/${DEFAULT_RETRY_ATTEMPTS}): ${errorMessage}`);
                 } catch (error: any) {
                     const errorMessage = this.extractErrorMessage(error?.response?.data, error?.response?.status, error?.message);
                     lastFailure = {
                         ok: false,
                         phone: formattedPhone,
+                        attempts: attempt,
                         source: config.source,
                         status: error?.response?.status,
                         error: errorMessage,
                     };
-
-                    if (attempt < 2) {
-                        this.logger.warn(`WhatsApp request error via ${config.source} (attempt ${attempt}/2): ${errorMessage}. Retrying once.`);
-                        await this.waitBeforeRetry();
-                        continue;
-                    }
-
-                    this.logger.error(`WhatsApp request failed via ${config.source}: ${errorMessage}`);
+                    this.logger.warn(`WhatsApp request error via ${config.source} (attempt ${attempt}/${DEFAULT_RETRY_ATTEMPTS}): ${errorMessage}`);
                 }
-
-                break;
             }
+
+            if (attempt < DEFAULT_RETRY_ATTEMPTS) {
+                await this.waitBeforeRetry();
+            }
+        }
+
+        if (lastFailure.error) {
+            this.logger.error(`WhatsApp delivery failed for ${formattedPhone}: ${lastFailure.error}`);
         }
 
         return lastFailure;

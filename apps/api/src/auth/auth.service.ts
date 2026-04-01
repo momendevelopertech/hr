@@ -77,7 +77,7 @@ export class AuthService {
     }
 
     private hasEmailConfig() {
-        return !!process.env.MAIL_USER;
+        return this.notificationsService.hasEmailConfig();
     }
 
     private async hasWhatsAppConfig() {
