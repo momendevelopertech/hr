@@ -6,6 +6,20 @@ import axios from 'axios';
 import * as nodemailer from 'nodemailer';
 import { formatEgyptMobileForWhatsApp } from '../shared/egypt-phone';
 
+type WhatsAppConfigCandidate = {
+    token: string;
+    baseUrl: string;
+    source: 'database' | 'environment';
+};
+
+export type WhatsAppDeliveryResult = {
+    ok: boolean;
+    phone: string;
+    source?: WhatsAppConfigCandidate['source'];
+    status?: number;
+    error?: string;
+};
+
 @Injectable()
 export class NotificationsService {
     private readonly logger = new Logger(NotificationsService.name);
@@ -26,23 +40,31 @@ export class NotificationsService {
         });
     }
 
-    private async getWhatsAppConfig() {
+    private async getWhatsAppConfigCandidates() {
         const envToken = process.env.WHAPI_TOKEN?.trim();
         const envBaseUrl = process.env.WHAPI_BASE_URL?.trim() || 'https://gate.whapi.cloud/';
+        const candidates: WhatsAppConfigCandidate[] = [];
+        const pushCandidate = (token?: string | null, baseUrl?: string | null, source: WhatsAppConfigCandidate['source'] = 'environment') => {
+            const trimmedToken = token?.trim();
+            const trimmedBaseUrl = baseUrl?.trim() || envBaseUrl;
+            if (!trimmedToken) return;
+            if (candidates.some((item) => item.token === trimmedToken && item.baseUrl === trimmedBaseUrl)) return;
+            candidates.push({ token: trimmedToken, baseUrl: trimmedBaseUrl, source });
+        };
 
         try {
             const settings = await this.prisma.workScheduleSettings.findFirst({
                 select: { whapiToken: true, whapiBaseUrl: true },
             });
-            const token = settings?.whapiToken?.trim() || envToken;
-            const baseUrl = settings?.whapiBaseUrl?.trim() || envBaseUrl;
-            return token ? { token, baseUrl } : null;
+            pushCandidate(settings?.whapiToken, settings?.whapiBaseUrl, 'database');
         } catch (error: any) {
             if (error?.code !== 'P2022') {
                 throw error;
             }
-            return envToken ? { token: envToken, baseUrl: envBaseUrl } : null;
         }
+
+        pushCandidate(envToken, envBaseUrl, 'environment');
+        return candidates;
     }
 
     private normalizeWhatsAppPhone(phone?: string | null) {
@@ -257,39 +279,85 @@ export class NotificationsService {
         });
     }
 
-    async sendWhatsApp(phone: string, message: string) {
+    async sendWhatsApp(phone: string, message: string): Promise<WhatsAppDeliveryResult> {
         if (!phone) {
             this.logger.warn('WhatsApp phone is missing');
-            return;
+            return { ok: false, phone: '', error: 'WhatsApp phone is missing' };
         }
 
-        const config = await this.getWhatsAppConfig();
-        if (!config) {
+        const formattedPhone = this.normalizeWhatsAppPhone(phone);
+        if (!formattedPhone) {
+            this.logger.warn('WhatsApp phone is invalid');
+            return { ok: false, phone, error: 'WhatsApp phone is invalid' };
+        }
+
+        const configs = await this.getWhatsAppConfigCandidates();
+        if (!configs.length) {
             this.logger.warn('WhatsApp not configured or phone missing');
-            return;
+            return { ok: false, phone: formattedPhone, error: 'WhatsApp is not configured' };
         }
 
-        try {
-            const formattedPhone = this.normalizeWhatsAppPhone(phone);
-            if (!formattedPhone) {
-                this.logger.warn('WhatsApp phone is invalid');
-                return;
-            }
-            const baseUrl = config.baseUrl.replace(/\/?$/, '/');
-            await axios.post(
-                `${baseUrl}messages/text`,
-                { to: `${formattedPhone}@s.whatsapp.net`, body: message },
-                {
-                    headers: {
-                        Authorization: `Bearer ${config.token}`,
-                        'Content-Type': 'application/json',
+        let lastFailure: WhatsAppDeliveryResult = {
+            ok: false,
+            phone: formattedPhone,
+            error: 'Unknown WhatsApp delivery failure',
+        };
+
+        for (const config of configs) {
+            try {
+                const baseUrl = config.baseUrl.replace(/\/?$/, '/');
+                const response = await axios.post(
+                    `${baseUrl}messages/text`,
+                    { to: formattedPhone, body: message },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${config.token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        validateStatus: () => true,
                     },
-                },
-            );
-            this.logger.log(`WhatsApp sent to ${formattedPhone}`);
-        } catch (err: any) {
-            this.logger.error(`WhatsApp send failed: ${err.message}`);
+                );
+
+                if (response.status >= 200 && response.status < 300) {
+                    this.logger.log(`WhatsApp sent to ${formattedPhone} using ${config.source} config`);
+                    return {
+                        ok: true,
+                        phone: formattedPhone,
+                        source: config.source,
+                        status: response.status,
+                    };
+                }
+
+                const errorMessage =
+                    response.data?.error
+                    || response.data?.message
+                    || `WhatsApp send failed with status ${response.status}`;
+                this.logger.warn(`WhatsApp send failed via ${config.source}: ${errorMessage}`);
+                lastFailure = {
+                    ok: false,
+                    phone: formattedPhone,
+                    source: config.source,
+                    status: response.status,
+                    error: errorMessage,
+                };
+
+                if (![401, 403, 404].includes(response.status)) {
+                    return lastFailure;
+                }
+            } catch (err: any) {
+                const errorMessage = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Unknown WhatsApp error';
+                this.logger.error(`WhatsApp send failed via ${config.source}: ${errorMessage}`);
+                lastFailure = {
+                    ok: false,
+                    phone: formattedPhone,
+                    source: config.source,
+                    status: err?.response?.status,
+                    error: errorMessage,
+                };
+            }
         }
+
+        return lastFailure;
     }
 
     async sendAccountCreatedMessage(user: {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, WorkScheduleMode } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { DEFAULT_WHAPI_BASE_URL, DEFAULT_WHAPI_TOKEN } from './whapi-defaults';
+import { DEFAULT_WHAPI_BASE_URL } from './whapi-defaults';
 
 const DEFAULT_SETTINGS: Prisma.WorkScheduleSettingsCreateInput = {
     activeMode: WorkScheduleMode.NORMAL,
@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS: Prisma.WorkScheduleSettingsCreateInput = {
     ramadanEndDate: null,
     pwaInstallEnabled: false,
     whapiBaseUrl: DEFAULT_WHAPI_BASE_URL,
-    whapiToken: DEFAULT_WHAPI_TOKEN,
+    whapiToken: null,
 };
 
 const BASE_SELECT = {

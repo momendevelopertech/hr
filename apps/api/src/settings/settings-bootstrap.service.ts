@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { DEFAULT_WHAPI_SETTINGS } from './whapi-defaults';
+import { DEFAULT_WHAPI_BASE_URL, DEFAULT_WHAPI_SETTINGS } from './whapi-defaults';
 
 @Injectable()
 export class SettingsBootstrapService implements OnApplicationBootstrap {
@@ -14,7 +14,6 @@ export class SettingsBootstrapService implements OnApplicationBootstrap {
                 select: {
                     id: true,
                     whapiBaseUrl: true,
-                    whapiToken: true,
                 },
             });
 
@@ -26,18 +25,16 @@ export class SettingsBootstrapService implements OnApplicationBootstrap {
                 return;
             }
 
-            const hasExpectedBaseUrl = existing.whapiBaseUrl?.trim() === DEFAULT_WHAPI_SETTINGS.whapiBaseUrl;
-            const hasExpectedToken = existing.whapiToken?.trim() === DEFAULT_WHAPI_SETTINGS.whapiToken;
-
-            if (hasExpectedBaseUrl && hasExpectedToken) {
+            const hasExpectedBaseUrl = existing.whapiBaseUrl?.trim() === DEFAULT_WHAPI_BASE_URL;
+            if (hasExpectedBaseUrl) {
                 return;
             }
 
             await this.prisma.workScheduleSettings.update({
                 where: { id: existing.id },
-                data: DEFAULT_WHAPI_SETTINGS,
+                data: { whapiBaseUrl: DEFAULT_WHAPI_BASE_URL },
             });
-            this.logger.log('Synchronized Whapi config into work schedule settings.');
+            this.logger.log('Synchronized default Whapi base URL into work schedule settings.');
         } catch (error: any) {
             if (error?.code === 'P2022') {
                 this.logger.warn('Skipping Whapi bootstrap because the required settings columns are not available yet.');

@@ -418,13 +418,13 @@ async function resetLeaveBalances(userIds: string[], year: number) {
 
 async function syncWorkScheduleSettings() {
     const existing = await prisma.workScheduleSettings.findFirst({
-        select: { id: true },
+        select: { id: true, whapiBaseUrl: true },
     });
 
     if (existing) {
         await prisma.workScheduleSettings.update({
             where: { id: existing.id },
-            data: DEFAULT_WHAPI_SETTINGS,
+            data: { whapiBaseUrl: DEFAULT_WHAPI_SETTINGS.whapiBaseUrl },
         });
         return;
     }

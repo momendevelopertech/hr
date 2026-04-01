@@ -411,12 +411,12 @@ export class UsersService {
             bodyAr: `تم إنشاء حسابك. رقم الموظف: ${user.employeeNumber}. يرجى تغيير كلمة المرور عند أول تسجيل دخول.`,
         });
 
-        if (user.phone) {
-            await this.notificationsService.sendWhatsApp(
+        const whatsAppDelivery = user.phone
+            ? await this.notificationsService.sendWhatsApp(
                 user.phone,
                 `Welcome to SPHINX HR System!\nEmployee #: ${user.employeeNumber}\nUsername: ${generatedUsername}\nTemporary Password: ${password}\nPlease login and change your password immediately: ${process.env.FRONTEND_URL}`,
-            );
-        }
+            )
+            : null;
 
         await this.notificationsService.sendEmail({
             to: user.email,
@@ -430,6 +430,7 @@ export class UsersService {
             ...user,
             generatedUsername,
             defaultPassword: password,
+            whatsAppDelivery,
         };
     }
 

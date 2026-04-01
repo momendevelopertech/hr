@@ -196,9 +196,14 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             role: form.role || 'EMPLOYEE',
         });
 
+        const whatsAppWarning = res.data?.whatsAppDelivery && !res.data.whatsAppDelivery.ok
+            ? (locale === 'ar'
+                ? `\nتعذر إرسال واتساب: ${res.data.whatsAppDelivery.error || 'فشل غير معروف'}`
+                : `\nWhatsApp delivery failed: ${res.data.whatsAppDelivery.error || 'Unknown failure'}`)
+            : '';
         const msg = locale === 'ar'
-            ? `تم إنشاء المستخدم بنجاح\nاسم المستخدم: ${res.data.generatedUsername}\nكلمة المرور: ${res.data.defaultPassword}`
-            : `Employee created successfully\nUsername: ${res.data.generatedUsername}\nPassword: ${res.data.defaultPassword}`;
+            ? `تم إنشاء المستخدم بنجاح\nاسم المستخدم: ${res.data.generatedUsername}\nكلمة المرور: ${res.data.defaultPassword}${whatsAppWarning}`
+            : `Employee created successfully\nUsername: ${res.data.generatedUsername}\nPassword: ${res.data.defaultPassword}${whatsAppWarning}`;
         alert(msg);
 
         setForm({});
