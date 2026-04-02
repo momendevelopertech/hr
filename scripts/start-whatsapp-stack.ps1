@@ -127,6 +127,29 @@ function Get-LogTailText {
     return $content.Trim()
 }
 
+function Resolve-LogPath {
+    param([string]$Path)
+
+    $directory = Split-Path -Parent $Path
+    if ($directory) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
+    if (-not (Test-Path $Path)) {
+        return $Path
+    }
+
+    try {
+        Remove-Item $Path -Force
+        return $Path
+    } catch {
+        $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+        $baseName = [System.IO.Path]::GetFileNameWithoutExtension($Path)
+        $extension = [System.IO.Path]::GetExtension($Path)
+        return Join-Path $directory "$baseName-$timestamp$extension"
+    }
+}
+
 function Stop-NodeProcessesByCommandMatch {
     param([string]$Pattern)
 
@@ -165,8 +188,8 @@ function Start-EvolutionApi {
     $env:CACHE_REDIS_ENABLED = 'false'
     $env:CACHE_LOCAL_ENABLED = 'true'
 
-    if (Test-Path $evolutionStdout) { Remove-Item $evolutionStdout -Force }
-    if (Test-Path $evolutionStderr) { Remove-Item $evolutionStderr -Force }
+    $script:evolutionStdout = Resolve-LogPath -Path $evolutionStdout
+    $script:evolutionStderr = Resolve-LogPath -Path $evolutionStderr
 
     $distEntry = Join-Path $evolutionDir 'dist\main.js'
     $timeoutSeconds = 90
@@ -174,21 +197,19 @@ function Start-EvolutionApi {
     $process = $null
 
     if (Test-Path $distEntry) {
-        $startupCommand = 'node dist\main.js'
+        $startupCommand = "cmd /c cd /d `"$evolutionDir`" && node dist\main.js"
         $process = Start-Process `
-            -FilePath 'node.exe' `
-            -ArgumentList 'dist\main.js' `
-            -WorkingDirectory $evolutionDir `
+            -FilePath 'cmd.exe' `
+            -ArgumentList '/c', "cd /d `"$evolutionDir`" && node dist\main.js" `
             -RedirectStandardOutput $evolutionStdout `
             -RedirectStandardError $evolutionStderr `
             -PassThru
     } else {
-        $startupCommand = 'node_modules\.bin\tsx.cmd .\src\main.ts'
+        $startupCommand = "cmd /c cd /d `"$evolutionDir`" && node_modules\.bin\tsx.cmd .\src\main.ts"
         $timeoutSeconds = 150
         $process = Start-Process `
             -FilePath 'cmd.exe' `
-            -ArgumentList '/c', 'node_modules\\.bin\\tsx.cmd', '.\\src\\main.ts' `
-            -WorkingDirectory $evolutionDir `
+            -ArgumentList '/c', "cd /d `"$evolutionDir`" && node_modules\\.bin\\tsx.cmd .\\src\\main.ts" `
             -RedirectStandardOutput $evolutionStdout `
             -RedirectStandardError $evolutionStderr `
             -PassThru
@@ -225,8 +246,8 @@ function Start-Bridge {
 
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 
-    if (Test-Path $bridgeStdout) { Remove-Item $bridgeStdout -Force }
-    if (Test-Path $bridgeStderr) { Remove-Item $bridgeStderr -Force }
+    $script:bridgeStdout = Resolve-LogPath -Path $bridgeStdout
+    $script:bridgeStderr = Resolve-LogPath -Path $bridgeStderr
 
     $env:PORT = "$bridgePort"
     $env:EVOLUTION_TARGET_URL = "http://127.0.0.1:$evolutionPort"

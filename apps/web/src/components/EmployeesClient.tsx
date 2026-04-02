@@ -43,6 +43,13 @@ type UsersResponse = {
     totalPages: number;
 };
 
+type ChannelDelivery = {
+    ok: boolean;
+    recipient?: string;
+    phone?: string;
+    error?: string;
+};
+
 export default function EmployeesClient({ locale }: { locale: string }) {
     const t = useTranslations('employees');
     const router = useRouter();
@@ -171,6 +178,44 @@ export default function EmployeesClient({ locale }: { locale: string }) {
         setTimeout(() => setNotice((current) => (current?.message === message ? null : current)), 4500);
     };
 
+    const getAccountCreationNotice = (response: any) => {
+        const emailDelivery = response?.emailDelivery as ChannelDelivery | undefined;
+        const whatsAppDelivery = response?.whatsAppDelivery as ChannelDelivery | undefined;
+        const lines = [
+            locale === 'ar'
+                ? `تم إنشاء المستخدم بنجاح. اسم المستخدم: ${response.generatedUsername} | كلمة المرور: ${response.defaultPassword}`
+                : `Employee created successfully. Username: ${response.generatedUsername} | Password: ${response.defaultPassword}`,
+        ];
+
+        if (emailDelivery?.ok && emailDelivery.recipient) {
+            lines.push(locale === 'ar'
+                ? `تم إرسال الإيميل إلى: ${emailDelivery.recipient}`
+                : `Email sent to: ${emailDelivery.recipient}`);
+        } else if (emailDelivery && !emailDelivery.ok) {
+            lines.push(locale === 'ar'
+                ? `تعذر إرسال الإيميل إلى ${response.email}: ${emailDelivery.error || 'فشل غير معروف'}`
+                : `Email delivery failed for ${response.email}: ${emailDelivery.error || 'Unknown failure'}`);
+        }
+
+        if (whatsAppDelivery?.ok && whatsAppDelivery.phone) {
+            lines.push(locale === 'ar'
+                ? `تم إرسال واتساب إلى: ${whatsAppDelivery.phone}`
+                : `WhatsApp sent to: ${whatsAppDelivery.phone}`);
+        } else if (whatsAppDelivery && !whatsAppDelivery.ok) {
+            lines.push(locale === 'ar'
+                ? `تعذر إرسال واتساب إلى ${response.phone || '-'}: ${whatsAppDelivery.error || 'فشل غير معروف'}`
+                : `WhatsApp delivery failed for ${response.phone || '-'}: ${whatsAppDelivery.error || 'Unknown failure'}`);
+        }
+
+        if (!emailDelivery && !whatsAppDelivery) {
+            lines.push(locale === 'ar'
+                ? 'لم يرجع الخادم حالة الإرسال الخارجية.'
+                : 'The server did not return external delivery status.');
+        }
+
+        return lines.join('\n');
+    };
+
     const openConfirm = (message: string, onConfirm: () => void, title?: string, confirmLabel?: string) => {
         setDialog({
             title,
@@ -219,15 +264,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             role: form.role || 'EMPLOYEE',
         });
 
-        const whatsAppWarning = res.data?.whatsAppDelivery && !res.data.whatsAppDelivery.ok
-            ? (locale === 'ar'
-                ? `\nتعذر إرسال واتساب: ${res.data.whatsAppDelivery.error || 'فشل غير معروف'}`
-                : `\nWhatsApp delivery failed: ${res.data.whatsAppDelivery.error || 'Unknown failure'}`)
-            : '';
-        const msg = locale === 'ar'
-            ? `تم إنشاء المستخدم بنجاح. اسم المستخدم: ${res.data.generatedUsername} | كلمة المرور: ${res.data.defaultPassword}${whatsAppWarning}`
-            : `Employee created successfully. Username: ${res.data.generatedUsername} | Password: ${res.data.defaultPassword}${whatsAppWarning}`;
-        showNotice(msg, 'success');
+        showNotice(getAccountCreationNotice(res.data), 'success');
 
         setForm({});
         setCreateOpen(false);

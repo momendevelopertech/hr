@@ -412,7 +412,7 @@ export class UsersService {
             bodyAr: `تم إنشاء حسابك. رقم الموظف: ${user.employeeNumber}. يرجى تغيير كلمة المرور عند أول تسجيل دخول.`,
         });
 
-        const whatsAppDelivery = await this.notificationsService.sendAccountCreatedMessage({
+        const deliverySummary = await this.notificationsService.sendAccountCreatedMessage({
             id: user.id,
             fullName: user.fullName,
             fullNameAr: user.fullNameAr,
@@ -424,6 +424,7 @@ export class UsersService {
         }, {
             temporaryPassword: password,
             syncWhatsApp: Boolean(user.phone),
+            waitForExternalDeliveries: true,
         });
 
         await this.clearUserCaches();
@@ -432,7 +433,8 @@ export class UsersService {
             ...user,
             generatedUsername,
             defaultPassword: password,
-            whatsAppDelivery,
+            whatsAppDelivery: deliverySummary.whatsAppDelivery,
+            emailDelivery: deliverySummary.emailDelivery,
         };
     }
 

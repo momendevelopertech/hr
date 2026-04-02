@@ -44,6 +44,11 @@ type ExternalDeliveryLogOptions = {
     metadata?: Record<string, any>;
 };
 
+export type AccountCreatedDeliverySummary = {
+    emailDelivery: EmailDeliveryResult | null;
+    whatsAppDelivery: WhatsAppDeliveryResult | null;
+};
+
 @Injectable()
 export class NotificationsService {
     private readonly logger = new Logger(NotificationsService.name);
@@ -771,7 +776,8 @@ export class NotificationsService {
     }, options?: {
         temporaryPassword?: string | null;
         syncWhatsApp?: boolean;
-    }) {
+        waitForExternalDeliveries?: boolean;
+    }): Promise<AccountCreatedDeliverySummary> {
         const locale = this.getPreferredLocale(user);
         const isArabic = locale === 'ar';
         const loginUrl = this.getPublicAppUrl(locale);
@@ -853,8 +859,8 @@ export class NotificationsService {
             })
             : null;
 
-        if (options?.syncWhatsApp) {
-            const [whatsAppResult] = await Promise.all([
+        if (options?.syncWhatsApp || options?.waitForExternalDeliveries) {
+            const [whatsAppResult, emailResult] = await Promise.all([
                 user.phone
                     ? this.sendLoggedWhatsApp({
                         channel: 'WHATSAPP',
@@ -870,7 +876,10 @@ export class NotificationsService {
                 emailJob ?? Promise.resolve(null),
             ]);
 
-            return whatsAppResult;
+            return {
+                emailDelivery: emailResult,
+                whatsAppDelivery: whatsAppResult,
+            };
         }
 
         const jobs: Promise<unknown>[] = [];
@@ -894,7 +903,10 @@ export class NotificationsService {
             this.runInBackground(Promise.allSettled(jobs), 'Deferred account-created notification failed');
         }
 
-        return null;
+        return {
+            emailDelivery: null,
+            whatsAppDelivery: null,
+        };
     }
 
     async sendPasswordResetCode(options: {

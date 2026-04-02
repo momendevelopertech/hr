@@ -86,7 +86,16 @@ describe('NotificationsService', () => {
 
         await flushPromises();
 
-        expect(delivery).toEqual({ ok: true, phone: '201012345678', attempts: 1 });
+        expect(delivery).toEqual({
+            emailDelivery: {
+                ok: true,
+                recipient: 'employee@example.com',
+                attempts: 1,
+                messageId: 'message-1',
+                response: '250 queued',
+            },
+            whatsAppDelivery: { ok: true, phone: '201012345678', attempts: 1 },
+        });
         expect(whatsAppService.sendWhatsApp).toHaveBeenCalledWith(
             '01012345678',
             expect.stringContaining('SPHINX@2026'),
