@@ -46,6 +46,11 @@ const defaultRegisterForm: RegisterFormState = {
     jobTitleAr: '',
 };
 
+const hasSessionHintCookie = () => {
+    if (typeof document === 'undefined') return false;
+    return document.cookie.split(';').some((item) => item.trim().startsWith('sphinx_session='));
+};
+
 const englishFullNamePattern = /^[A-Za-z][A-Za-z\s.'-]{2,}$/;
 const englishJobTitlePattern = /^[A-Za-z0-9][A-Za-z0-9\s.'&()/,-]{1,}$/;
 const normalizePhoneInput = (value: string) => value.replace(/\D/g, '').slice(0, 11);
@@ -157,6 +162,9 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
         const boot = async () => {
             try {
                 if (typeof window !== 'undefined' && window.sessionStorage.getItem('sphinx-logged-out') === '1') {
+                    return;
+                }
+                if (!hasSessionHintCookie()) {
                     return;
                 }
                 await api.get('/auth/csrf');

@@ -497,11 +497,89 @@ body {
 
 @media (max-width: 1000px) {
     .dashboard-body-wrap { grid-template-columns: 1fr; }
-    .right-panel-ui { display: none; }
+    .right-panel-ui {
+        display: flex;
+        border-inline-start: 0;
+        border-top: 1px solid var(--border);
+        content-visibility: auto;
+        contain-intrinsic-size: 480px;
+    }
 }
 
-@media (max-width: 700px) {
-    .app-sidebar { display: none; }
+@media (max-width: 1024px) {
+    .app-sidebar {
+        position: fixed;
+        inset-block: 0;
+        inset-inline-start: 0;
+        z-index: 60;
+        width: min(320px, 88vw);
+        min-width: min(320px, 88vw);
+        max-width: 88vw;
+        height: 100dvh;
+        transform: translateX(-110%);
+        transition: transform 0.22s ease;
+        border-inline-start: 0;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+    }
+
+    html[dir='rtl'] .app-sidebar {
+        inset-inline-start: auto;
+        inset-inline-end: 0;
+        transform: translateX(110%);
+    }
+
+    .app-sidebar.is-mobile-open {
+        transform: translateX(0);
+    }
+
+    html[dir='rtl'] .app-sidebar.is-mobile-open {
+        transform: translateX(0);
+    }
+
+    .app-sidebar.is-collapsed {
+        width: min(320px, 88vw);
+        min-width: min(320px, 88vw);
+    }
+
+    .mobile-nav-trigger {
+        position: fixed;
+        top: 12px;
+        inset-inline-start: 12px;
+        z-index: 55;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface-elevated);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow-card);
+    }
+
+    html[dir='rtl'] .mobile-nav-trigger {
+        inset-inline-start: auto;
+        inset-inline-end: 12px;
+    }
+
+    .mobile-sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        border: 0;
+        background: rgba(15, 23, 42, 0.28);
+    }
+
+    .nav-scroll {
+        max-height: calc(100dvh - 250px);
+    }
+}
+
+@media (min-width: 1025px) {
+    .mobile-nav-trigger,
+    .mobile-sidebar-backdrop {
+        display: none;
+    }
 }
 
 .rbc-day-default {

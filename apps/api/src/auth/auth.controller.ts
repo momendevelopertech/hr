@@ -52,6 +52,20 @@ export class AuthController {
         };
     }
 
+
+    private getSessionHintCookieOptions(maxAge?: number): CookieOptions {
+        const { sameSite, secure, domain, path } = getCookieSettings();
+
+        return {
+            httpOnly: false,
+            secure,
+            sameSite,
+            path,
+            ...(typeof maxAge === 'number' ? { maxAge } : {}),
+            ...(domain ? { domain } : {}),
+        };
+    }
+
     private getClearCookieOptions(): CookieOptions {
         const { sameSite, secure, domain, path } = getCookieSettings();
 
@@ -89,6 +103,8 @@ export class AuthController {
             res.clearCookie('remember_me', this.getClearCookieOptions());
         }
 
+        res.cookie('sphinx_session', '1', this.getSessionHintCookieOptions(ages.refreshMs));
+
         return { user: result.user, accessToken: result.accessToken };
     }
 
@@ -108,6 +124,7 @@ export class AuthController {
         res.cookie('access_token', result.accessToken, this.getHttpOnlyCookieOptions(ages.accessMs));
         res.cookie('refresh_token', result.refreshToken, this.getHttpOnlyCookieOptions(ages.refreshMs));
         res.clearCookie('remember_me', this.getClearCookieOptions());
+        res.cookie('sphinx_session', '1', this.getSessionHintCookieOptions(ages.refreshMs));
 
         return { user: result.user, accessToken: result.accessToken };
     }
@@ -123,6 +140,7 @@ export class AuthController {
         res.clearCookie('access_token', clearCookieOptions);
         res.clearCookie('refresh_token', clearCookieOptions);
         res.clearCookie('remember_me', clearCookieOptions);
+        res.clearCookie('sphinx_session', this.getSessionHintCookieOptions());
 
         return { message: 'Logged out successfully' };
     }
@@ -143,6 +161,7 @@ export class AuthController {
 
         res.cookie('access_token', tokens.accessToken, this.getHttpOnlyCookieOptions(ages.accessMs));
         res.cookie('refresh_token', tokens.refreshToken, this.getHttpOnlyCookieOptions(ages.refreshMs));
+        res.cookie('sphinx_session', '1', this.getSessionHintCookieOptions(ages.refreshMs));
 
         return { accessToken: tokens.accessToken };
     }

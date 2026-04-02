@@ -22,7 +22,7 @@ export default function SidebarFooter({
     const pathname = usePathname();
     const { user, setUser, setBootstrapped } = useAuthStore();
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
-    const [pwaEnabled, setPwaEnabled] = useState(false);
+    const [pwaEnabled, setPwaEnabled] = useState(true);
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -34,13 +34,6 @@ export default function SidebarFooter({
             document.documentElement.dataset.theme = next;
         }
     }, []);
-
-    useEffect(() => {
-        if (!user) return;
-        api.get('/settings/work-schedule')
-            .then((res) => setPwaEnabled(!!res.data?.pwaInstallEnabled))
-            .catch(() => null);
-    }, [user]);
 
     useEffect(() => {
         const handler = (event: MouseEvent) => {

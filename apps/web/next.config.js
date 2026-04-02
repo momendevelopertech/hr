@@ -36,10 +36,38 @@ const withPWA = require('next-pwa')({
 const createNextIntlPlugin = require('next-intl/plugin');
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+
+const resolveApiRewriteTarget = () => {
+    const configured = (process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || '').trim();
+    if (!configured || configured === '/api') {
+        return 'https://hr-api-six.vercel.app/api';
+    }
+    if (/^https?:\/\//i.test(configured)) {
+        return configured.replace(/\/$/, '');
+    }
+    if (configured.startsWith('//')) {
+        return `https:${configured}`.replace(/\/$/, '');
+    }
+    if (configured.startsWith('/')) {
+        return 'https://hr-api-six.vercel.app/api';
+    }
+    const scheme = /^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(configured) ? 'http://' : 'https://';
+    return `${scheme}${configured}`.replace(/\/$/, '');
+};
+
 const nextConfig = {
     reactStrictMode: true,
     images: {
         domains: ['res.cloudinary.com', 'lh3.googleusercontent.com'],
+    },
+    async rewrites() {
+        const target = resolveApiRewriteTarget();
+        return [
+            {
+                source: '/api/:path*',
+                destination: `${target}/:path*`,
+            },
+        ];
     },
     async headers() {
         return [
