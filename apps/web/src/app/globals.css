@@ -76,7 +76,11 @@ body {
     width: var(--sidebar-collapsed);
     min-width: var(--sidebar-collapsed);
 }
-.app-main { flex: 1; min-width: 0; }
+.app-main {
+    flex: 1;
+    min-width: 0;
+    padding-block-start: clamp(14px, 2vw, 26px);
+}
 .sidebar-top { display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
 .sidebar-brand {
     padding: 18px 16px 16px;
