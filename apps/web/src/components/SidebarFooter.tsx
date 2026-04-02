@@ -22,7 +22,7 @@ export default function SidebarFooter({
     const pathname = usePathname();
     const { user, setUser, setBootstrapped } = useAuthStore();
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
-    const [pwaEnabled, setPwaEnabled] = useState(false);
+    const [pwaEnabled, setPwaEnabled] = useState(true);
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
 
