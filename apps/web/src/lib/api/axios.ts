@@ -66,6 +66,11 @@ const disableRefreshState = () => {
     csrfToken = null;
 };
 
+const clearSessionHintCookie = () => {
+    if (typeof document === 'undefined') return;
+    document.cookie = 'sphinx_session=; Max-Age=0; path=/; SameSite=Lax';
+};
+
 const clearAuthState = () => {
     if (typeof window === 'undefined') return;
     try {
@@ -109,6 +114,7 @@ const handleSessionExpired = () => {
     disableRefreshState();
     clearApiCache();
     clearAuthState();
+    clearSessionHintCookie();
     setAccessToken(null);
     markLoggedOut();
     redirectToLogin();
@@ -280,6 +286,7 @@ api.interceptors.response.use((response) => {
     if (response.config.url?.includes('/auth/logout')) {
         disableRefreshState();
         clearApiCache();
+        clearSessionHintCookie();
         markLoggedOut();
         setAccessToken(null);
     }

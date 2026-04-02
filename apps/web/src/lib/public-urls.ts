@@ -1,4 +1,4 @@
-const LOCAL_API_URL = 'http://localhost:3001/api';
+const LOCAL_API_URL = '/api';
 
 type NormalizeOptions = {
     allowRelative?: boolean;

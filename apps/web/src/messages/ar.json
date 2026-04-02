@@ -25,7 +25,9 @@
     "settings": "الإعدادات",
     "installApp": "تثبيت التطبيق",
     "installIosHint": "على iOS: مشاركة ثم أضف إلى الشاشة الرئيسية",
-    "installUnavailable": "التثبيت غير متاح على هذا المتصفح حالياً"
+    "installUnavailable": "التثبيت غير متاح على هذا المتصفح حالياً",
+    "installingApp": "جاري التثبيت...",
+    "openApp": "فتح التطبيق"
   },
   "chat": {
     "loading": "جاري تحميل المحادثات...",
