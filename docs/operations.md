@@ -22,6 +22,8 @@ npm run dev
 - API: `http://localhost:3001/api`
 - Swagger (dev): `http://localhost:3001/api/docs`
 
+For local WhatsApp / Evolution recovery after a reboot, see `docs/whatsapp-evolution-runbook.md`.
+
 ## Deployment Process
 
 - Frontend: deploy `apps/web` to Vercel.
