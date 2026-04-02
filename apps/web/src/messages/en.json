@@ -25,7 +25,9 @@
     "settings": "Settings",
     "installApp": "Install App",
     "installIosHint": "iOS: Share → Add to Home Screen",
-    "installUnavailable": "Install not available on this browser"
+    "installUnavailable": "Install not available on this browser",
+    "installingApp": "Installing...",
+    "openApp": "Open App"
   },
   "chat": {
     "loading": "Loading chat...",
