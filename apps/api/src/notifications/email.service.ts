@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import SMTPTransport from 'nodemailer/lib/smtp-transport';
+import SMTPPool from 'nodemailer/lib/smtp-pool';
 
 export type EmailDeliveryResult = {
     ok: boolean;
@@ -91,22 +93,8 @@ export class EmailService {
 
     private getTransporter() {
         if (!this.transporter) {
-            this.transporter = nodemailer.createTransport({
-                host: this.getMailHost(),
-                port: this.getMailPort(),
-                secure: this.isSecure(),
-                pool: this.shouldUsePool(),
-                maxConnections: this.getMaxConnections(),
-                maxMessages: this.getMaxMessages(),
-                auth: {
-                    user: this.getMailUser(),
-                    pass: this.getMailPass(),
-                },
-                requireTLS: this.getRequireTls(),
-                tls: {
-                    rejectUnauthorized: this.getRejectUnauthorized(),
-                },
-            });
+            const options = this.buildTransportOptions();
+            this.transporter = nodemailer.createTransport(options);
         }
 
         return this.transporter;
@@ -178,6 +166,33 @@ export class EmailService {
     private shouldUsePool() {
         const configured = this.parseBoolean(process.env.MAIL_USE_POOL);
         return configured ?? true;
+    }
+
+    private buildTransportOptions(): SMTPTransport.Options | SMTPPool.Options {
+        const common: SMTPTransport.Options = {
+            host: this.getMailHost(),
+            port: this.getMailPort(),
+            secure: this.isSecure(),
+            auth: {
+                user: this.getMailUser(),
+                pass: this.getMailPass(),
+            },
+            requireTLS: this.getRequireTls(),
+            tls: {
+                rejectUnauthorized: this.getRejectUnauthorized(),
+            },
+        };
+
+        if (this.shouldUsePool()) {
+            return {
+                ...common,
+                pool: true,
+                maxConnections: this.getMaxConnections(),
+                maxMessages: this.getMaxMessages(),
+            } as SMTPPool.Options;
+        }
+
+        return common;
     }
 
     private parseBoolean(value?: string | null) {
