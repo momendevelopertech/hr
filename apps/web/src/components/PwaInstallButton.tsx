@@ -85,13 +85,12 @@ export default function PwaInstallButton({ enabled }: { enabled: boolean }) {
         return <span className="text-xs text-ink/60 sm:text-sm">{t('installIosHint')}</span>;
     }
 
-    if (!installPrompt) return null;
-
     return (
         <button
             className="btn-outline text-xs"
             type="button"
-            disabled={installing}
+            disabled={installing || !installPrompt}
+            title={!installPrompt ? t('installUnavailable') : undefined}
             onClick={async () => {
                 if (!installPrompt) return;
                 setInstalling(true);
