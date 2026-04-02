@@ -8,10 +8,12 @@ export default function TopNav({
     locale,
     collapsed,
     onToggle,
+    showToggle = true,
 }: {
     locale: string;
     collapsed: boolean;
     onToggle: () => void;
+    showToggle?: boolean;
 }) {
     const isAr = locale === 'ar';
     const CollapseIcon = collapsed
@@ -39,9 +41,11 @@ export default function TopNav({
                         />
                     </div>
                 </div>
-                <button className="sidebar-toggle" type="button" onClick={onToggle} aria-label={toggleLabel} title={toggleLabel}>
-                    <CollapseIcon size={16} />
-                </button>
+                {showToggle && (
+                    <button className="sidebar-toggle" type="button" onClick={onToggle} aria-label={toggleLabel} title={toggleLabel}>
+                        <CollapseIcon size={16} />
+                    </button>
+                )}
             </div>
         </div>
     );
