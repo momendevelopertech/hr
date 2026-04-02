@@ -89,6 +89,7 @@ function Test-ListeningPort {
 function Wait-ForPort {
     param(
         [int]$Port,
+        [int]$ProcessId = 0,
         [int]$TimeoutSeconds = 30
     )
 
@@ -98,10 +99,32 @@ function Wait-ForPort {
             return $true
         }
 
+        if ($ProcessId -gt 0 -and -not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) {
+            return $false
+        }
+
         Start-Sleep -Seconds 2
     }
 
     return $false
+}
+
+function Get-LogTailText {
+    param(
+        [string]$Path,
+        [int]$Lines = 40
+    )
+
+    if (-not (Test-Path $Path)) {
+        return '[log file not found]'
+    }
+
+    $content = (Get-Content -Path $Path -Tail $Lines -ErrorAction SilentlyContinue) -join [Environment]::NewLine
+    if ([string]::IsNullOrWhiteSpace($content)) {
+        return '[log file is empty]'
+    }
+
+    return $content.Trim()
 }
 
 function Stop-NodeProcessesByCommandMatch {
@@ -110,6 +133,18 @@ function Stop-NodeProcessesByCommandMatch {
     Get-CimInstance Win32_Process |
         Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -match $Pattern } |
         ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+}
+
+function Stop-ProcessesListeningOnPort {
+    param([int]$Port)
+
+    Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique |
+        ForEach-Object {
+            if ($_ -and $_ -gt 0) {
+                Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue
+            }
+        }
 }
 
 function Start-EvolutionApi {
@@ -133,15 +168,47 @@ function Start-EvolutionApi {
     if (Test-Path $evolutionStdout) { Remove-Item $evolutionStdout -Force }
     if (Test-Path $evolutionStderr) { Remove-Item $evolutionStderr -Force }
 
-    Start-Process `
-        -FilePath 'cmd.exe' `
-        -ArgumentList '/c', 'node_modules\\.bin\\tsx.cmd', '.\\src\\main.ts' `
-        -WorkingDirectory $evolutionDir `
-        -RedirectStandardOutput $evolutionStdout `
-        -RedirectStandardError $evolutionStderr | Out-Null
+    $distEntry = Join-Path $evolutionDir 'dist\main.js'
+    $timeoutSeconds = 90
+    $startupCommand = ''
+    $process = $null
 
-    if (-not (Wait-ForPort -Port $evolutionPort -TimeoutSeconds 45)) {
-        throw "Evolution API did not start on port $evolutionPort"
+    if (Test-Path $distEntry) {
+        $startupCommand = 'node dist\main.js'
+        $process = Start-Process `
+            -FilePath 'node.exe' `
+            -ArgumentList 'dist\main.js' `
+            -WorkingDirectory $evolutionDir `
+            -RedirectStandardOutput $evolutionStdout `
+            -RedirectStandardError $evolutionStderr `
+            -PassThru
+    } else {
+        $startupCommand = 'node_modules\.bin\tsx.cmd .\src\main.ts'
+        $timeoutSeconds = 150
+        $process = Start-Process `
+            -FilePath 'cmd.exe' `
+            -ArgumentList '/c', 'node_modules\\.bin\\tsx.cmd', '.\\src\\main.ts' `
+            -WorkingDirectory $evolutionDir `
+            -RedirectStandardOutput $evolutionStdout `
+            -RedirectStandardError $evolutionStderr `
+            -PassThru
+    }
+
+    if (-not (Wait-ForPort -Port $evolutionPort -ProcessId $process.Id -TimeoutSeconds $timeoutSeconds)) {
+        $stdoutTail = Get-LogTailText -Path $evolutionStdout
+        $stderrTail = Get-LogTailText -Path $evolutionStderr
+        $processState = if (Get-Process -Id $process.Id -ErrorAction SilentlyContinue) { 'running' } else { 'exited' }
+
+        throw @"
+Evolution API did not become ready on port $evolutionPort within $timeoutSeconds seconds.
+Startup command: $startupCommand
+Process state: $processState
+Stdout tail:
+$stdoutTail
+
+Stderr tail:
+$stderrTail
+"@
     }
 }
 
@@ -179,6 +246,8 @@ function Start-Bridge {
 }
 
 if ($Restart) {
+    Stop-ProcessesListeningOnPort -Port $bridgePort
+    Stop-ProcessesListeningOnPort -Port $evolutionPort
     Stop-NodeProcessesByCommandMatch -Pattern ([regex]::Escape($evolutionDir))
     Stop-NodeProcessesByCommandMatch -Pattern ([regex]::Escape($bridgeScript))
     Start-Sleep -Seconds 2

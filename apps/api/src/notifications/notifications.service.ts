@@ -854,24 +854,23 @@ export class NotificationsService {
             : null;
 
         if (options?.syncWhatsApp) {
-            const whatsAppDelivery = user.phone
-                ? await this.sendLoggedWhatsApp({
-                    channel: 'WHATSAPP',
-                    recipient: user.phone,
-                    message,
-                    workflowKey: 'accountCreated',
-                    templateKey: 'accountCreated',
-                    relatedEntityType: 'User',
-                    relatedEntityId: user.id,
-                    metadata: { locale, syncWhatsApp: true },
-                })
-                : null;
+            const [whatsAppResult] = await Promise.all([
+                user.phone
+                    ? this.sendLoggedWhatsApp({
+                        channel: 'WHATSAPP',
+                        recipient: user.phone,
+                        message,
+                        workflowKey: 'accountCreated',
+                        templateKey: 'accountCreated',
+                        relatedEntityType: 'User',
+                        relatedEntityId: user.id,
+                        metadata: { locale, syncWhatsApp: true },
+                    })
+                    : Promise.resolve(null),
+                emailJob ?? Promise.resolve(null),
+            ]);
 
-            if (emailJob) {
-                this.runInBackground(emailJob, 'Deferred account-created email failed');
-            }
-
-            return whatsAppDelivery;
+            return whatsAppResult;
         }
 
         const jobs: Promise<unknown>[] = [];
