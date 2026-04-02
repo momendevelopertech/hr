@@ -390,7 +390,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
     };
 
     return (
-        <main className="px-4 pb-12 sm:px-6 space-y-6">
+        <main className="space-y-6 px-4 pb-12 sm:px-6">
             {notice && (
                 <div className={`fixed z-50 top-4 ${locale === 'ar' ? 'left-4' : 'right-4'} max-w-md`}>
                     <div
@@ -432,19 +432,39 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                 </div>
             )}
 
-            {canAdmin && (
-                <section className="card p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h2 className="text-lg font-semibold">{t('create')}</h2>
-                        <button className="btn-primary" onClick={() => setCreateOpen(true)}>{t('createCta')}</button>
-                    </div>
-                </section>
-            )}
-
             <section className="card p-5">
-                <h2 className="text-lg font-semibold">{t('title')}</h2>
+                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-ink/10 pb-4">
+                    <div className="space-y-2">
+                        <h2 className="text-lg font-semibold">{t('title')}</h2>
+                        <div className="inline-flex items-center rounded-full bg-ink/5 px-3 py-1 text-xs font-medium text-ink/60">
+                            {t('records', { count: total })}
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <label className="text-sm text-ink/70">
+                            {t('rowsPerPage')}
+                            <select
+                                className="ms-2 rounded-lg border border-ink/20 bg-white px-2 py-1"
+                                value={limit}
+                                onChange={(e) => {
+                                    setPage(1);
+                                    setLimit(parseInt(e.target.value, 10));
+                                }}
+                            >
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                        </label>
+                        {canAdmin && (
+                            <button className="btn-primary" onClick={() => setCreateOpen(true)}>
+                                {t('createCta')}
+                            </button>
+                        )}
+                    </div>
+                </div>
 
-                <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-5">
+                <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-5">
                     <input
                         className="rounded-xl border border-ink/20 bg-white px-3 py-2"
                         placeholder={t('searchPlaceholder')}
@@ -487,18 +507,6 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                             setFilters((p: any) => ({ ...p, from, to }));
                         }}
                     />
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm text-ink/60">{t('records', { count: total })}</p>
-                    <label className="text-sm">
-                        {t('rowsPerPage')}
-                        <select className="ms-2 rounded-lg border border-ink/20 px-2 py-1" value={limit} onChange={(e) => { setPage(1); setLimit(parseInt(e.target.value, 10)); }}>
-                            <option value={20}>20</option>
-                            <option value={50}>50</option>
-                            <option value={100}>100</option>
-                        </select>
-                    </label>
                 </div>
 
                 <div className="mt-4 overflow-x-auto">
