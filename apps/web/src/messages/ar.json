@@ -257,6 +257,7 @@
     "durationHours": "ساعات",
     "durationMinutes": "دقائق",
     "permissionDurationError": "يرجى إدخال مدة الإذن",
+    "permissionDurationMaxError": "الحد الأقصى لمدة الإذن هو 4 ساعات.",
     "permissionConfirmArrival": "هتسجل حضور الساعة {time}.",
     "permissionConfirmDeparture": "هتسجل انصراف الساعة {time}.",
     "pendingToast": "تم إرسال الطلب إلى السكرتارية.",

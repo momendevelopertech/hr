@@ -104,7 +104,7 @@ export default function SidebarFooter({
                 <button className="tb-icon" type="button" onClick={toggleTheme} title={theme === 'dark' ? t('themeLight') : t('themeDark')}>
                     {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
                 </button>
-                {!collapsed && <PwaInstallButton enabled={pwaEnabled} />}
+                <PwaInstallButton enabled={pwaEnabled} collapsed={collapsed} />
             </div>
             <button className={`user-row${collapsed ? ' is-collapsed' : ''}`} type="button" onClick={() => setMenuOpen((v) => !v)}>
                 <div className="uav">{user?.fullName?.slice(0, 1) || 'U'}</div>

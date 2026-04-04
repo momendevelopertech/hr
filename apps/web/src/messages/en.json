@@ -257,6 +257,7 @@
     "missionTo": "Mission To",
     "missionPurpose": "Mission Purpose",
     "permissionDurationError": "Please enter a permission duration.",
+    "permissionDurationMaxError": "Maximum permission duration is 4 hours.",
     "permissionConfirmArrival": "You will check in at {time}.",
     "permissionConfirmDeparture": "You will check out at {time}.",
     "pendingToast": "Request submitted and sent to the secretary.",

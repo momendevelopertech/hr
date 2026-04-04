@@ -177,6 +177,12 @@ body {
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
     z-index: 20;
 }
+html[dir='rtl'] .app-sidebar.is-collapsed .sidebar-menu {
+    inset-inline-start: auto;
+    inset-inline-end: 100%;
+    margin-inline-start: 0;
+    margin-inline-end: 8px;
+}
 .tb-icon { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--r-sm); display: inline-flex; align-items: center; justify-content: center; }
 
 .font-base {

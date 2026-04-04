@@ -24,7 +24,7 @@ const detectStandalone = () => {
     return Boolean(displayMode || iosStandalone);
 };
 
-export default function PwaInstallButton({ enabled }: { enabled: boolean }) {
+export default function PwaInstallButton({ enabled, collapsed = false }: { enabled: boolean; collapsed?: boolean }) {
     const t = useTranslations('nav');
     const [isIos, setIsIos] = useState(false);
     const [isInstalled, setIsInstalled] = useState(false);
@@ -69,28 +69,38 @@ export default function PwaInstallButton({ enabled }: { enabled: boolean }) {
     if (isInstalled) {
         return (
             <button
-                className="btn-outline text-xs"
+                className={collapsed ? 'tb-icon' : 'btn-outline text-xs'}
                 type="button"
+                title={t('openApp')}
+                aria-label={t('openApp')}
                 onClick={() => {
                     window.location.assign('/');
                 }}
             >
                 <ExternalLink size={14} />
-                {t('openApp')}
+                {!collapsed && t('openApp')}
             </button>
         );
     }
 
     if (isIos) {
+        if (collapsed) {
+            return (
+                <button className="tb-icon" type="button" title={t('installIosHint')} aria-label={t('installIosHint')}>
+                    <ExternalLink size={14} />
+                </button>
+            );
+        }
         return <span className="text-xs text-ink/60 sm:text-sm">{t('installIosHint')}</span>;
     }
 
     return (
         <button
-            className="btn-outline text-xs"
+            className={collapsed ? 'tb-icon' : 'btn-outline text-xs'}
             type="button"
-            disabled={installing || !installPrompt}
+            disabled={installing}
             title={!installPrompt ? t('installUnavailable') : undefined}
+            aria-label={installLabel}
             onClick={async () => {
                 if (!installPrompt) return;
                 setInstalling(true);
@@ -104,7 +114,7 @@ export default function PwaInstallButton({ enabled }: { enabled: boolean }) {
             }}
         >
             <Download size={14} />
-            {installLabel}
+            {!collapsed && installLabel}
         </button>
     );
 }
