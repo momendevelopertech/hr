@@ -819,24 +819,30 @@ export class NotificationsService {
     }
 
     async markRead(id: string, userId: string) {
-        return this.prisma.notification.updateMany({
+        const result = await this.prisma.notification.updateMany({
             where: { id, receiverId: userId },
             data: { isRead: true },
         });
+        await this.emitRealtimeToUsers([userId], { type: 'NOTIFICATION_COUNTERS_UPDATED' });
+        return result;
     }
 
     async markAllRead(userId: string) {
-        return this.prisma.notification.updateMany({
+        const result = await this.prisma.notification.updateMany({
             where: { receiverId: userId },
             data: { isRead: true },
         });
+        await this.emitRealtimeToUsers([userId], { type: 'NOTIFICATION_COUNTERS_UPDATED' });
+        return result;
     }
 
     async markAllReadByType(userId: string, type: string) {
-        return this.prisma.notification.updateMany({
+        const result = await this.prisma.notification.updateMany({
             where: { receiverId: userId, type: type as any },
             data: { isRead: true },
         });
+        await this.emitRealtimeToUsers([userId], { type: 'NOTIFICATION_COUNTERS_UPDATED', notificationType: type });
+        return result;
     }
 
     async hasWhatsAppConfig() {

@@ -33,8 +33,8 @@ export default function NavLinks({ locale, collapsed = false }: { locale: string
     const countsInFlight = useRef(false);
     const backgroundConfig = useMemo(() => ({
         headers: {
-            'x-allow-cache': '1',
             'x-skip-activity': '1',
+            'x-no-cache': '1',
         },
     }), []);
 
@@ -64,6 +64,7 @@ export default function NavLinks({ locale, collapsed = false }: { locale: string
     const pusherHandlers = useMemo(
         () => ({
             notification: () => fetchCounts(),
+            message_read: () => fetchCounts(),
             receive_message: (message: any) => {
                 if (message?.receiverId === user?.id) fetchCounts();
             },

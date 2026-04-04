@@ -144,6 +144,43 @@ export class PermissionsService {
         return result._sum.hoursUsed ?? 0;
     }
 
+    private async getApprovedHoursInCycle(cycleId: string, excludeRequestId?: string) {
+        const result = await this.prisma.permissionRequest.aggregate({
+            _sum: { hoursUsed: true },
+            where: {
+                cycleId,
+                status: 'HR_APPROVED',
+                ...(excludeRequestId ? { id: { not: excludeRequestId } } : {}),
+            },
+        });
+
+        return result._sum.hoursUsed ?? 0;
+    }
+
+    private async buildCycleSnapshot(cycle: {
+        id: string;
+        userId: string;
+        cycleStart: Date;
+        cycleEnd: Date;
+        totalHours: number;
+        usedHours: number;
+        remainingHours: number;
+    }) {
+        const [reservedHours, approvedHours] = await Promise.all([
+            this.getReservedHoursInCycle(cycle.id),
+            this.getApprovedHoursInCycle(cycle.id),
+        ]);
+        const totalHours = cycle.totalHours ?? 4;
+
+        return {
+            ...cycle,
+            reservedHours,
+            approvedHours,
+            usedHours: approvedHours,
+            remainingHours: Math.max(0, totalHours - reservedHours),
+        };
+    }
+
     async getOrCreateCycle(userId: string, date: Date = new Date()) {
         const { start, end } = this.getCycleForDate(date);
 
@@ -168,7 +205,8 @@ export class PermissionsService {
     }
 
     async getCurrentCycle(userId: string) {
-        return this.getOrCreateCycle(userId, new Date());
+        const cycle = await this.getOrCreateCycle(userId, new Date());
+        return this.buildCycleSnapshot(cycle);
     }
 
     async createRequest(userId: string, data: CreatePermissionDto, actor?: { id: string; role: string }) {
@@ -212,7 +250,7 @@ export class PermissionsService {
         }
 
         const reservedHours = await this.getReservedHoursInCycle(cycle.id);
-        const availableHours = Math.max(0, 4 - reservedHours);
+        const availableHours = Math.max(0, cycle.totalHours - reservedHours);
         if (availableHours < hoursUsed) {
             throw new BadRequestException(
                 `Insufficient permission hours. Available: ${availableHours}h, Requested: ${hoursUsed}h`,
@@ -463,7 +501,12 @@ export class PermissionsService {
             updateData.hrComment = comment;
             if (action === 'approve') {
                 const cycle = await this.prisma.permissionCycle.findUnique({ where: { id: request.cycleId } });
-                if (!cycle || cycle.remainingHours < request.hoursUsed) {
+                if (!cycle) {
+                    throw new BadRequestException('Insufficient remaining hours in permission cycle');
+                }
+                const approvedHours = await this.getApprovedHoursInCycle(cycle.id);
+                const remainingApprovedHours = Math.max(0, cycle.totalHours - approvedHours);
+                if (remainingApprovedHours < request.hoursUsed) {
                     throw new BadRequestException('Insufficient remaining hours in permission cycle');
                 }
 
@@ -472,8 +515,8 @@ export class PermissionsService {
                 await this.prisma.permissionCycle.update({
                     where: { id: request.cycleId },
                     data: {
-                        usedHours: { increment: request.hoursUsed },
-                        remainingHours: { decrement: request.hoursUsed },
+                        usedHours: approvedHours + request.hoursUsed,
+                        remainingHours: Math.max(0, cycle.totalHours - approvedHours - request.hoursUsed),
                     },
                 });
             }
@@ -583,7 +626,7 @@ export class PermissionsService {
         }
 
         const reservedHours = await this.getReservedHoursInCycle(cycle.id, id);
-        const availableHours = Math.max(0, 4 - reservedHours);
+        const availableHours = Math.max(0, cycle.totalHours - reservedHours);
         if (availableHours < hoursUsed) {
             throw new BadRequestException(
                 `Insufficient permission hours. Available: ${availableHours}h, Requested: ${hoursUsed}h`,

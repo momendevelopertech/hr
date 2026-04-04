@@ -50,11 +50,17 @@ export class ChatService {
             data: { readStatus: true },
         });
 
-        // Realtime: inform sender that messages were read.
-        await this.pusher.triggerToUser(senderId, 'message_read', {
-            readerId,
-            senderId,
-        });
+        // Realtime: inform both participants so unread counters refresh without a page reload.
+        await Promise.all([
+            this.pusher.triggerToUser(senderId, 'message_read', {
+                readerId,
+                senderId,
+            }),
+            this.pusher.triggerToUser(readerId, 'message_read', {
+                readerId,
+                senderId,
+            }),
+        ]);
 
         return { success: true };
     }

@@ -91,4 +91,28 @@ describe('ChatService', () => {
         expect(conversation[1].messageText).toBe('Reply from user 2');
     });
 
+    it('notifies both participants when messages are marked as read', async () => {
+        prisma.message.updateMany.mockResolvedValue({ count: 2 });
+        pusher.triggerToUser.mockResolvedValue(undefined);
+
+        const result = await service.markAsRead('u1', 'u2');
+
+        expect(prisma.message.updateMany).toHaveBeenCalledWith({
+            where: {
+                senderId: 'u2',
+                receiverId: 'u1',
+                readStatus: false,
+            },
+            data: { readStatus: true },
+        });
+        expect(pusher.triggerToUser).toHaveBeenNthCalledWith(1, 'u2', 'message_read', {
+            readerId: 'u1',
+            senderId: 'u2',
+        });
+        expect(pusher.triggerToUser).toHaveBeenNthCalledWith(2, 'u1', 'message_read', {
+            readerId: 'u1',
+            senderId: 'u2',
+        });
+        expect(result).toEqual({ success: true });
+    });
 });

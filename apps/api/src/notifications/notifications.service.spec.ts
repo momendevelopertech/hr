@@ -236,6 +236,21 @@ describe('NotificationsService', () => {
         }));
     });
 
+    it('emits a realtime refresh after marking notifications as read', async () => {
+        await service.markAllRead('user-1');
+        await flushPromises();
+
+        expect(prisma.notification.updateMany).toHaveBeenCalledWith({
+            where: { receiverId: 'user-1' },
+            data: { isRead: true },
+        });
+        expect(pusher.triggerToUser).toHaveBeenCalledWith(
+            'user-1',
+            'notification',
+            expect.objectContaining({ type: 'NOTIFICATION_COUNTERS_UPDATED' }),
+        );
+    });
+
     it('sends permission approval through both external channels and stores related request logs', async () => {
         await service.notifyPermissionAction({
             id: 'perm-1',

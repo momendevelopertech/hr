@@ -120,8 +120,16 @@ export default function ChatLayout({ currentUser, locale, roleFilter, autoSelect
     const pusherHandlers = useMemo(
         () => ({
             receive_message: (message: ChatMessage) => handleIncomingMessage(message),
+            message_read: (payload: { readerId?: string; senderId?: string }) => {
+                if (payload?.readerId !== currentUser.id || !payload?.senderId) return;
+                setEmployees((prev) => prev.map((emp) => (
+                    emp.id === payload.senderId
+                        ? { ...emp, unreadCount: 0 }
+                        : emp
+                )));
+            },
         }),
-        [handleIncomingMessage],
+        [currentUser.id, handleIncomingMessage],
     );
 
     usePusherChannel(`user-${currentUser.id}`, pusherHandlers);
