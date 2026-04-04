@@ -70,6 +70,7 @@ body {
     height: 100vh;
     position: sticky;
     top: 0;
+    z-index: 80;
     transition: width 0.2s ease, min-width 0.2s ease;
 }
 .app-sidebar.is-collapsed {
@@ -176,7 +177,15 @@ body {
     padding: 4px;
     background: var(--surface);
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
-    z-index: 90;
+    z-index: 1200;
+}
+.sidebar-menu.is-ltr {
+    inset-inline-start: auto;
+    inset-inline-end: 8px;
+}
+.sidebar-menu.is-rtl {
+    inset-inline-end: auto;
+    inset-inline-start: 8px;
 }
 .sidebar-menu-item { width: 100%; display: flex; align-items: center; gap: 6px; padding: 7px; border-radius: 6px; font-size: 12px; }
 .sidebar-menu-item:hover { background: var(--surface2); }
@@ -189,6 +198,10 @@ body {
 .sidebar-menu.is-collapsed.is-rtl {
     inset-inline-start: auto;
     inset-inline-end: calc(100% + 8px);
+}
+.sidebar-menu.is-collapsed.is-ltr {
+    inset-inline-start: calc(100% + 8px);
+    inset-inline-end: auto;
 }
 .tb-icon { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--r-sm); display: inline-flex; align-items: center; justify-content: center; }
 
