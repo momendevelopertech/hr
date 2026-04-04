@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useTranslations } from 'next-intl';
+import SmartAttendanceCard, { type SmartAttendanceData } from './calendar/SmartAttendanceCard';
 
 type SideItem = {
     id: string;
@@ -18,6 +19,7 @@ type StatItem = {
 };
 
 export default function DashboardSidePanel({
+    attendanceData,
     quickGlance,
     pendingStats,
     todayItems,
@@ -25,6 +27,7 @@ export default function DashboardSidePanel({
     deductionStats,
     deductionHint,
 }: {
+    attendanceData: SmartAttendanceData;
     quickGlance: StatItem[];
     pendingStats: StatItem[];
     todayItems: SideItem[];
@@ -35,6 +38,10 @@ export default function DashboardSidePanel({
     const t = useTranslations('dashboard');
     return (
         <aside className="right-panel-ui">
+            <div>
+                <SmartAttendanceCard variant="sidebar" data={attendanceData} />
+            </div>
+
             <div>
                 <div className="rp-section-title">{t('quickGlanceTitle')}</div>
                 <div className="glance-grid">

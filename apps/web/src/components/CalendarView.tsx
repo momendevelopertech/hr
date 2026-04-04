@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import HintBar from './HintBar';
 import SpotlightGuide from './SpotlightGuide';
+import SmartAttendanceCard, { type SmartAttendanceData } from './calendar/SmartAttendanceCard';
 
 const locales = {
     en: enUS,
@@ -51,12 +52,14 @@ const calendarEventToneClass: Record<string, string> = {
 export default function CalendarView({
     locale,
     events,
+    attendanceData,
     onSelectSlot,
     onSelectEvent,
     schedule,
 }: {
     locale: 'en' | 'ar';
     events: CalendarEvent[];
+    attendanceData: SmartAttendanceData;
     onSelectSlot: (date: Date) => void;
     onSelectEvent?: (event: CalendarEvent) => void;
     schedule?: WorkSchedule | null;
@@ -78,7 +81,7 @@ export default function CalendarView({
 
     const [view, setView] = useState<View>('month');
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
-    const [isMobile, setIsMobile] = useState(false);
+    const [viewportWidth, setViewportWidth] = useState(1200);
     const [mobileSelectedDate, setMobileSelectedDate] = useState<Date>(dateOnly(new Date()));
     const [guideOpen, setGuideOpen] = useState(false);
     const [currentGuideStep, setCurrentGuideStep] = useState(0);
@@ -199,18 +202,18 @@ export default function CalendarView({
     }, [schedule]);
 
     useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth <= 768);
+        const check = () => setViewportWidth(window.innerWidth);
         check();
         window.addEventListener('resize', check);
         return () => window.removeEventListener('resize', check);
     }, []);
 
     useEffect(() => {
-        if (!isMobile) return;
+        if (viewportWidth >= 768) return;
         if (didAutoSwitchRef.current) return;
         setView('week');
         didAutoSwitchRef.current = true;
-    }, [isMobile]);
+    }, [viewportWidth]);
 
     useEffect(() => {
         clearHoveredCell();
@@ -238,9 +241,9 @@ export default function CalendarView({
     }, [currentDate]);
 
     const mobileEvents = useMemo(() => {
-        if (!(isMobile && (view === 'week' || view === 'day'))) return [];
+        if (!(viewportWidth < 768 && (view === 'week' || view === 'day'))) return [];
         return events.filter((event) => isSameDay(event.start, mobileSelectedDate));
-    }, [events, isMobile, mobileSelectedDate, view]);
+    }, [events, mobileSelectedDate, view, viewportWidth]);
 
     const mobileStats = useMemo(() => {
         const lateCount = mobileEvents.filter((event) => event.resource?.key === 'lateness').length;
@@ -351,7 +354,13 @@ export default function CalendarView({
                 </div>
             </div>
             <HintBar message="💡 اضغط على أي خلية في التقويم لإضافة حدث جديد" />
-            {isMobile && (view === 'week' || view === 'day') ? (
+            {viewportWidth >= 768 && viewportWidth < 1024 && (
+                <SmartAttendanceCard variant="bar" data={attendanceData} className="mb-3" />
+            )}
+            {viewportWidth < 768 && (
+                <SmartAttendanceCard variant="card" data={attendanceData} className="mb-3" />
+            )}
+            {viewportWidth < 768 && (view === 'week' || view === 'day') ? (
                 <div className="calendar-mobile-view">
                     <div className="day-strip" role="tablist" aria-label={title}>
                         {mobileStripDates.map((date) => {
@@ -377,7 +386,13 @@ export default function CalendarView({
                     <div className="calendar-mobile-events">
                         {mobileEvents.map((event, index) => {
                             const tone = event.resource?.key;
-                            const badgeClass = tone === 'lateness' ? 'event-badge-warning' : 'event-badge-info';
+                            const badgeClass = tone === 'lateness'
+                                ? 'badge-late'
+                                : tone === 'absence'
+                                    ? 'badge-absent'
+                                    : tone === 'leave'
+                                        ? 'badge-leave'
+                                        : 'badge-present';
                             return (
                                 <button
                                     key={`${event.title}-${event.start.toISOString()}-${index}`}
@@ -457,8 +472,9 @@ export default function CalendarView({
                             dayFormat: fullWeekdayFormat,
                             dayHeaderFormat: (date: Date) => `${fullWeekdayFormat(date)} ${format(date, 'd MMM', { locale: calendarLocale })}`,
                         }}
+                        scrollToTime={new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 7)}
                         className="rbc-sphinx"
-                        style={{ height: isMobile ? 440 : 540, width: '100%' }}
+                        style={{ height: viewportWidth < 768 ? 460 : 540, width: '100%' }}
                         dayPropGetter={(date) => {
                             const isRamadan =
                                 !!ramadanRange &&

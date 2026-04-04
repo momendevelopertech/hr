@@ -14,6 +14,9 @@ import { useTranslations } from 'next-intl';
 import { enumLabels } from '@/lib/enum-labels';
 import PageLoader from './PageLoader';
 import { Megaphone, Wallet } from 'lucide-react';
+import { arSA, enUS } from 'date-fns/locale';
+import { addDays, format, getDaysInMonth, isSameDay, isWithinInterval, startOfWeek } from 'date-fns';
+import type { SmartAttendanceData, WeekStatus } from './calendar/SmartAttendanceCard';
 
 type Department = { id: string; name: string; nameAr?: string | null };
 type EmployeeOption = { id: string; fullName: string; fullNameAr?: string | null };
@@ -264,6 +267,20 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         };
     }, [absenceDeduction?.cycleEnd, absenceDeduction?.cycleStart, balances, formatDateOnlyFromIso, forms, leaves, permissionCycle?.remainingHours, permissionCycle?.usedHours, permissions]);
 
+    const pendingStats = useMemo(() => {
+        const pendingLeaves = leaves.filter((r) => r.status === 'PENDING' && r.leaveType !== 'MISSION' && r.leaveType !== 'ABSENCE_WITH_PERMISSION').length;
+        const pendingMission = leaves.filter((r) => r.status === 'PENDING' && r.leaveType === 'MISSION').length;
+        const pendingAbsence = leaves.filter((r) => r.status === 'PENDING' && r.leaveType === 'ABSENCE_WITH_PERMISSION').length;
+        const pendingPermissions = permissions.filter((r) => r.status === 'PENDING').length;
+
+        return [
+            { id: 'pending-permissions', label: t('pendingPermissionsLabel'), value: `${pendingPermissions}`, color: 'amber' as const },
+            { id: 'pending-leaves', label: t('pendingLeavesLabel'), value: `${pendingLeaves}`, color: 'teal' as const },
+            { id: 'pending-mission', label: t('pendingMissionLabel'), value: `${pendingMission}`, color: 'violet' as const },
+            { id: 'pending-absence', label: t('pendingAbsenceLabel'), value: `${pendingAbsence}`, color: 'rose' as const },
+        ];
+    }, [leaves, permissions, t]);
+
     const quickGlance = useMemo(() => ([
         {
             id: 'leaveBalance',
@@ -284,20 +301,6 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             color: 'amber' as const,
         },
     ]), [dashboardStats.pendingTotal, dashboardStats.remainingPermissions, dashboardStats.totalRemaining, formatPermissionDuration, t]);
-
-    const pendingStats = useMemo(() => {
-        const pendingLeaves = leaves.filter((r) => r.status === 'PENDING' && r.leaveType !== 'MISSION' && r.leaveType !== 'ABSENCE_WITH_PERMISSION').length;
-        const pendingMission = leaves.filter((r) => r.status === 'PENDING' && r.leaveType === 'MISSION').length;
-        const pendingAbsence = leaves.filter((r) => r.status === 'PENDING' && r.leaveType === 'ABSENCE_WITH_PERMISSION').length;
-        const pendingPermissions = permissions.filter((r) => r.status === 'PENDING').length;
-
-        return [
-            { id: 'pending-permissions', label: t('pendingPermissionsLabel'), value: `${pendingPermissions}`, color: 'amber' as const },
-            { id: 'pending-leaves', label: t('pendingLeavesLabel'), value: `${pendingLeaves}`, color: 'teal' as const },
-            { id: 'pending-mission', label: t('pendingMissionLabel'), value: `${pendingMission}`, color: 'violet' as const },
-            { id: 'pending-absence', label: t('pendingAbsenceLabel'), value: `${pendingAbsence}`, color: 'rose' as const },
-        ];
-    }, [leaves, permissions, t]);
 
     const deductionStats = useMemo(() => ([
         {
@@ -569,6 +572,52 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             });
     }, [events, t]);
 
+    const attendanceData = useMemo<SmartAttendanceData>(() => {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth(), getDaysInMonth(now));
+        const monthDays = Array.from({ length: getDaysInMonth(now) }, (_, index) => new Date(now.getFullYear(), now.getMonth(), index + 1));
+        const workingDays = monthDays.filter((day) => day.getDay() !== 5 && day.getDay() !== 6).length;
+        const localeRef = locale === 'ar' ? arSA : enUS;
+
+        const attendanceDays = events.filter((event) => {
+            const key = event.resource?.key;
+            if (!isWithinInterval(event.start, { start: monthStart, end: monthEnd })) return false;
+            return key !== 'absence' && key !== 'lateness';
+        }).length;
+        const lateDays = latenessItems.filter((item) => {
+            const date = new Date(item.date);
+            return isWithinInterval(date, { start: monthStart, end: monthEnd });
+        }).length;
+        const absentDays = events.filter((event) => (
+            event.resource?.key === 'absence' && isWithinInterval(event.start, { start: monthStart, end: monthEnd })
+        )).length;
+        const currentWeekStart = startOfWeek(now, { weekStartsOn: 0 });
+        const currentWeekStatus: WeekStatus[] = Array.from({ length: 7 }, (_, index) => {
+            const date = addDays(currentWeekStart, index);
+            const dayEvents = events.filter((event) => isSameDay(event.start, date));
+            let status: WeekStatus['status'] = 'off';
+            if (isSameDay(date, now)) status = 'today';
+            else if (date.getDay() === 5 || date.getDay() === 6) status = 'off';
+            else if (dayEvents.some((event) => event.resource?.key === 'absence')) status = 'absent';
+            else if (dayEvents.some((event) => event.resource?.key === 'lateness')) status = 'late';
+            else if (dayEvents.length > 0) status = 'present';
+            return {
+                dayKey: format(date, 'EEE', { locale: localeRef }),
+                status,
+            };
+        });
+        return {
+            attendanceDays,
+            lateDays,
+            absentDays,
+            remainingDays: Math.max(0, workingDays - attendanceDays),
+            monthProgress: workingDays === 0 ? 0 : (attendanceDays / workingDays) * 100,
+            currentWeekStatus,
+            currentMonthLabel: format(now, 'MMMM yyyy', { locale: localeRef }),
+        };
+    }, [events, latenessItems, locale]);
+
 
     if (!ready || loading) {
         return <PageLoader text={locale === 'ar' ? 'جاري تحميل لوحة التحكم...' : 'Loading dashboard...'} />;
@@ -615,6 +664,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                         <CalendarView
                             locale={locale}
                             events={events}
+                            attendanceData={attendanceData}
                             schedule={schedule}
                             onSelectSlot={(d) => setSelectedDate(d)}
                             onSelectEvent={(event) => {
@@ -624,6 +674,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                         />
                     </div>
                     <DashboardSidePanel
+                        attendanceData={attendanceData}
                         quickGlance={quickGlance}
                         pendingStats={pendingStats}
                         todayItems={todayItems}
