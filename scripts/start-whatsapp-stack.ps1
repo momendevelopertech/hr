@@ -109,6 +109,25 @@ function Wait-ForPort {
     return $false
 }
 
+function Wait-ForCondition {
+    param(
+        [scriptblock]$Condition,
+        [int]$TimeoutSeconds = 30,
+        [int]$PollIntervalSeconds = 2
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        if (& $Condition) {
+            return $true
+        }
+
+        Start-Sleep -Seconds $PollIntervalSeconds
+    }
+
+    return $false
+}
+
 function Get-LogTailText {
     param(
         [string]$Path,
@@ -158,6 +177,15 @@ function Stop-NodeProcessesByCommandMatch {
         ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 }
 
+function Stop-LegacyEvolutionProcesses {
+    Get-CimInstance Win32_Process |
+        Where-Object {
+            $_.Name -eq 'node.exe' -and
+            $_.CommandLine -match '(^|["\s])dist\\main(\.js)?($|["\s])'
+        } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+}
+
 function Stop-ProcessesListeningOnPort {
     param([int]$Port)
 
@@ -170,6 +198,36 @@ function Stop-ProcessesListeningOnPort {
         }
 }
 
+function Test-EvolutionManagerReady {
+    try {
+        $response = Invoke-WebRequest -Uri "http://127.0.0.1:$evolutionPort/manager" -UseBasicParsing -TimeoutSec 10
+        return [bool]($response.StatusCode -ge 200 -and $response.StatusCode -lt 400)
+    } catch {
+        return $false
+    }
+}
+
+function Get-BridgeHealth {
+    try {
+        return Invoke-RestMethod -Uri "http://127.0.0.1:$bridgePort/__bridge/health" -TimeoutSec 10
+    } catch {
+        return $null
+    }
+}
+
+function Test-BridgeReady {
+    $health = Get-BridgeHealth
+    if (-not $health) {
+        return $false
+    }
+
+    return [bool](
+        $health.ok -eq $true -and
+        $health.instanceName -eq $instanceName -and
+        $health.target -eq "http://127.0.0.1:$evolutionPort"
+    )
+}
+
 function Start-EvolutionApi {
     if (-not (Test-Path $evolutionDir)) {
         throw "Evolution API folder was not found at $evolutionDir"
@@ -180,7 +238,13 @@ function Start-EvolutionApi {
     }
 
     if (Test-ListeningPort -Port $evolutionPort) {
-        return
+        if (Test-EvolutionManagerReady) {
+            return
+        }
+
+        Stop-ProcessesListeningOnPort -Port $evolutionPort
+        Stop-NodeProcessesByCommandMatch -Pattern ([regex]::Escape($evolutionDir))
+        Start-Sleep -Seconds 2
     }
 
     $env:SERVER_PORT = "$evolutionPort"
@@ -192,7 +256,7 @@ function Start-EvolutionApi {
     $script:evolutionStderr = Resolve-LogPath -Path $evolutionStderr
 
     $distEntry = Join-Path $evolutionDir 'dist\main.js'
-    $timeoutSeconds = 90
+    $timeoutSeconds = 180
     $startupCommand = ''
     $process = $null
 
@@ -206,7 +270,7 @@ function Start-EvolutionApi {
             -PassThru
     } else {
         $startupCommand = "cmd /c cd /d `"$evolutionDir`" && node_modules\.bin\tsx.cmd .\src\main.ts"
-        $timeoutSeconds = 150
+        $timeoutSeconds = 210
         $process = Start-Process `
             -FilePath 'cmd.exe' `
             -ArgumentList '/c', "cd /d `"$evolutionDir`" && node_modules\\.bin\\tsx.cmd .\\src\\main.ts" `
@@ -231,6 +295,19 @@ Stderr tail:
 $stderrTail
 "@
     }
+
+    if (-not (Wait-ForCondition -TimeoutSeconds 60 -Condition { Test-EvolutionManagerReady })) {
+        $stdoutTail = Get-LogTailText -Path $evolutionStdout
+        $stderrTail = Get-LogTailText -Path $evolutionStderr
+        throw @"
+Evolution API opened port $evolutionPort but the manager endpoint never became ready.
+Stdout tail:
+$stdoutTail
+
+Stderr tail:
+$stderrTail
+"@
+    }
 }
 
 function Start-Bridge {
@@ -241,7 +318,13 @@ function Start-Bridge {
     }
 
     if (Test-ListeningPort -Port $bridgePort) {
-        return
+        if (Test-BridgeReady) {
+            return
+        }
+
+        Stop-ProcessesListeningOnPort -Port $bridgePort
+        Stop-NodeProcessesByCommandMatch -Pattern ([regex]::Escape($bridgeScript))
+        Start-Sleep -Seconds 2
     }
 
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
@@ -262,7 +345,29 @@ function Start-Bridge {
         -RedirectStandardError $bridgeStderr | Out-Null
 
     if (-not (Wait-ForPort -Port $bridgePort -TimeoutSeconds 15)) {
-        throw "Bridge did not start on port $bridgePort"
+        $stdoutTail = Get-LogTailText -Path $bridgeStdout
+        $stderrTail = Get-LogTailText -Path $bridgeStderr
+        throw @"
+Bridge did not start on port $bridgePort.
+Stdout tail:
+$stdoutTail
+
+Stderr tail:
+$stderrTail
+"@
+    }
+
+    if (-not (Wait-ForCondition -TimeoutSeconds 20 -Condition { Test-BridgeReady })) {
+        $stdoutTail = Get-LogTailText -Path $bridgeStdout
+        $stderrTail = Get-LogTailText -Path $bridgeStderr
+        throw @"
+Bridge port $bridgePort opened but the health endpoint is not reporting the expected service.
+Stdout tail:
+$stdoutTail
+
+Stderr tail:
+$stderrTail
+"@
     }
 }
 
@@ -270,6 +375,7 @@ if ($Restart) {
     Stop-ProcessesListeningOnPort -Port $bridgePort
     Stop-ProcessesListeningOnPort -Port $evolutionPort
     Stop-NodeProcessesByCommandMatch -Pattern ([regex]::Escape($evolutionDir))
+    Stop-LegacyEvolutionProcesses
     Stop-NodeProcessesByCommandMatch -Pattern ([regex]::Escape($bridgeScript))
     Start-Sleep -Seconds 2
 }

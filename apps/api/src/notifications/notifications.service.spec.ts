@@ -120,6 +120,70 @@ describe('NotificationsService', () => {
         }));
     });
 
+    it('keeps WhatsApp delivery successful when email delivery throws unexpectedly', async () => {
+        emailService.sendEmail.mockRejectedValue(new Error('SMTP socket hang up'));
+
+        const delivery = await service.sendAccountCreatedMessage({
+            id: 'user-1',
+            fullName: 'Sara Adel',
+            email: 'employee@example.com',
+            phone: '01012345678',
+            employeeNumber: 'EMP-0001',
+            username: 'sara.adel',
+            workflowMode: 'APPROVAL_WORKFLOW',
+        }, {
+            temporaryPassword: 'SPHINX@2026',
+            syncWhatsApp: true,
+            waitForExternalDeliveries: true,
+        });
+
+        expect(delivery.whatsAppDelivery).toEqual({
+            ok: true,
+            phone: '201012345678',
+            attempts: 1,
+        });
+        expect(delivery.emailDelivery).toEqual({
+            ok: false,
+            recipient: 'employee@example.com',
+            attempts: 0,
+            error: 'SMTP socket hang up',
+        });
+        expect(whatsAppService.sendWhatsApp).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps email delivery successful when WhatsApp delivery throws unexpectedly', async () => {
+        whatsAppService.sendWhatsApp.mockRejectedValue(new Error('Evolution API unreachable'));
+
+        const delivery = await service.sendAccountCreatedMessage({
+            id: 'user-1',
+            fullName: 'Sara Adel',
+            email: 'employee@example.com',
+            phone: '01012345678',
+            employeeNumber: 'EMP-0001',
+            username: 'sara.adel',
+            workflowMode: 'APPROVAL_WORKFLOW',
+        }, {
+            temporaryPassword: 'SPHINX@2026',
+            syncWhatsApp: true,
+            waitForExternalDeliveries: true,
+        });
+
+        expect(delivery.emailDelivery).toEqual({
+            ok: true,
+            recipient: 'employee@example.com',
+            attempts: 1,
+            messageId: 'message-1',
+            response: '250 queued',
+        });
+        expect(delivery.whatsAppDelivery).toEqual({
+            ok: false,
+            phone: '01012345678',
+            attempts: 0,
+            error: 'Evolution API unreachable',
+        });
+        expect(emailService.sendEmail).toHaveBeenCalledTimes(1);
+    });
+
     it('sends permission approval through both external channels and stores related request logs', async () => {
         await service.notifyPermissionAction({
             id: 'perm-1',

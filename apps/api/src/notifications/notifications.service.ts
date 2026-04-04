@@ -284,6 +284,32 @@ export class NotificationsService {
             .replace(/'/g, '&#39;');
     }
 
+    private getErrorMessage(error: unknown) {
+        return error instanceof Error ? error.message : String(error);
+    }
+
+    private buildUnexpectedEmailFailure(recipient: string, error: unknown): EmailDeliveryResult {
+        const message = this.getErrorMessage(error);
+        this.logger.error(`Unexpected email delivery failure for ${recipient}: ${message}`);
+        return {
+            ok: false,
+            recipient,
+            attempts: 0,
+            error: message,
+        };
+    }
+
+    private buildUnexpectedWhatsAppFailure(phone: string, error: unknown): WhatsAppDeliveryResult {
+        const message = this.getErrorMessage(error);
+        this.logger.error(`Unexpected WhatsApp delivery failure for ${phone}: ${message}`);
+        return {
+            ok: false,
+            phone,
+            attempts: 0,
+            error: message,
+        };
+    }
+
     private async getNotificationTemplate(key: NotificationTemplateKey): Promise<NotificationTemplateContent> {
         try {
             const settings = await this.prisma.workScheduleSettings.findFirst({
@@ -860,21 +886,23 @@ export class NotificationsService {
             : null;
 
         if (options?.syncWhatsApp || options?.waitForExternalDeliveries) {
-            const [whatsAppResult, emailResult] = await Promise.all([
-                user.phone
-                    ? this.sendLoggedWhatsApp({
-                        channel: 'WHATSAPP',
-                        recipient: user.phone,
-                        message,
-                        workflowKey: 'accountCreated',
-                        templateKey: 'accountCreated',
-                        relatedEntityType: 'User',
-                        relatedEntityId: user.id,
-                        metadata: { locale, syncWhatsApp: true },
-                    })
-                    : Promise.resolve(null),
-                emailJob ?? Promise.resolve(null),
-            ]);
+            const whatsAppPromise = user.phone
+                ? this.sendLoggedWhatsApp({
+                    channel: 'WHATSAPP',
+                    recipient: user.phone,
+                    message,
+                    workflowKey: 'accountCreated',
+                    templateKey: 'accountCreated',
+                    relatedEntityType: 'User',
+                    relatedEntityId: user.id,
+                    metadata: { locale, syncWhatsApp: true },
+                }).catch((error) => this.buildUnexpectedWhatsAppFailure(user.phone as string, error))
+                : Promise.resolve(null);
+            const emailPromise = emailJob
+                ? emailJob.catch((error) => this.buildUnexpectedEmailFailure(user.email, error))
+                : Promise.resolve(null);
+
+            const [whatsAppResult, emailResult] = await Promise.all([whatsAppPromise, emailPromise]);
 
             return {
                 emailDelivery: emailResult,

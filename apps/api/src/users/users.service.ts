@@ -792,6 +792,9 @@ export class UsersService {
             await tx.refreshToken.deleteMany({ where: { userId: targetUserId } });
             await tx.auditLog.deleteMany({ where: { userId: targetUserId } });
             await tx.user.delete({ where: { id: targetUserId } });
+        }, {
+            maxWait: 10_000,
+            timeout: 30_000,
         });
 
         await this.auditService.log({
