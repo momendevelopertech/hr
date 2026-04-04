@@ -25,6 +25,8 @@ export default function SidebarFooter({
     const [pwaEnabled, setPwaEnabled] = useState(true);
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
+    const userMenuId = 'sidebar-user-menu';
+    const userButtonId = 'sidebar-user-trigger';
 
     useEffect(() => {
         const stored = typeof window !== 'undefined' ? window.localStorage.getItem('theme') : null;
@@ -98,10 +100,12 @@ export default function SidebarFooter({
         <div className={`sidebar-footer${collapsed ? ' is-collapsed' : ''}`} ref={menuRef}>
             <WorkflowModeSwitch locale={locale} collapsed={collapsed} />
             <div className="sidebar-tools">
-                <button className="tb-icon" type="button" onClick={() => switchLocale(locale === 'ar' ? 'en' : 'ar')} title={locale === 'ar' ? 'English' : 'العربية'}>
+                <button className="tb-icon" type="button" onClick={() => switchLocale(locale === 'ar' ? 'en' : 'ar')} title={locale === 'ar' ? 'English' : 'العربية'} aria-label={locale === 'ar' ? 'Switch language' : 'تبديل اللغة'}>
+                    <span className="sr-only">{locale === 'ar' ? 'تبديل اللغة' : 'Switch language'}</span>
                     <Languages size={14} />
                 </button>
-                <button className="tb-icon" type="button" onClick={toggleTheme} title={theme === 'dark' ? t('themeLight') : t('themeDark')}>
+                <button className="tb-icon" type="button" onClick={toggleTheme} title={theme === 'dark' ? t('themeLight') : t('themeDark')} aria-label={theme === 'dark' ? t('themeLight') : t('themeDark')}>
+                    <span className="sr-only">{theme === 'dark' ? t('themeLight') : t('themeDark')}</span>
                     {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
                 </button>
                 <PwaInstallButton enabled={pwaEnabled} collapsed={collapsed} />
@@ -110,8 +114,10 @@ export default function SidebarFooter({
                 className={`user-row${collapsed ? ' is-collapsed' : ''}`}
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
+                id={userButtonId}
                 aria-expanded={menuOpen}
-                aria-controls="sidebar-user-menu"
+                aria-controls={userMenuId}
+                aria-haspopup="menu"
                 title={collapsed ? (locale === 'ar' ? 'حسابي' : 'My account') : undefined}
             >
                 <div className="uav">{user?.fullName?.slice(0, 1) || 'U'}</div>
@@ -123,12 +129,12 @@ export default function SidebarFooter({
                 )}
             </button>
             {menuOpen && (
-                <div className="sidebar-menu" id="sidebar-user-menu" role="menu">
-                    <button className="sidebar-menu-item" type="button" onClick={requestPasswordReset}>
+                <div className={`sidebar-menu${collapsed ? ' is-collapsed' : ''}${locale === 'ar' ? ' is-rtl' : ' is-ltr'}`} id={userMenuId} role="menu" aria-labelledby={userButtonId}>
+                    <button className="sidebar-menu-item" type="button" role="menuitem" onClick={requestPasswordReset}>
                         <KeyRound size={14} />
                         {locale === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
                     </button>
-                    <button className="sidebar-menu-item is-danger" type="button" onClick={() => { setMenuOpen(false); logout(); }}>
+                    <button className="sidebar-menu-item is-danger" type="button" role="menuitem" onClick={() => { setMenuOpen(false); logout(); }}>
                         <LogOut size={14} />
                         {t('logout')}
                     </button>

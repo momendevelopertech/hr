@@ -176,24 +176,19 @@ body {
     padding: 4px;
     background: var(--surface);
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
-    z-index: 30;
+    z-index: 90;
 }
 .sidebar-menu-item { width: 100%; display: flex; align-items: center; gap: 6px; padding: 7px; border-radius: 6px; font-size: 12px; }
 .sidebar-menu-item:hover { background: var(--surface2); }
-.app-sidebar.is-collapsed .sidebar-menu {
+.sidebar-menu.is-collapsed {
     min-width: 200px;
-    inset-inline-end: calc(100% + 8px);
-    inset-block-end: 0;
-}
-html[dir='rtl'] .app-sidebar.is-collapsed .sidebar-menu {
     inset-inline-end: auto;
     inset-inline-start: calc(100% + 8px);
+    inset-block-end: 0;
 }
-html[dir='rtl'] .app-sidebar.is-collapsed .sidebar-menu {
+.sidebar-menu.is-collapsed.is-rtl {
     inset-inline-start: auto;
-    inset-inline-end: 100%;
-    margin-inline-start: 0;
-    margin-inline-end: 8px;
+    inset-inline-end: calc(100% + 8px);
 }
 .tb-icon { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--r-sm); display: inline-flex; align-items: center; justify-content: center; }
 

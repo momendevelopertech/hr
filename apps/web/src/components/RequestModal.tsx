@@ -187,6 +187,17 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
         const time = format(leave, 'h:mm a', { locale: dateLocale });
         return tm('permissionConfirmDeparture', { time });
     }, [date, formData.durationHours, formData.durationMinutes, formData.permissionScope, locale, schedule, tm, type]);
+    const permissionDuration = useMemo(() => {
+        const hours = parseDurationPart(formData.durationHours, 4);
+        const minutes = parseDurationPart(formData.durationMinutes, 59);
+        return {
+            hours,
+            minutes,
+            totalMinutes: hours * 60 + minutes,
+            minutesMax: hours >= 4 ? 0 : 59,
+        };
+    }, [formData.durationHours, formData.durationMinutes]);
+    const permissionDurationInvalid = type === 'permission' && permissionDuration.totalMinutes > MAX_PERMISSION_MINUTES;
 
     const latenessPreview = useMemo(() => {
         if (!date || type !== 'lateness') return null;
@@ -302,9 +313,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
             }
 
             if (type === 'permission') {
-                const hours = parseDurationPart(formData.durationHours, 4);
-                const minutes = parseDurationPart(formData.durationMinutes, 59);
-                const durationMinutes = hours * 60 + minutes;
+                const { totalMinutes: durationMinutes } = permissionDuration;
                 if (durationMinutes <= 0) {
                     toast.error(tm('permissionDurationError'));
                     setLoading(false);
@@ -565,21 +574,34 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                             max={4}
                                             className="field w-full px-3 py-2"
                                             placeholder={tm('durationHours')}
-                                            value={formData.durationHours || ''}
-                                            onChange={(e) => update('durationHours', parseDurationPart(e.target.value, 4))}
+                                            value={formData.durationHours ?? ''}
+                                            onChange={(e) => {
+                                                const nextHours = parseDurationPart(e.target.value, 4);
+                                                const currentMinutes = parseDurationPart(formData.durationMinutes, 59);
+                                                update('durationHours', nextHours);
+                                                if (nextHours >= 4 && currentMinutes > 0) {
+                                                    update('durationMinutes', 0);
+                                                }
+                                            }}
                                         />
                                         <input
                                             type="number"
                                             min={0}
-                                            max={59}
+                                            max={permissionDuration.minutesMax}
                                             className="field w-full px-3 py-2"
                                             placeholder={tm('durationMinutes')}
-                                            value={formData.durationMinutes || ''}
-                                            onChange={(e) => update('durationMinutes', parseDurationPart(e.target.value, 59))}
+                                            value={formData.durationMinutes ?? ''}
+                                            onChange={(e) => {
+                                                const rawMinutes = parseDurationPart(e.target.value, 59);
+                                                update('durationMinutes', Math.min(rawMinutes, permissionDuration.minutesMax));
+                                            }}
                                         />
                                     </div>
                                 </label>
                             </div>
+                            {permissionDurationInvalid && (
+                                <p className="text-sm text-rose-600">{tm('permissionDurationMaxError')}</p>
+                            )}
                             {permissionPreview && (
                                 <div className="rounded-xl border border-ink/10 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                                     {permissionPreview}
@@ -705,7 +727,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     <button
                         className="btn-primary"
                         onClick={submit}
-                        disabled={loading || !type || (isSecretary && !selectedEmployeeId)}
+                        disabled={loading || !type || (isSecretary && !selectedEmployeeId) || permissionDurationInvalid}
                     >
                         {loading ? tm('saving') : tm('submit')}
                     </button>
@@ -714,4 +736,3 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
         </div>
     );
 }
-
