@@ -1160,7 +1160,8 @@ export class NotificationsService {
         action: 'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected',
         options?: { comment?: string; body?: string; bodyAr?: string; sendExternal?: boolean },
     ) {
-        const user = await this.prisma.user.findUnique({ where: { id: leaveRequest.userId } });
+        const user = leaveRequest.user
+            || (await this.prisma.user.findUnique({ where: { id: leaveRequest.userId } }));
         if (!user) return;
 
         const templateKeyMap: Record<'submitted' | 'verified' | 'managerApproved' | 'approved' | 'rejected', NotificationTemplateKey> = {

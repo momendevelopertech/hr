@@ -236,6 +236,54 @@ describe('NotificationsService', () => {
         }));
     });
 
+    it('sends leave submission through both external channels using the preloaded request user', async () => {
+        await service.notifyLeaveAction({
+            id: 'leave-1',
+            userId: 'user-1',
+            leaveType: 'ANNUAL',
+            startDate: new Date('2026-04-02T00:00:00.000Z'),
+            endDate: new Date('2026-04-03T00:00:00.000Z'),
+            totalDays: 2,
+            reason: 'Family trip',
+            user: {
+                id: 'user-1',
+                email: 'employee@example.com',
+                phone: '01012345678',
+                fullName: 'Mona Samir',
+            },
+        }, 'submitted');
+
+        await flushPromises();
+
+        expect(prisma.user.findUnique).not.toHaveBeenCalled();
+        expect(whatsAppService.sendWhatsApp).toHaveBeenCalledWith(
+            '01012345678',
+            expect.stringContaining('Under review'),
+        );
+        expect(emailService.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+            to: 'employee@example.com',
+            subject: expect.stringContaining('Leave Request Submitted'),
+        }));
+        expect(prisma.notificationDelivery.create).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({
+                channel: 'EMAIL',
+                workflowKey: 'leave.submitted',
+                templateKey: 'leaveSubmitted',
+                relatedEntityType: 'LeaveRequest',
+                relatedEntityId: 'leave-1',
+            }),
+        }));
+        expect(prisma.notificationDelivery.create).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({
+                channel: 'WHATSAPP',
+                workflowKey: 'leave.submitted',
+                templateKey: 'leaveSubmitted',
+                relatedEntityType: 'LeaveRequest',
+                relatedEntityId: 'leave-1',
+            }),
+        }));
+    });
+
     it('sends permission verification through both external channels by default', async () => {
         await service.notifyPermissionAction({
             id: 'perm-2',
