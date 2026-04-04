@@ -280,8 +280,11 @@ export default function EmployeesClient({ locale }: { locale: string }) {
         const annual = balances.find((b) => b.leaveType === 'ANNUAL');
         setEditingUser(emp);
         setEditForm({
+            employeeNumber: res.data.employeeNumber,
+            username: res.data.username,
             fullName: res.data.fullName,
             fullNameAr: res.data.fullNameAr,
+            email: res.data.email,
             phone: res.data.phone,
             role: res.data.role,
             governorate: res.data.governorate,
@@ -289,6 +292,7 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             departmentId: res.data.department?.id || '',
             jobTitle: res.data.jobTitle,
             jobTitleAr: res.data.jobTitleAr,
+            fingerprintId: res.data.fingerprintId,
             isActive: res.data.isActive,
             annualLeaveDays: annual?.totalDays ?? 21,
         });
@@ -302,6 +306,10 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             return;
         }
         const role = editForm.role || 'EMPLOYEE';
+        if (!editForm.email?.trim()) {
+            showNotice(locale === 'ar' ? 'يجب إدخال البريد الإلكتروني.' : 'Email is required.', 'error');
+            return;
+        }
         if (!editForm.branchId) {
             showNotice(locale === 'ar' ? 'يجب اختيار الفرع.' : 'Branch is required.', 'error');
             return;
@@ -320,12 +328,14 @@ export default function EmployeesClient({ locale }: { locale: string }) {
             await api.patch(`/users/${editingUser.id}`, {
                 fullName: editForm.fullName,
                 fullNameAr: editForm.fullNameAr,
+                email: editForm.email,
                 phone: editForm.phone,
                 role: editForm.role,
                 branchId: editForm.branchId,
                 departmentId: editForm.departmentId || null,
                 jobTitle: editForm.jobTitle,
                 jobTitleAr: editForm.jobTitleAr,
+                fingerprintId: editForm.fingerprintId,
                 isActive: editForm.isActive,
             });
 
@@ -727,6 +737,18 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                         </div>
                         <div className="mt-4 grid gap-3 md:grid-cols-2">
                             <input
+                                className="rounded-xl border border-ink/20 bg-slate-50 px-3 py-2 text-ink/70"
+                                placeholder={t('employeeNumber')}
+                                value={editForm.employeeNumber || ''}
+                                readOnly
+                            />
+                            <input
+                                className="rounded-xl border border-ink/20 bg-slate-50 px-3 py-2 text-ink/70"
+                                placeholder={t('username')}
+                                value={editForm.username || ''}
+                                readOnly
+                            />
+                            <input
                                 className="rounded-xl border border-ink/20 bg-white px-3 py-2"
                                 placeholder={t('fullNameEn')}
                                 value={editForm.fullName || ''}
@@ -737,6 +759,13 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                 placeholder={t('fullNameArLabel')}
                                 value={editForm.fullNameAr || ''}
                                 onChange={(e) => setEditForm((p: any) => ({ ...p, fullNameAr: e.target.value }))}
+                            />
+                            <input
+                                type="email"
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                placeholder={t('email')}
+                                value={editForm.email || ''}
+                                onChange={(e) => setEditForm((p: any) => ({ ...p, email: e.target.value }))}
                             />
                             <div className="space-y-1">
                                 <input
@@ -782,6 +811,12 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                 value={editForm.jobTitle || ''}
                                 onChange={(e) => setEditForm((p: any) => ({ ...p, jobTitle: e.target.value }))}
                             />
+                            <input
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                placeholder={locale === 'ar' ? 'المسمى الوظيفي بالعربية' : 'Job Title (AR)'}
+                                value={editForm.jobTitleAr || ''}
+                                onChange={(e) => setEditForm((p: any) => ({ ...p, jobTitleAr: e.target.value }))}
+                            />
                             <select
                                 className="rounded-xl border border-ink/20 bg-white px-3 py-2"
                                 value={editForm.role || 'EMPLOYEE'}
@@ -793,6 +828,20 @@ export default function EmployeesClient({ locale }: { locale: string }) {
                                 <option value="SUPER_ADMIN">{t('roles.superAdmin')}</option>
                                 <option value="BRANCH_SECRETARY">{t('roles.branchSecretary')}</option>
                                 <option value="SUPPORT">{t('roles.support')}</option>
+                            </select>
+                            <input
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                placeholder={t('fingerprintId')}
+                                value={editForm.fingerprintId || ''}
+                                onChange={(e) => setEditForm((p: any) => ({ ...p, fingerprintId: e.target.value }))}
+                            />
+                            <select
+                                className="rounded-xl border border-ink/20 bg-white px-3 py-2"
+                                value={editForm.isActive ? 'active' : 'inactive'}
+                                onChange={(e) => setEditForm((p: any) => ({ ...p, isActive: e.target.value === 'active' }))}
+                            >
+                                <option value="active">{t('active')}</option>
+                                <option value="inactive">{t('inactive')}</option>
                             </select>
                             <input
                                 type="number"

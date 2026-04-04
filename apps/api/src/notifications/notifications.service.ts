@@ -465,6 +465,78 @@ export class NotificationsService {
         };
     }
 
+    private buildFormExternalContent(options: {
+        locale: NotificationLocale;
+        user?: { fullName?: string | null; fullNameAr?: string | null };
+        submissionId: string;
+        formName?: string | null;
+        formNameAr?: string | null;
+        title: string;
+        intro: string;
+        footer?: string;
+        statusLabel: string;
+        submittedAt?: Date | string | null;
+        comment?: string | null;
+    }) {
+        const isArabic = options.locale === 'ar';
+        const formLabel = isArabic
+            ? (options.formNameAr || options.formName || 'النموذج')
+            : (options.formName || options.formNameAr || 'Form');
+        const details: MessageDetail[] = [
+            {
+                icon: '🧾',
+                label: isArabic ? 'النموذج' : 'Form',
+                value: formLabel,
+            },
+            {
+                icon: '📌',
+                label: isArabic ? 'الحالة' : 'Status',
+                value: options.statusLabel,
+            },
+            {
+                icon: '🆔',
+                label: isArabic ? 'رقم الطلب' : 'Request ID',
+                value: options.submissionId,
+            },
+        ];
+
+        if (options.submittedAt) {
+            details.push({
+                icon: '📅',
+                label: isArabic ? 'تاريخ الإرسال' : 'Submitted at',
+                value: this.formatDate(options.submittedAt, options.locale),
+            });
+        }
+
+        const comment = options.comment?.trim();
+        if (comment) {
+            details.push({
+                icon: '💬',
+                label: isArabic ? 'ملاحظة' : 'Comment',
+                value: comment,
+            });
+        }
+
+        return {
+            whatsAppMessage: this.composeWhatsAppMessage({
+                locale: options.locale,
+                user: options.user,
+                title: options.title,
+                intro: options.intro,
+                details,
+                footer: options.footer,
+            }),
+            emailHtml: this.buildEmailHtml({
+                locale: options.locale,
+                user: options.user,
+                title: options.title,
+                intro: options.intro,
+                details,
+                footer: options.footer,
+            }),
+        };
+    }
+
     private isMissingDeliveryLogSchemaError(error: unknown) {
         const err = error as { code?: string; message?: string };
         if (err?.code === 'P2021' || err?.code === 'P2022') {
@@ -1160,7 +1232,7 @@ export class NotificationsService {
             metadata: { leaveRequestId: leaveRequest.id },
         });
 
-        const sendExternal = options?.sendExternal ?? ['submitted', 'approved', 'rejected'].includes(action);
+        const sendExternal = options?.sendExternal ?? true;
         if (sendExternal) {
             const locale = this.getPreferredLocale(user);
             const rendered = locale === 'ar' ? renderedAr : renderedEn;
@@ -1197,19 +1269,23 @@ export class NotificationsService {
                     metadata: { locale, action },
                 }));
             }
-            jobs.push(this.sendLoggedEmail({
-                channel: 'EMAIL',
-                recipient: user.email,
-                workflowKey,
-                templateKey: templateKeyMap[action],
-                subject: `SPHINX HR - ${rendered.title}`,
-                html: externalContent.emailHtml,
-                relatedEntityType: 'LeaveRequest',
-                relatedEntityId: leaveRequest.id,
-                metadata: { locale, action },
-            }));
+            if (user.email) {
+                jobs.push(this.sendLoggedEmail({
+                    channel: 'EMAIL',
+                    recipient: user.email,
+                    workflowKey,
+                    templateKey: templateKeyMap[action],
+                    subject: `SPHINX HR - ${rendered.title}`,
+                    html: externalContent.emailHtml,
+                    relatedEntityType: 'LeaveRequest',
+                    relatedEntityId: leaveRequest.id,
+                    metadata: { locale, action },
+                }));
+            }
 
-            this.runInBackground(Promise.allSettled(jobs), `Deferred leave external notifications (${action}) failed`);
+            if (jobs.length) {
+                this.runInBackground(Promise.allSettled(jobs), `Deferred leave external notifications (${action}) failed`);
+            }
         }
     }
 
@@ -1292,7 +1368,8 @@ export class NotificationsService {
             metadata: { permissionRequestId: permissionRequest.id },
         });
 
-        if (options?.sendExternal) {
+        const sendExternal = options?.sendExternal ?? true;
+        if (sendExternal) {
             const locale = this.getPreferredLocale(user);
             const rendered = locale === 'ar' ? renderedAr : renderedEn;
             const workflowKey = `permission.${action}`;
@@ -1349,6 +1426,124 @@ export class NotificationsService {
                     `Deferred permission external notification (${action}) failed`,
                 );
             }
+        }
+    }
+
+    async notifyFormAction(
+        submission: any,
+        action: 'submitted' | 'managerApproved' | 'approved' | 'rejected',
+        options?: { comment?: string; body?: string; bodyAr?: string; sendExternal?: boolean },
+    ) {
+        const user = submission.user
+            || (await this.prisma.user.findUnique({ where: { id: submission.userId } }));
+        if (!user) return;
+
+        const formName = submission.form?.name || 'Form';
+        const formNameAr = submission.form?.nameAr || submission.form?.name || 'النموذج';
+        const statusLabels: Record<'submitted' | 'managerApproved' | 'approved' | 'rejected', Record<NotificationLocale, string>> = {
+            submitted: { ar: 'قيد المراجعة', en: 'Under review' },
+            managerApproved: { ar: 'موافقة المدير', en: 'Manager approved' },
+            approved: { ar: 'تم الاعتماد', en: 'Approved' },
+            rejected: { ar: 'مرفوض', en: 'Rejected' },
+        };
+        const titles: Record<'submitted' | 'managerApproved' | 'approved' | 'rejected', Record<NotificationLocale, string>> = {
+            submitted: {
+                ar: `تم إرسال النموذج: ${formNameAr}`,
+                en: `Form Submitted: ${formName}`,
+            },
+            managerApproved: {
+                ar: `وافق المدير على النموذج: ${formNameAr}`,
+                en: `Form Approved by Manager: ${formName}`,
+            },
+            approved: {
+                ar: `تم اعتماد النموذج: ${formNameAr}`,
+                en: `Form Approved: ${formName}`,
+            },
+            rejected: {
+                ar: `تم رفض النموذج: ${formNameAr}`,
+                en: `Form Rejected: ${formName}`,
+            },
+        };
+        const intros: Record<'submitted' | 'managerApproved' | 'approved' | 'rejected', Record<NotificationLocale, string>> = {
+            submitted: {
+                ar: `تم استلام "${formNameAr}" وسيتم مراجعته قريبًا.`,
+                en: `Your "${formName}" submission has been received and will be reviewed shortly.`,
+            },
+            managerApproved: {
+                ar: `تمت موافقة المدير على "${formNameAr}" وتم تحويله إلى الموارد البشرية.`,
+                en: `Your "${formName}" submission was approved by the manager and forwarded to HR.`,
+            },
+            approved: {
+                ar: `تم اعتماد "${formNameAr}" بنجاح.`,
+                en: `Your "${formName}" submission has been approved successfully.`,
+            },
+            rejected: {
+                ar: `تم رفض "${formNameAr}". راجع الملاحظات أو تواصل مع المسؤول المباشر.`,
+                en: `Your "${formName}" submission was rejected. Please review the comments or contact your manager.`,
+            },
+        };
+        const commentBody = options?.comment?.trim();
+        const footerAr = this.getCommentHint(commentBody, 'ar');
+        const footerEn = this.getCommentHint(commentBody, 'en');
+        const body = options?.body?.trim() || this.joinTextBlocks(intros[action].en, footerEn);
+        const bodyAr = options?.bodyAr?.trim() || this.joinTextBlocks(intros[action].ar, footerAr);
+
+        await this.createInApp({
+            receiverId: user.id,
+            type: action === 'approved' ? 'FORM_APPROVED' : action === 'rejected' ? 'FORM_REJECTED' : 'FORM_SUBMISSION',
+            title: titles[action].en,
+            titleAr: titles[action].ar,
+            body,
+            bodyAr,
+            metadata: { submissionId: submission.id, formId: submission.formId || submission.form?.id },
+        });
+
+        const sendExternal = options?.sendExternal ?? true;
+        if (!sendExternal) return;
+
+        const locale = this.getPreferredLocale(user);
+        const workflowKey = `form.${action}`;
+        const externalContent = this.buildFormExternalContent({
+            locale,
+            user,
+            submissionId: submission.id,
+            formName,
+            formNameAr,
+            title: titles[action][locale],
+            intro: intros[action][locale],
+            footer: locale === 'ar' ? footerAr : footerEn,
+            statusLabel: statusLabels[action][locale],
+            submittedAt: submission.createdAt,
+            comment: commentBody,
+        });
+
+        const jobs: Promise<unknown>[] = [];
+        if (user.phone) {
+            jobs.push(this.sendLoggedWhatsApp({
+                channel: 'WHATSAPP',
+                recipient: user.phone,
+                message: externalContent.whatsAppMessage,
+                workflowKey,
+                relatedEntityType: 'FormSubmission',
+                relatedEntityId: submission.id,
+                metadata: { locale, action },
+            }));
+        }
+        if (user.email) {
+            jobs.push(this.sendLoggedEmail({
+                channel: 'EMAIL',
+                recipient: user.email,
+                workflowKey,
+                subject: `SPHINX HR - ${titles[action][locale]}`,
+                html: externalContent.emailHtml,
+                relatedEntityType: 'FormSubmission',
+                relatedEntityId: submission.id,
+                metadata: { locale, action },
+            }));
+        }
+
+        if (jobs.length) {
+            this.runInBackground(Promise.allSettled(jobs), `Deferred form external notification (${action}) failed`);
         }
     }
 }

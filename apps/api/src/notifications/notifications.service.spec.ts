@@ -235,4 +235,75 @@ describe('NotificationsService', () => {
             }),
         }));
     });
+
+    it('sends permission verification through both external channels by default', async () => {
+        await service.notifyPermissionAction({
+            id: 'perm-2',
+            userId: 'user-2',
+            permissionType: 'PERSONAL',
+            requestDate: '2026-04-03',
+            arrivalTime: '09:00',
+            leaveTime: '11:00',
+            hoursUsed: 2,
+            reason: 'Follow-up',
+            user: {
+                id: 'user-2',
+                email: 'employee@example.com',
+                phone: '01012345678',
+                fullName: 'Mona Samir',
+            },
+        }, 'verified');
+
+        await flushPromises();
+
+        expect(whatsAppService.sendWhatsApp).toHaveBeenCalledWith(
+            '01012345678',
+            expect.stringContaining('Verified'),
+        );
+        expect(emailService.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+            to: 'employee@example.com',
+            subject: expect.stringContaining('Permission Request Verified'),
+        }));
+    });
+
+    it('sends form approval through both external channels', async () => {
+        await service.notifyFormAction({
+            id: 'form-sub-1',
+            userId: 'user-3',
+            createdAt: '2026-04-04T09:00:00.000Z',
+            form: {
+                id: 'form-1',
+                name: 'Vacation Settlement',
+                nameAr: 'تسوية إجازة',
+            },
+            user: {
+                id: 'user-3',
+                email: 'employee@example.com',
+                phone: '01012345678',
+                fullName: 'Mona Samir',
+            },
+        }, 'approved', {
+            comment: 'Approved by HR',
+        });
+
+        await flushPromises();
+
+        expect(whatsAppService.sendWhatsApp).toHaveBeenCalledWith(
+            '01012345678',
+            expect.stringContaining('Vacation Settlement'),
+        );
+        expect(emailService.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+            to: 'employee@example.com',
+            subject: expect.stringContaining('Form Approved'),
+            html: expect.stringContaining('Approved by HR'),
+        }));
+        expect(prisma.notificationDelivery.create).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({
+                channel: 'EMAIL',
+                workflowKey: 'form.approved',
+                relatedEntityType: 'FormSubmission',
+                relatedEntityId: 'form-sub-1',
+            }),
+        }));
+    });
 });

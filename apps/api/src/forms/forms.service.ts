@@ -126,14 +126,9 @@ export class FormsService {
                 details: { autoApproved: true, workflowMode: 'SANDBOX' },
             });
 
-            await this.notificationsService.createInApp({
-                receiverId: submission.userId,
-                type: 'FORM_APPROVED',
-                title: `Form Approved: ${submission.form.name}`,
-                titleAr: 'تمت الموافقة على النموذج تلقائيًا',
+            await this.notificationsService.notifyFormAction(submission, 'approved', {
                 body: 'Your form was auto-approved in Sandbox Mode.',
                 bodyAr: 'تم اعتماد النموذج تلقائيًا في وضع التجربة.',
-                metadata: { submissionId: submission.id, formId },
             });
             await this.notificationsService.emitRealtimeToUsers([submission.userId], {
                 type: 'REQUEST_UPDATED',
@@ -142,6 +137,8 @@ export class FormsService {
             });
             return submission;
         }
+
+        await this.notificationsService.notifyFormAction(submission, 'submitted');
 
         // Notify managers
         if (submission.user.departmentId) {
@@ -220,14 +217,13 @@ export class FormsService {
             entityId: id,
         });
 
-        await this.notificationsService.createInApp({
-            receiverId: submission.userId,
-            type: action === 'approve' ? 'FORM_APPROVED' : 'FORM_REJECTED',
-            title: action === 'approve' ? `Form Approved: ${submission.form.name}` : `Form Rejected: ${submission.form.name}`,
-            titleAr: action === 'approve' ? `تمت الموافقة على النموذج` : `تم رفض النموذج`,
-            body: comment || (action === 'approve' ? 'Approved.' : 'Rejected.'),
-            bodyAr: comment || (action === 'approve' ? 'تمت الموافقة.' : 'تم الرفض.'),
-        });
+        if (action === 'reject') {
+            await this.notificationsService.notifyFormAction(submission, 'rejected', { comment });
+        } else if (role === 'MANAGER') {
+            await this.notificationsService.notifyFormAction(submission, 'managerApproved', { comment });
+        } else {
+            await this.notificationsService.notifyFormAction(submission, 'approved', { comment });
+        }
 
         return submission;
     }
