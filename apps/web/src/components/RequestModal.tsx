@@ -401,8 +401,8 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
     };
 
     return (
-        <div className="overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4">
-            <div className="modal-shell w-full max-w-2xl rounded-3xl p-6">
+        <div className="overlay-backdrop fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-3 py-4 sm:items-center sm:px-4 sm:py-8">
+            <div className="modal-shell w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold">{t('new')}</h2>
                     <button className="btn-outline" onClick={onClose}>{tm('close')}</button>
