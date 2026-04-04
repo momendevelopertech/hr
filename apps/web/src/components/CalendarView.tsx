@@ -209,7 +209,7 @@ export default function CalendarView({
     }, []);
 
     useEffect(() => {
-        if (viewportWidth >= 480) return;
+        if (viewportWidth >= 768) return;
         if (didAutoSwitchRef.current) return;
         setView('week');
         didAutoSwitchRef.current = true;
@@ -241,7 +241,7 @@ export default function CalendarView({
     }, [currentDate]);
 
     const mobileEvents = useMemo(() => {
-        if (!(viewportWidth < 480 && (view === 'week' || view === 'day'))) return [];
+        if (!(viewportWidth < 768 && (view === 'week' || view === 'day'))) return [];
         return events.filter((event) => isSameDay(event.start, mobileSelectedDate));
     }, [events, mobileSelectedDate, view, viewportWidth]);
 
@@ -360,7 +360,7 @@ export default function CalendarView({
             {viewportWidth < 768 && (
                 <SmartAttendanceCard variant="card" data={attendanceData} className="mb-3" />
             )}
-            {viewportWidth < 480 && (view === 'week' || view === 'day') ? (
+            {viewportWidth < 768 && (view === 'week' || view === 'day') ? (
                 <div className="calendar-mobile-view">
                     <div className="day-strip" role="tablist" aria-label={title}>
                         {mobileStripDates.map((date) => {

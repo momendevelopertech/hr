@@ -20,6 +20,7 @@ type StatItem = {
 
 export default function DashboardSidePanel({
     attendanceData,
+    quickGlance,
     pendingStats,
     todayItems,
     approvalItems,
@@ -27,6 +28,7 @@ export default function DashboardSidePanel({
     deductionHint,
 }: {
     attendanceData: SmartAttendanceData;
+    quickGlance: StatItem[];
     pendingStats: StatItem[];
     todayItems: SideItem[];
     approvalItems: SideItem[];
@@ -38,6 +40,21 @@ export default function DashboardSidePanel({
         <aside className="right-panel-ui">
             <div>
                 <SmartAttendanceCard variant="sidebar" data={attendanceData} />
+            </div>
+
+            <div>
+                <div className="rp-section-title">{t('quickGlanceTitle')}</div>
+                <div className="glance-grid">
+                    {quickGlance.length === 0 && (
+                        <div className="panel-empty">{t('noDataYet')}</div>
+                    )}
+                    {quickGlance.map((item) => (
+                        <div key={item.id} className={`glance-card tone-${item.color}`}>
+                            <div className="glance-label">{item.label}</div>
+                            <div className="glance-value">{item.value}</div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div>

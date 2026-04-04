@@ -264,6 +264,27 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         ];
     }, [leaves, permissions, t]);
 
+    const quickGlance = useMemo(() => ([
+        {
+            id: 'leaveBalance',
+            label: t('leaveBalance'),
+            value: `${dashboardStats.totalRemaining} ${t('days')}`,
+            color: 'teal' as const,
+        },
+        {
+            id: 'permissionRemaining',
+            label: t('permissionRemaining'),
+            value: formatPermissionDuration(dashboardStats.remainingPermissions),
+            color: 'violet' as const,
+        },
+        {
+            id: 'pendingTotal',
+            label: t('pendingApprovals'),
+            value: `${dashboardStats.pendingTotal}`,
+            color: 'amber' as const,
+        },
+    ]), [dashboardStats.pendingTotal, dashboardStats.remainingPermissions, dashboardStats.totalRemaining, formatPermissionDuration, t]);
+
     const deductionStats = useMemo(() => ([
         {
             id: 'absence',
@@ -637,6 +658,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                     </div>
                     <DashboardSidePanel
                         attendanceData={attendanceData}
+                        quickGlance={quickGlance}
                         pendingStats={pendingStats}
                         todayItems={todayItems}
                         approvalItems={approvalItems}

@@ -55,6 +55,7 @@
 }
 .statNum  { font-size: 18px; font-weight: 500; line-height: 1; }
 .statLbl  { font-size: 10px; color: var(--ink3); margin-top: 2px; }
+.stats.sidebar .statLbl { font-size: 9px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .numGreen { color: #0F6E56; }
 .numAmber { color: #854F0B; }
 .numRed   { color: #A32D2D; }

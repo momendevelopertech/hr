@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { useLocale } from 'next-intl';
 import styles from './SmartAttendanceCard.module.css';
 
 export type WeekStatus = {
@@ -28,12 +29,15 @@ export default function SmartAttendanceCard({
     className?: string;
 }) {
     const t = useTranslations('dashboard');
+    const locale = useLocale();
+    const attendanceLabel = locale === 'ar' ? 'حضور' : 'Attendance';
+    const remainingLabel = locale === 'ar' ? 'متبقي' : 'Remaining';
 
     const stats = (
         <div className={[styles.stats, styles[variant]].join(' ')}>
             <div className={styles.statBox}>
                 <div className={[styles.statNum, styles.numGreen].join(' ')}>{data.attendanceDays}</div>
-                <div className={styles.statLbl}>{t('permissionArrival')}</div>
+                <div className={styles.statLbl}>{attendanceLabel}</div>
             </div>
             <div className={styles.statBox}>
                 <div className={[styles.statNum, styles.numAmber].join(' ')}>{data.lateDays}</div>
@@ -45,7 +49,7 @@ export default function SmartAttendanceCard({
             </div>
             <div className={styles.statBox}>
                 <div className={styles.statNum}>{data.remainingDays}</div>
-                <div className={styles.statLbl}>{t('days')}</div>
+                <div className={styles.statLbl}>{remainingLabel}</div>
             </div>
         </div>
     );
