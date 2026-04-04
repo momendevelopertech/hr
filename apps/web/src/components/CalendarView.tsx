@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import HintBar from './HintBar';
 import SpotlightGuide from './SpotlightGuide';
 import SmartAttendanceCard, { type SmartAttendanceData } from './calendar/SmartAttendanceCard';
-import { isCompanyOffDay } from './calendar/companyOffDays';
+import { getCompanyOffDayKind, getCompanyOffDayLabel, isCompanyOffDay } from './calendar/companyOffDays';
 
 const locales = {
     en: enUS,
@@ -104,6 +104,12 @@ export default function CalendarView({
         return cloneElement(children as ReactElement<any>, extra);
     }, []);
 
+    const DateHeader = useCallback(({ date }: { date: Date }) => (
+        <span className="calendar-date-number" data-day-number={format(date, 'd')}>
+            {format(date, 'd')}
+        </span>
+    ), []);
+
     const clearHoveredCell = useCallback(() => {
         if (!hoveredCellRef.current) return;
         hoveredCellRef.current.classList.remove('rbc-cell-hover');
@@ -159,8 +165,10 @@ export default function CalendarView({
 
     const eventPropGetter = (event: CalendarEvent) => {
         const key = event.resource?.key;
+        const offDay = isCompanyOffDay(event.start);
         return {
-            className: `rbc-event-clickable ${calendarEventToneClass[key || ''] || 'calendar-event-tone-default'}`,
+            className: `rbc-event-clickable ${calendarEventToneClass[key || ''] || 'calendar-event-tone-default'}${offDay ? ' rbc-event-disabled' : ''}`,
+            ...(offDay ? { style: { pointerEvents: 'none' as const, opacity: 0.55 } } : {}),
         };
     };
 
@@ -365,7 +373,8 @@ export default function CalendarView({
                             const isActive = isSameDay(date, mobileSelectedDate);
                             const isToday = isSameDay(date, new Date());
                             const hasEvents = events.some((event) => isSameDay(event.start, date));
-                            const isOffDay = isCompanyOffDay(date);
+                            const offDayLabel = getCompanyOffDayLabel(date, locale);
+                            const isOffDay = Boolean(offDayLabel);
                             return (
                                 <button
                                     key={date.toISOString()}
@@ -379,6 +388,7 @@ export default function CalendarView({
                                 >
                                     <span className="day-pill-name">{format(date, 'EEE', { locale: calendarLocale })}</span>
                                     <span className="day-pill-date">{format(date, 'd', { locale: calendarLocale })}</span>
+                                    {offDayLabel ? <span className="day-pill-off-label">{offDayLabel}</span> : null}
                                     {hasEvents ? <span className="day-dot" aria-hidden="true" /> : <span className="day-dot day-dot-empty" aria-hidden="true" />}
                                 </button>
                             );
@@ -398,7 +408,7 @@ export default function CalendarView({
                             return (
                                 <button
                                     key={`${event.title}-${event.start.toISOString()}-${index}`}
-                                    className="event-card"
+                                    className={`event-card${isCompanyOffDay(event.start) ? ' is-disabled' : ''}`}
                                     onClick={() => {
                                         const selected = event.start as Date;
                                         if (isCompanyOffDay(selected)) return;
@@ -408,6 +418,7 @@ export default function CalendarView({
                                         }
                                         handleSelectDate(selected);
                                     }}
+                                    disabled={isCompanyOffDay(event.start)}
                                 >
                                     <span className="day-dot" aria-hidden="true" />
                                     <span className="event-card-title">{event.title}</span>
@@ -458,7 +469,7 @@ export default function CalendarView({
                         }}
                         onSelectEvent={(event) => {
                             const selected = event.start as Date;
-                            if (selected.getDay() === 5) return;
+                            if (isCompanyOffDay(selected)) return;
                             if (onSelectEvent) {
                                 onSelectEvent(event);
                                 return;
@@ -468,7 +479,12 @@ export default function CalendarView({
                         startAccessor="start"
                         endAccessor="end"
                         eventPropGetter={eventPropGetter}
-                        components={{ dateCellWrapper: DateCellWrapper }}
+                        components={{
+                            dateCellWrapper: DateCellWrapper,
+                            month: {
+                                dateHeader: DateHeader,
+                            },
+                        }}
                         formats={{
                             weekdayFormat: fullWeekdayFormat,
                             dayFormat: fullWeekdayFormat,
@@ -482,8 +498,18 @@ export default function CalendarView({
                                 !!ramadanRange &&
                                 dateOnly(date) >= ramadanRange.start &&
                                 dateOnly(date) <= ramadanRange.end;
-                            if (isCompanyOffDay(date)) {
-                                return { className: 'rbc-day-disabled rbc-day-friday', style: { color: 'var(--calendar-day-disabled-text)' } };
+                            const offDayKind = getCompanyOffDayKind(date);
+                            const offDayLabel = getCompanyOffDayLabel(date, locale);
+                            if (offDayKind) {
+                                const offDayClass = offDayKind === 'friday' ? 'rbc-day-friday' : `rbc-day-${offDayKind}`;
+                                return {
+                                    className: `rbc-day-disabled ${offDayClass}`,
+                                    style: {
+                                        color: 'var(--calendar-day-disabled-text)',
+                                        pointerEvents: 'none',
+                                    },
+                                    ...(offDayLabel ? { title: offDayLabel } : {}),
+                                };
                             }
                             if (isSameDay(date, new Date())) {
                                 return { className: `rbc-day-clickable rbc-day-today${isRamadan ? ' rbc-day-ramadan' : ''}` };
