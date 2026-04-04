@@ -184,8 +184,8 @@ body {
     inset-inline-end: 8px;
 }
 .sidebar-menu.is-rtl {
-    inset-inline-end: auto;
-    inset-inline-start: 8px;
+    inset-inline-start: auto;
+    inset-inline-end: 8px;
 }
 .sidebar-menu-item { width: 100%; display: flex; align-items: center; gap: 6px; padding: 7px; border-radius: 6px; font-size: 12px; }
 .sidebar-menu-item:hover { background: var(--surface2); }
@@ -196,8 +196,12 @@ body {
     inset-block-end: 0;
 }
 .sidebar-menu.is-collapsed.is-rtl {
-    inset-inline-start: auto;
-    inset-inline-end: calc(100% + 8px);
+    inset-inline-start: calc(100% + 8px);
+    inset-inline-end: auto;
+}
+.sidebar-menu.is-collapsed.is-ltr {
+    inset-inline-start: calc(100% + 8px);
+    inset-inline-end: auto;
 }
 .sidebar-menu.is-collapsed.is-ltr {
     inset-inline-start: calc(100% + 8px);
