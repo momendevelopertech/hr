@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { AccountCreatedDeliverySummary, NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -19,6 +19,14 @@ import { normalizeEgyptMobilePhone } from '../shared/egypt-phone';
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MINUTES = 30;
 const REFRESH_TOKEN_DAYS = 7;
+
+type RegisterResult = {
+    accessToken: string;
+    refreshToken: string;
+    user: any;
+    emailDelivery: AccountCreatedDeliverySummary['emailDelivery'];
+    whatsAppDelivery: AccountCreatedDeliverySummary['whatsAppDelivery'];
+};
 
 @Injectable()
 export class AuthService {
@@ -260,8 +268,9 @@ export class AuthService {
         },
         ipAddress?: string,
         userAgent?: string,
-    ) {
-        const user = await this.usersService.createSelfRegisteredUser(data);
+    ): Promise<RegisterResult> {
+        const registration = await this.usersService.createSelfRegisteredUser(data);
+        const { user, emailDelivery, whatsAppDelivery } = registration;
 
         await this.auditService.log({
             userId: user.id,
@@ -280,6 +289,8 @@ export class AuthService {
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
             user: this.buildUserProfile(user),
+            emailDelivery,
+            whatsAppDelivery,
         };
     }
 

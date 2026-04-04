@@ -126,6 +126,12 @@
     "registerFullNameEnglishOnly": "يرجى إدخال الاسم بالكامل باللغة الإنجليزية فقط.",
     "registerJobTitleEnglishOnly": "يرجى إدخال المسمى الوظيفي باللغة الإنجليزية فقط.",
     "registerFailed": "تعذر إنشاء الحساب. حاول مرة أخرى.",
+    "registerEmailSent": "تم إرسال الإيميل إلى {recipient}.",
+    "registerEmailFailed": "تعذر إرسال الإيميل إلى {recipient}: {reason}",
+    "registerWhatsAppSent": "تم إرسال رسالة واتساب إلى {phone}.",
+    "registerWhatsAppFailed": "تعذر إرسال رسالة واتساب إلى {phone}: {reason}",
+    "registerDeliveryStatusUnavailable": "تم إنشاء الحساب لكن الخادم لم يرجع حالة إرسال الرسائل.",
+    "registerDeliveryUnknownFailure": "فشل غير معروف",
     "sessionExpiring": "ستنتهي جلستك قريبًا.",
     "sessionContinue": "متابعة الجلسة",
     "sessionLogout": "تسجيل الخروج"

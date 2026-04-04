@@ -128,7 +128,13 @@
     "registerJobTitleRequired": "Please enter your job title.",
     "registerFullNameEnglishOnly": "Please enter your full name in English only.",
     "registerJobTitleEnglishOnly": "Please enter your job title in English only.",
-    "registerFailed": "Unable to create your account. Please try again."
+    "registerFailed": "Unable to create your account. Please try again.",
+    "registerEmailSent": "Email sent to {recipient}.",
+    "registerEmailFailed": "Email delivery failed for {recipient}: {reason}",
+    "registerWhatsAppSent": "WhatsApp message sent to {phone}.",
+    "registerWhatsAppFailed": "WhatsApp delivery failed for {phone}: {reason}",
+    "registerDeliveryStatusUnavailable": "Account created, but the server did not return message delivery status.",
+    "registerDeliveryUnknownFailure": "Unknown failure"
   },
   "dashboard": {
     "title": "Overview",

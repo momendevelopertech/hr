@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Eye, EyeOff, Languages, Moon, Sun } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api, { AppApiError, setAccessToken } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import BrandLogo from '@/components/BrandLogo';
@@ -31,6 +32,13 @@ type RegisterFormState = {
     departmentId: string;
     jobTitle: string;
     jobTitleAr: string;
+};
+
+type ChannelDelivery = {
+    ok: boolean;
+    recipient?: string;
+    phone?: string;
+    error?: string;
 };
 
 const defaultRegisterForm: RegisterFormState = {
@@ -277,6 +285,43 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
         return err.message || t('loginUnknownError');
     };
 
+    const showRegisterDeliveryToasts = (response: {
+        emailDelivery?: ChannelDelivery | null;
+        whatsAppDelivery?: ChannelDelivery | null;
+        user?: { email?: string | null; phone?: string | null };
+    }) => {
+        const emailDelivery = response.emailDelivery;
+        const whatsAppDelivery = response.whatsAppDelivery;
+        const unknownReason = t('registerDeliveryUnknownFailure');
+
+        if (!emailDelivery && !whatsAppDelivery) {
+            toast(t('registerDeliveryStatusUnavailable'), { duration: 7000 });
+            return;
+        }
+
+        if (emailDelivery?.ok) {
+            toast.success(t('registerEmailSent', {
+                recipient: emailDelivery.recipient || response.user?.email || '-',
+            }), { duration: 7000 });
+        } else if (emailDelivery) {
+            toast.error(t('registerEmailFailed', {
+                recipient: emailDelivery.recipient || response.user?.email || '-',
+                reason: emailDelivery.error || unknownReason,
+            }), { duration: 9000 });
+        }
+
+        if (whatsAppDelivery?.ok) {
+            toast.success(t('registerWhatsAppSent', {
+                phone: whatsAppDelivery.phone || response.user?.phone || '-',
+            }), { duration: 7000 });
+        } else if (whatsAppDelivery) {
+            toast.error(t('registerWhatsAppFailed', {
+                phone: whatsAppDelivery.phone || response.user?.phone || '-',
+                reason: whatsAppDelivery.error || unknownReason,
+            }), { duration: 9000 });
+        }
+    };
+
     const submitLogin = async () => {
         if (loginSubmitLockRef.current || authFlowLocked || !validateLogin()) return;
         loginSubmitLockRef.current = true;
@@ -335,6 +380,7 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
             if (typeof window !== 'undefined') {
                 window.sessionStorage.removeItem('sphinx-logged-out');
             }
+            showRegisterDeliveryToasts(res.data);
             redirectForRole(res.data?.user?.role);
         } catch (error) {
             const err = error as AppApiError;

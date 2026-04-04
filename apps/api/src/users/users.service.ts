@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { endOfDay, startOfDay } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { AccountCreatedDeliverySummary, NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
 import { RedisService } from '../redis/redis.service';
 import { isEgyptianMobilePhone, normalizeEgyptMobilePhone } from '../shared/egypt-phone';
@@ -15,6 +15,12 @@ import { matchesEmployeeSearch, normalizeDigits, normalizeSearchText } from '../
 import * as bcrypt from 'bcrypt';
 import { getCycleRange } from '../shared/cycle';
 import { CreateUserDto, UpdateUserDto } from './dto/users.dto';
+
+type SelfRegisteredUserCreationResult = {
+    user: any;
+    emailDelivery: AccountCreatedDeliverySummary['emailDelivery'];
+    whatsAppDelivery: AccountCreatedDeliverySummary['whatsAppDelivery'];
+};
 
 @Injectable()
 export class UsersService {
@@ -190,7 +196,7 @@ export class UsersService {
         departmentId: string;
         jobTitle: string;
         jobTitleAr?: string;
-    }) {
+    }): Promise<SelfRegisteredUserCreationResult> {
         const normalizedEmail = data.email.trim().toLowerCase();
         const fullName = this.validateEnglishFullName(data.fullName);
         const normalizedPhone = this.validatePhone(data.phone);
@@ -290,7 +296,7 @@ export class UsersService {
             metadata: { workflowMode: user.workflowMode, selfRegistered: true },
         });
 
-        await this.notificationsService.sendAccountCreatedMessage({
+        const deliverySummary = await this.notificationsService.sendAccountCreatedMessage({
             id: user.id,
             fullName: user.fullName,
             fullNameAr: user.fullNameAr,
@@ -299,11 +305,17 @@ export class UsersService {
             employeeNumber: user.employeeNumber,
             username: user.username,
             workflowMode: user.workflowMode,
+        }, {
+            waitForExternalDeliveries: true,
         });
 
         await this.clearUserCaches();
 
-        return user;
+        return {
+            user,
+            emailDelivery: deliverySummary.emailDelivery,
+            whatsAppDelivery: deliverySummary.whatsAppDelivery,
+        };
     }
 
     async create(data: CreateUserDto, createdById?: string) {

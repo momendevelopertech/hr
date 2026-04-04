@@ -126,7 +126,12 @@ export class AuthController {
         res.clearCookie('remember_me', this.getClearCookieOptions());
         res.cookie('sphinx_session', '1', this.getSessionHintCookieOptions(ages.refreshMs));
 
-        return { user: result.user, accessToken: result.accessToken };
+        return {
+            user: result.user,
+            accessToken: result.accessToken,
+            emailDelivery: result.emailDelivery,
+            whatsAppDelivery: result.whatsAppDelivery,
+        };
     }
 
     @Post('logout')
