@@ -15,7 +15,7 @@ import { enumLabels } from '@/lib/enum-labels';
 import PageLoader from './PageLoader';
 import { Megaphone, Wallet } from 'lucide-react';
 import { arSA, enUS } from 'date-fns/locale';
-import { addDays, endOfDay, format, getDaysInMonth, isSameDay, isWithinInterval, startOfDay, startOfWeek } from 'date-fns';
+import { addDays, format, getDaysInMonth, isSameDay, isWithinInterval, startOfDay, startOfWeek } from 'date-fns';
 import type { SmartAttendanceData, WeekStatus } from './calendar/SmartAttendanceCard';
 import { isCompanyFixedOffDay, isCompanyOffDay } from './calendar/companyOffDays';
 
@@ -588,7 +588,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         const monthEnd = new Date(now.getFullYear(), now.getMonth(), getDaysInMonth(now));
         const monthDays = Array.from({ length: getDaysInMonth(now) }, (_, index) => new Date(now.getFullYear(), now.getMonth(), index + 1));
         const isWorkingDay = (day: Date) => !isCompanyOffDay(day);
-        const todayEnd = endOfDay(now);
+        const todayRangeEnd = todayStart;
         const workingDays = monthDays.filter(isWorkingDay).length;
         const elapsedWorkingDays = monthDays.filter((day) => day <= todayStart && isWorkingDay(day)).length;
         const localeRef = locale === 'ar' ? arSA : enUS;
@@ -597,13 +597,13 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
 
         latenessItems.forEach((item) => {
             const date = new Date(item.date);
-            if (!isWithinInterval(date, { start: monthStart, end: todayEnd })) return;
+            if (!isWithinInterval(date, { start: monthStart, end: todayRangeEnd })) return;
             if (!isWorkingDay(date)) return;
             dayStatus.set(format(date, 'yyyy-MM-dd'), 'late');
         });
 
         events.forEach((event) => {
-            if (!isWithinInterval(event.start, { start: monthStart, end: todayEnd })) return;
+            if (!isWithinInterval(event.start, { start: monthStart, end: todayRangeEnd })) return;
             const key = event.resource?.key;
             const dateKey = format(event.start, 'yyyy-MM-dd');
             if (!isWorkingDay(event.start)) return;
@@ -629,7 +629,6 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             }
             if (status === 'late') {
                 lateDays += 1;
-                return;
             }
             attendanceDays += 1;
         });
