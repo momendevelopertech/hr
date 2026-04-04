@@ -105,6 +105,13 @@ const formatPermissionDuration = (hours: number, locale: 'en' | 'ar') => {
     return `${minutePart}m`;
 };
 
+const parseLocalDate = (value: string) => {
+    const datePart = value.split('T')[0];
+    const [year, month, day] = datePart.split('-').map((part) => Number(part));
+    if (year && month && day) return new Date(year, month - 1, day);
+    return new Date(value);
+};
+
 export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const t = useTranslations('dashboard');
     const tm = useTranslations('requestModal');
@@ -471,8 +478,8 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
 
             return {
                 title: enumLabels.leaveType(leave.leaveType, locale),
-                start: new Date(leave.startDate),
-                end: new Date(leave.endDate),
+                start: parseLocalDate(leave.startDate),
+                end: parseLocalDate(leave.endDate),
                 allDay: true,
                 resource: { key, kind: key === 'absence' ? 'absence' : key === 'mission' ? 'mission' : 'leave', item: leave },
             };
@@ -480,32 +487,32 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
 
         const permissionEvents = permissions.map((permission) => ({
             title: enumLabels.permissionType(permission.permissionType, locale),
-            start: new Date(permission.requestDate),
-            end: new Date(permission.requestDate),
+            start: parseLocalDate(permission.requestDate),
+            end: parseLocalDate(permission.requestDate),
             allDay: true,
             resource: { key: permission.permissionType === 'PERSONAL' ? 'personal' : 'permission', kind: 'permission', item: permission },
         }));
 
         const formEvents = forms.map((submission) => ({
             title: submission.form.name,
-            start: new Date(submission.createdAt),
-            end: new Date(submission.createdAt),
+            start: parseLocalDate(submission.createdAt),
+            end: parseLocalDate(submission.createdAt),
             allDay: true,
             resource: { key: 'form', kind: 'form', item: submission },
         }));
 
         const noteEvents = notes.map((note) => ({
             title: note.title,
-            start: new Date(note.date),
-            end: new Date(note.date),
+            start: parseLocalDate(note.date),
+            end: parseLocalDate(note.date),
             allDay: true,
             resource: { key: 'note', kind: 'note', item: note },
         }));
 
         const latenessEvents = latenessItems.map((item) => ({
             title: tm('latenessRequest'),
-            start: new Date(item.date),
-            end: new Date(item.date),
+            start: parseLocalDate(item.date),
+            end: parseLocalDate(item.date),
             allDay: true,
             resource: { key: 'lateness', kind: 'lateness', item: { ...item, user } },
         }));
@@ -596,7 +603,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         const dayStatus = new Map<string, WeekStatus['status']>();
 
         latenessItems.forEach((item) => {
-            const date = new Date(item.date);
+            const date = parseLocalDate(item.date);
             if (!isWithinInterval(date, { start: monthStart, end: todayRangeEnd })) return;
             if (!isWorkingDay(date)) return;
             dayStatus.set(format(date, 'yyyy-MM-dd'), 'late');

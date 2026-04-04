@@ -97,12 +97,20 @@ export default function CalendarView({
 
     const DateCellWrapper = useCallback(({ value, children }: { value: Date; children: ReactElement }) => {
         if (!isValidElement(children)) return children;
+        const offDayLabel = getCompanyOffDayLabel(value, locale);
         const extra = {
             'data-date': format(value, 'yyyy-MM-dd'),
             'data-day': value.getDate(),
+            ...(offDayLabel ? { 'data-off-label': offDayLabel } : {}),
         } as Record<string, string | number>;
         return cloneElement(children as ReactElement<any>, extra);
-    }, []);
+    }, [locale]);
+
+    const DateHeader = useCallback(({ date }: { date: Date }) => (
+        <span className="calendar-date-number" data-day-number={date.getDate()}>
+            {date.getDate()}
+        </span>
+    ), []);
 
     const DateHeader = useCallback(({ date }: { date: Date }) => (
         <span className="calendar-date-number" data-day-number={format(date, 'd')}>

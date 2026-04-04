@@ -2000,8 +2000,12 @@ input[type='radio'] {
     position: relative;
 }
 
-.rbc-month-view .rbc-day-friday::after {
-    content: '💤 Day off';
+.rbc-month-view .rbc-day-bg[data-off-label] {
+    position: relative;
+}
+
+.rbc-month-view .rbc-day-bg[data-off-label]::after {
+    content: attr(data-off-label);
     position: absolute;
     inset-inline: 6px;
     bottom: 6px;
@@ -2010,10 +2014,26 @@ input[type='radio'] {
     border-radius: 999px;
     padding: 2px 6px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.01em;
-    background: color-mix(in srgb, var(--surface2) 85%, transparent);
-    color: var(--ink3);
+    background: color-mix(in srgb, var(--surface2) 88%, transparent);
+    color: var(--ink2);
+}
+
+.rbc-date-cell .rbc-button-link {
+    font-variant-numeric: tabular-nums;
+}
+
+.rbc-date-cell .calendar-date-number {
+    display: inline-flex;
+    min-width: 1.6em;
+    justify-content: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.rbc-event-disabled {
+    pointer-events: none;
+    opacity: 0.55;
 }
 
 [dir='rtl'] .rbc-month-view .rbc-day-friday::after {
@@ -2071,7 +2091,7 @@ input[type='radio'] {
     padding: 3px 8px;
 }
 
-.rbc-month-view, .rbc-month-row, .rbc-date-cell {
+.rbc-month-view, .rbc-month-row {
     width: 100%;
     max-width: 100%;
 }
