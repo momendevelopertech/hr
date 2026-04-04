@@ -2036,50 +2036,6 @@ input[type='radio'] {
     opacity: 0.55;
 }
 
-[dir='rtl'] .rbc-month-view .rbc-day-friday::after {
-    content: '💤 يوم إجازة';
-}
-
-.rbc-month-view .rbc-day-est1,
-.rbc-month-view .rbc-day-est2 {
-    position: relative;
-}
-
-.rbc-month-view .rbc-day-est1::after,
-.rbc-month-view .rbc-day-est2::after {
-    position: absolute;
-    inset-inline: 6px;
-    bottom: 6px;
-    display: flex;
-    justify-content: center;
-    border-radius: 999px;
-    padding: 2px 6px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    background: color-mix(in srgb, var(--surface2) 88%, transparent);
-    color: var(--ink2);
-}
-
-.rbc-month-view .rbc-day-est1::after { content: 'EST I'; }
-.rbc-month-view .rbc-day-est2::after { content: 'EST II'; }
-
-.rbc-date-cell .rbc-button-link {
-    font-variant-numeric: tabular-nums;
-}
-
-.rbc-date-cell .calendar-date-number {
-    display: inline-flex;
-    min-width: 1.6em;
-    justify-content: center;
-    font-variant-numeric: tabular-nums;
-}
-
-.rbc-event-disabled {
-    pointer-events: none;
-    opacity: 0.55;
-}
-
 .rbc-event {
     color: var(--calendar-event-fg, var(--ink));
     background: var(--calendar-event-bg, var(--surface2));

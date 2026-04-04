@@ -106,15 +106,9 @@ export default function CalendarView({
         return cloneElement(children as ReactElement<any>, extra);
     }, [locale]);
 
-    const DateHeader = useCallback(({ date }: { date: Date }) => (
+    const CalendarDateHeader = useCallback(({ date }: { date: Date }) => (
         <span className="calendar-date-number" data-day-number={date.getDate()}>
             {date.getDate()}
-        </span>
-    ), []);
-
-    const DateHeader = useCallback(({ date }: { date: Date }) => (
-        <span className="calendar-date-number" data-day-number={format(date, 'd')}>
-            {format(date, 'd')}
         </span>
     ), []);
 
@@ -490,7 +484,7 @@ export default function CalendarView({
                         components={{
                             dateCellWrapper: DateCellWrapper,
                             month: {
-                                dateHeader: DateHeader,
+                                dateHeader: CalendarDateHeader,
                             },
                         }}
                         formats={{
