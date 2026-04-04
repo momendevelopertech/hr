@@ -70,6 +70,13 @@ const parseDateOnly = (value?: string | null) => {
 };
 
 const dateOnly = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate());
+const MAX_PERMISSION_MINUTES = 4 * 60;
+const clampNumber = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const parseDurationPart = (value: unknown, max: number) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 0;
+    return clampNumber(Math.floor(parsed), 0, max);
+};
 
 export default function RequestModal({ open, date, onClose, onSubmitted, locale }: Props) {
     const t = useTranslations('requests');
@@ -140,9 +147,9 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
 
     const permissionPreview = useMemo(() => {
         if (!date || type !== 'permission') return null;
-        const hours = Number(formData.durationHours) || 0;
-        const minutes = Number(formData.durationMinutes) || 0;
-        const totalMinutes = Math.max(0, hours * 60 + minutes);
+        const hours = parseDurationPart(formData.durationHours, 4);
+        const minutes = parseDurationPart(formData.durationMinutes, 59);
+        const totalMinutes = clampNumber(hours * 60 + minutes, 0, MAX_PERMISSION_MINUTES);
         if (totalMinutes <= 0) return null;
         const scope = formData.permissionScope || 'ARRIVAL';
         const dateLocale = locale === 'ar' ? arSA : enUS;
@@ -295,12 +302,16 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
             }
 
             if (type === 'permission') {
-                const durationMinutes = Math.max(
-                    0,
-                    (Number(formData.durationHours) || 0) * 60 + (Number(formData.durationMinutes) || 0),
-                );
+                const hours = parseDurationPart(formData.durationHours, 4);
+                const minutes = parseDurationPart(formData.durationMinutes, 59);
+                const durationMinutes = hours * 60 + minutes;
                 if (durationMinutes <= 0) {
                     toast.error(tm('permissionDurationError'));
+                    setLoading(false);
+                    return;
+                }
+                if (durationMinutes > MAX_PERMISSION_MINUTES) {
+                    toast.error(tm('permissionDurationMaxError'));
                     setLoading(false);
                     return;
                 }
@@ -551,10 +562,11 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                         <input
                                             type="number"
                                             min={0}
+                                            max={4}
                                             className="field w-full px-3 py-2"
                                             placeholder={tm('durationHours')}
                                             value={formData.durationHours || ''}
-                                            onChange={(e) => update('durationHours', e.target.value)}
+                                            onChange={(e) => update('durationHours', parseDurationPart(e.target.value, 4))}
                                         />
                                         <input
                                             type="number"
@@ -563,7 +575,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                                             className="field w-full px-3 py-2"
                                             placeholder={tm('durationMinutes')}
                                             value={formData.durationMinutes || ''}
-                                            onChange={(e) => update('durationMinutes', e.target.value)}
+                                            onChange={(e) => update('durationMinutes', parseDurationPart(e.target.value, 59))}
                                         />
                                     </div>
                                 </label>
@@ -702,5 +714,4 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
         </div>
     );
 }
-
 
