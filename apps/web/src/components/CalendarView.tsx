@@ -241,9 +241,9 @@ export default function CalendarView({
     }, [currentDate]);
 
     const mobileEvents = useMemo(() => {
-        if (!(viewportWidth < 768 && (view === 'week' || view === 'day'))) return [];
+        if (!(view === 'week' || view === 'day')) return [];
         return events.filter((event) => isSameDay(event.start, mobileSelectedDate));
-    }, [events, mobileSelectedDate, view, viewportWidth]);
+    }, [events, mobileSelectedDate, view]);
 
     const mobileStats = useMemo(() => {
         const lateCount = mobileEvents.filter((event) => event.resource?.key === 'lateness').length;
@@ -357,11 +357,8 @@ export default function CalendarView({
             {viewportWidth >= 768 && viewportWidth < 1024 && (
                 <SmartAttendanceCard variant="bar" data={attendanceData} className="mb-3" />
             )}
-            {viewportWidth < 768 && (
-                <SmartAttendanceCard variant="card" data={attendanceData} className="mb-3" />
-            )}
-            {viewportWidth < 768 && (view === 'week' || view === 'day') ? (
-                <div className="calendar-mobile-view">
+            {(view === 'week' || view === 'day') ? (
+                <div className="calendar-mobile-view calendar-focus-view">
                     <div className="day-strip" role="tablist" aria-label={title}>
                         {mobileStripDates.map((date) => {
                             const isActive = isSameDay(date, mobileSelectedDate);
