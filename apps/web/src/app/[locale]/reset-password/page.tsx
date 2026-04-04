@@ -79,6 +79,10 @@ export default function ResetPasswordPage({ params }: { params: { locale: 'en' |
             setCode('');
             setPassword('');
             setConfirm('');
+            if (typeof window !== 'undefined') {
+                window.sessionStorage.removeItem('sphinx-logged-out');
+            }
+            router.push(`/${params.locale}`);
         } catch (err: any) {
             setError(err?.message || t('resetFailed'));
         } finally {

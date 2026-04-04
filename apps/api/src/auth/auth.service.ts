@@ -28,6 +28,12 @@ type RegisterResult = {
     whatsAppDelivery: AccountCreatedDeliverySummary['whatsAppDelivery'];
 };
 
+type ResetPasswordResult = {
+    accessToken: string;
+    refreshToken: string;
+    user: any;
+};
+
 @Injectable()
 export class AuthService {
     constructor(
@@ -426,7 +432,7 @@ export class AuthService {
         }
     }
 
-    async resetPassword(token: string | undefined, newPassword: string, identifier?: string) {
+    async resetPassword(token: string | undefined, newPassword: string, identifier?: string): Promise<ResetPasswordResult> {
         const normalized = this.normalizeResetIdentifier(identifier);
         const tokenValue = (token || '').trim();
 
@@ -478,6 +484,23 @@ export class AuthService {
         });
 
         await this.auditService.log({ userId: stored.userId, action: 'PASSWORD_RESET' });
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: stored.userId },
+            include: { department: true },
+        });
+
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        const tokens = await this.generateTokens(user.id, user.email, user.role);
+
+        return {
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            user: this.buildUserProfile(user),
+        };
     }
 
     async updateWorkflowMode(userId: string, workflowMode: 'SANDBOX' | 'APPROVAL_WORKFLOW') {

@@ -231,23 +231,6 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         return new Date(year, month - 1, day).toLocaleDateString(dateLocale);
     }, [dateLocale]);
 
-    const formatPermissionDuration = useCallback((hours: number) => {
-        const safeHours = Number.isFinite(hours) ? Math.max(0, hours) : 0;
-        const totalMinutes = Math.round(safeHours * 60);
-        const hourPart = Math.floor(totalMinutes / 60);
-        const minutePart = totalMinutes % 60;
-
-        if (locale === 'ar') {
-            if (hourPart > 0 && minutePart > 0) return `${hourPart} ساعة و${minutePart} دقيقة`;
-            if (hourPart > 0) return `${hourPart} ساعة`;
-            return `${minutePart} دقيقة`;
-        }
-
-        if (hourPart > 0 && minutePart > 0) return `${hourPart}h ${minutePart}m`;
-        if (hourPart > 0) return `${hourPart}h`;
-        return `${minutePart}m`;
-    }, [locale]);
-
     const dashboardStats = useMemo(() => {
         const annual = balances.find((b) => b.leaveType === 'ANNUAL');
         const totalRemaining = annual?.remainingDays ?? 0;

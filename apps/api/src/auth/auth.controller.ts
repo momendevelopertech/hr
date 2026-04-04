@@ -199,9 +199,21 @@ export class AuthController {
 
     @Post('reset-password')
     @HttpCode(HttpStatus.OK)
-    async resetPassword(@Body() dto: ResetPasswordDto) {
-        await this.authService.resetPassword(dto.token, dto.newPassword, dto.identifier);
-        return { message: 'Password reset successfully' };
+    async resetPassword(@Body() dto: ResetPasswordDto, @Res({ passthrough: true }) res: Response) {
+        this.applyPrivateNoStore(res);
+        const result = await this.authService.resetPassword(dto.token, dto.newPassword, dto.identifier);
+        const ages = this.getCookieAges(false);
+
+        res.cookie('access_token', result.accessToken, this.getHttpOnlyCookieOptions(ages.accessMs));
+        res.cookie('refresh_token', result.refreshToken, this.getHttpOnlyCookieOptions(ages.refreshMs));
+        res.clearCookie('remember_me', this.getClearCookieOptions());
+        res.cookie('sphinx_session', '1', this.getSessionHintCookieOptions(ages.refreshMs));
+
+        return {
+            message: 'Password reset successfully',
+            user: result.user,
+            accessToken: result.accessToken,
+        };
     }
 
     @Get('me')
