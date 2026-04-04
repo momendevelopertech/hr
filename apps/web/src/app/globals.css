@@ -203,10 +203,6 @@ body {
     inset-inline-start: calc(100% + 8px);
     inset-inline-end: auto;
 }
-.sidebar-menu.is-collapsed.is-ltr {
-    inset-inline-start: calc(100% + 8px);
-    inset-inline-end: auto;
-}
 .tb-icon { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--r-sm); display: inline-flex; align-items: center; justify-content: center; }
 
 .font-base {
@@ -483,6 +479,8 @@ body {
 
 .rbc-day-disabled {
     cursor: not-allowed;
+    opacity: 0.72;
+    pointer-events: none;
 }
 
 .calendar-shell .rbc-sphinx {
@@ -1999,13 +1997,15 @@ input[type='radio'] {
 .rbc-day-friday {
     background: var(--calendar-day-disabled);
     color: var(--calendar-day-disabled-text);
-    opacity: 0.7;
-    pointer-events: none;
     position: relative;
 }
 
-.rbc-month-view .rbc-day-friday::after {
-    content: '✨ Off day';
+.rbc-month-view .rbc-day-bg[data-off-label] {
+    position: relative;
+}
+
+.rbc-month-view .rbc-day-bg[data-off-label]::after {
+    content: attr(data-off-label);
     position: absolute;
     inset-inline: 6px;
     bottom: 6px;
@@ -2014,10 +2014,26 @@ input[type='radio'] {
     border-radius: 999px;
     padding: 2px 6px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.01em;
-    background: color-mix(in srgb, var(--surface2) 85%, transparent);
-    color: var(--ink3);
+    background: color-mix(in srgb, var(--surface2) 88%, transparent);
+    color: var(--ink2);
+}
+
+.rbc-date-cell .rbc-button-link {
+    font-variant-numeric: tabular-nums;
+}
+
+.rbc-date-cell .calendar-date-number {
+    display: inline-flex;
+    min-width: 1.6em;
+    justify-content: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.rbc-event-disabled {
+    pointer-events: none;
+    opacity: 0.55;
 }
 
 .rbc-event {
@@ -2031,7 +2047,7 @@ input[type='radio'] {
     padding: 3px 8px;
 }
 
-.rbc-month-view, .rbc-month-row, .rbc-date-cell {
+.rbc-month-view, .rbc-month-row {
     width: 100%;
     max-width: 100%;
 }
@@ -2101,8 +2117,9 @@ input[type='radio'] {
 }
 
 .day-pill.is-friday {
-    opacity: 0.55;
+    opacity: 0.62;
     cursor: not-allowed;
+    border-style: dashed;
 }
 
 .day-pill-name {
@@ -2112,6 +2129,14 @@ input[type='radio'] {
 .day-pill-date {
     font-size: 13px;
     font-weight: 600;
+}
+
+.day-pill-off-label {
+    margin-top: 1px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink3);
+    line-height: 1.2;
 }
 
 .day-dot {
@@ -2142,6 +2167,11 @@ input[type='radio'] {
     margin-bottom: 10px;
     text-align: start;
     color: var(--ink);
+}
+
+.event-card.is-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .event-card-title {

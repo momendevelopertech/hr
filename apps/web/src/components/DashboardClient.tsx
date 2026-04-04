@@ -15,7 +15,7 @@ import { enumLabels } from '@/lib/enum-labels';
 import PageLoader from './PageLoader';
 import { Megaphone, Wallet } from 'lucide-react';
 import { arSA, enUS } from 'date-fns/locale';
-import { addDays, endOfDay, format, getDaysInMonth, isSameDay, isWithinInterval, startOfDay, startOfWeek } from 'date-fns';
+import { addDays, format, getDaysInMonth, isSameDay, isWithinInterval, startOfDay, startOfWeek } from 'date-fns';
 import type { SmartAttendanceData, WeekStatus } from './calendar/SmartAttendanceCard';
 import { isCompanyFixedOffDay, isCompanyOffDay } from './calendar/companyOffDays';
 
@@ -103,6 +103,13 @@ const formatPermissionDuration = (hours: number, locale: 'en' | 'ar') => {
     if (hourPart > 0 && minutePart > 0) return `${hourPart}h ${minutePart}m`;
     if (hourPart > 0) return `${hourPart}h`;
     return `${minutePart}m`;
+};
+
+const parseLocalDate = (value: string) => {
+    const datePart = value.split('T')[0];
+    const [year, month, day] = datePart.split('-').map((part) => Number(part));
+    if (year && month && day) return new Date(year, month - 1, day);
+    return new Date(value);
 };
 
 export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
@@ -471,8 +478,8 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
 
             return {
                 title: enumLabels.leaveType(leave.leaveType, locale),
-                start: new Date(leave.startDate),
-                end: new Date(leave.endDate),
+                start: parseLocalDate(leave.startDate),
+                end: parseLocalDate(leave.endDate),
                 allDay: true,
                 resource: { key, kind: key === 'absence' ? 'absence' : key === 'mission' ? 'mission' : 'leave', item: leave },
             };
@@ -480,32 +487,32 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
 
         const permissionEvents = permissions.map((permission) => ({
             title: enumLabels.permissionType(permission.permissionType, locale),
-            start: new Date(permission.requestDate),
-            end: new Date(permission.requestDate),
+            start: parseLocalDate(permission.requestDate),
+            end: parseLocalDate(permission.requestDate),
             allDay: true,
             resource: { key: permission.permissionType === 'PERSONAL' ? 'personal' : 'permission', kind: 'permission', item: permission },
         }));
 
         const formEvents = forms.map((submission) => ({
             title: submission.form.name,
-            start: new Date(submission.createdAt),
-            end: new Date(submission.createdAt),
+            start: parseLocalDate(submission.createdAt),
+            end: parseLocalDate(submission.createdAt),
             allDay: true,
             resource: { key: 'form', kind: 'form', item: submission },
         }));
 
         const noteEvents = notes.map((note) => ({
             title: note.title,
-            start: new Date(note.date),
-            end: new Date(note.date),
+            start: parseLocalDate(note.date),
+            end: parseLocalDate(note.date),
             allDay: true,
             resource: { key: 'note', kind: 'note', item: note },
         }));
 
         const latenessEvents = latenessItems.map((item) => ({
             title: tm('latenessRequest'),
-            start: new Date(item.date),
-            end: new Date(item.date),
+            start: parseLocalDate(item.date),
+            end: parseLocalDate(item.date),
             allDay: true,
             resource: { key: 'lateness', kind: 'lateness', item: { ...item, user } },
         }));
@@ -588,7 +595,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         const monthEnd = new Date(now.getFullYear(), now.getMonth(), getDaysInMonth(now));
         const monthDays = Array.from({ length: getDaysInMonth(now) }, (_, index) => new Date(now.getFullYear(), now.getMonth(), index + 1));
         const isWorkingDay = (day: Date) => !isCompanyOffDay(day);
-        const todayEnd = endOfDay(now);
+        const todayRangeEnd = todayStart;
         const workingDays = monthDays.filter(isWorkingDay).length;
         const elapsedWorkingDays = monthDays.filter((day) => day <= todayStart && isWorkingDay(day)).length;
         const localeRef = locale === 'ar' ? arSA : enUS;
@@ -596,14 +603,14 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         const dayStatus = new Map<string, WeekStatus['status']>();
 
         latenessItems.forEach((item) => {
-            const date = new Date(item.date);
-            if (!isWithinInterval(date, { start: monthStart, end: todayEnd })) return;
+            const date = parseLocalDate(item.date);
+            if (!isWithinInterval(date, { start: monthStart, end: todayRangeEnd })) return;
             if (!isWorkingDay(date)) return;
             dayStatus.set(format(date, 'yyyy-MM-dd'), 'late');
         });
 
         events.forEach((event) => {
-            if (!isWithinInterval(event.start, { start: monthStart, end: todayEnd })) return;
+            if (!isWithinInterval(event.start, { start: monthStart, end: todayRangeEnd })) return;
             const key = event.resource?.key;
             const dateKey = format(event.start, 'yyyy-MM-dd');
             if (!isWorkingDay(event.start)) return;
@@ -629,7 +636,6 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             }
             if (status === 'late') {
                 lateDays += 1;
-                return;
             }
             attendanceDays += 1;
         });
