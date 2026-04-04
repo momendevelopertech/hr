@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import { getErrorStatus } from '@/lib/api/axios';
 import { useAuthStore } from '@/stores/auth-store';
 
 export function useRequireAuth(locale: string) {
@@ -66,14 +67,29 @@ export function useRequireAuth(locale: string) {
                 setBootstrapped(true);
                 verifiedRef.current = true;
                 setReady(true);
-            } catch {
-                if (typeof window !== 'undefined') {
-                    window.sessionStorage.setItem('sphinx-logged-out', '1');
+            } catch (error) {
+                const status = getErrorStatus(error);
+                const isAuthFailure = status === 401 || status === 403;
+
+                if (isAuthFailure) {
+                    if (typeof window !== 'undefined') {
+                        window.sessionStorage.setItem('sphinx-logged-out', '1');
+                    }
+                    setUser(null);
+                    setBootstrapped(false);
+                    verifiedRef.current = false;
+                    router.push(`/${locale}/login`);
+                    return;
                 }
-                setUser(null);
-                setBootstrapped(false);
+
+                if (bootstrapped && user && hasRequiredProfile) {
+                    verifiedRef.current = true;
+                    setReady(true);
+                    return;
+                }
+
                 verifiedRef.current = false;
-                router.push(`/${locale}/login`);
+                setReady(false);
             } finally {
                 if (active) {
                     setLoading(false);
