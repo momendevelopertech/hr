@@ -1999,8 +1999,25 @@ input[type='radio'] {
 .rbc-day-friday {
     background: var(--calendar-day-disabled);
     color: var(--calendar-day-disabled-text);
-    opacity: 0.4;
+    opacity: 0.7;
     pointer-events: none;
+    position: relative;
+}
+
+.rbc-month-view .rbc-day-friday::after {
+    content: '✨ Off day';
+    position: absolute;
+    inset-inline: 6px;
+    bottom: 6px;
+    display: flex;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    background: color-mix(in srgb, var(--surface2) 85%, transparent);
+    color: var(--ink3);
 }
 
 .rbc-event {
@@ -2084,7 +2101,8 @@ input[type='radio'] {
 }
 
 .day-pill.is-friday {
-    opacity: 0.4;
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .day-pill-name {

@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import HintBar from './HintBar';
 import SpotlightGuide from './SpotlightGuide';
 import SmartAttendanceCard, { type SmartAttendanceData } from './calendar/SmartAttendanceCard';
+import { isCompanyOffDay } from './calendar/companyOffDays';
 
 const locales = {
     en: enUS,
@@ -176,7 +177,7 @@ export default function CalendarView({
     }, [calendarLocale, currentDate, view]);
 
     const handleSelectDate = useCallback((selected: Date) => {
-        if (selected.getDay() === 5) return;
+        if (isCompanyOffDay(selected)) return;
         onSelectSlot(selected);
     }, [onSelectSlot]);
 
@@ -364,13 +365,17 @@ export default function CalendarView({
                             const isActive = isSameDay(date, mobileSelectedDate);
                             const isToday = isSameDay(date, new Date());
                             const hasEvents = events.some((event) => isSameDay(event.start, date));
-                            const isFriday = date.getDay() === 5;
+                            const isOffDay = isCompanyOffDay(date);
                             return (
                                 <button
                                     key={date.toISOString()}
                                     type="button"
-                                    className={`day-pill${isActive ? ' is-active' : ''}${isToday ? ' today' : ''}${isFriday ? ' is-friday' : ''}`}
-                                    onClick={() => setMobileSelectedDate(date)}
+                                    className={`day-pill${isActive ? ' is-active' : ''}${isToday ? ' today' : ''}${isOffDay ? ' is-friday' : ''}`}
+                                    onClick={() => {
+                                        if (isOffDay) return;
+                                        setMobileSelectedDate(date);
+                                    }}
+                                    disabled={isOffDay}
                                 >
                                     <span className="day-pill-name">{format(date, 'EEE', { locale: calendarLocale })}</span>
                                     <span className="day-pill-date">{format(date, 'd', { locale: calendarLocale })}</span>
@@ -396,7 +401,7 @@ export default function CalendarView({
                                     className="event-card"
                                     onClick={() => {
                                         const selected = event.start as Date;
-                                        if (selected.getDay() === 5) return;
+                                        if (isCompanyOffDay(selected)) return;
                                         if (onSelectEvent) {
                                             onSelectEvent(event);
                                             return;
@@ -477,7 +482,7 @@ export default function CalendarView({
                                 !!ramadanRange &&
                                 dateOnly(date) >= ramadanRange.start &&
                                 dateOnly(date) <= ramadanRange.end;
-                            if (date.getDay() === 5) {
+                            if (isCompanyOffDay(date)) {
                                 return { className: 'rbc-day-disabled rbc-day-friday', style: { color: 'var(--calendar-day-disabled-text)' } };
                             }
                             if (isSameDay(date, new Date())) {

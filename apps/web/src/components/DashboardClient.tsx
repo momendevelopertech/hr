@@ -15,8 +15,9 @@ import { enumLabels } from '@/lib/enum-labels';
 import PageLoader from './PageLoader';
 import { Megaphone, Wallet } from 'lucide-react';
 import { arSA, enUS } from 'date-fns/locale';
-import { addDays, endOfDay, format, getDaysInMonth, isSameDay, isWithinInterval, startOfWeek } from 'date-fns';
+import { addDays, endOfDay, format, getDaysInMonth, isSameDay, isWithinInterval, startOfDay, startOfWeek } from 'date-fns';
 import type { SmartAttendanceData, WeekStatus } from './calendar/SmartAttendanceCard';
+import { isCompanyFixedOffDay, isCompanyOffDay } from './calendar/companyOffDays';
 
 type Department = { id: string; name: string; nameAr?: string | null };
 type EmployeeOption = { id: string; fullName: string; fullNameAr?: string | null };
@@ -582,12 +583,14 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
 
     const attendanceData = useMemo<SmartAttendanceData>(() => {
         const now = new Date();
+        const todayStart = startOfDay(now);
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth(), getDaysInMonth(now));
         const monthDays = Array.from({ length: getDaysInMonth(now) }, (_, index) => new Date(now.getFullYear(), now.getMonth(), index + 1));
-        const workingDays = monthDays.filter((day) => day.getDay() !== 5 && day.getDay() !== 6).length;
+        const isWorkingDay = (day: Date) => !isCompanyOffDay(day);
         const todayEnd = endOfDay(now);
-        const elapsedWorkingDays = monthDays.filter((day) => day <= todayEnd && day.getDay() !== 5 && day.getDay() !== 6).length;
+        const workingDays = monthDays.filter(isWorkingDay).length;
+        const elapsedWorkingDays = monthDays.filter((day) => day <= todayStart && isWorkingDay(day)).length;
         const localeRef = locale === 'ar' ? arSA : enUS;
 
         const dayStatus = new Map<string, WeekStatus['status']>();
@@ -595,7 +598,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         latenessItems.forEach((item) => {
             const date = new Date(item.date);
             if (!isWithinInterval(date, { start: monthStart, end: todayEnd })) return;
-            if (date.getDay() === 5 || date.getDay() === 6) return;
+            if (!isWorkingDay(date)) return;
             dayStatus.set(format(date, 'yyyy-MM-dd'), 'late');
         });
 
@@ -603,7 +606,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             if (!isWithinInterval(event.start, { start: monthStart, end: todayEnd })) return;
             const key = event.resource?.key;
             const dateKey = format(event.start, 'yyyy-MM-dd');
-            if (event.start.getDay() === 5 || event.start.getDay() === 6) return;
+            if (!isWorkingDay(event.start)) return;
             if (key === 'absence') {
                 dayStatus.set(dateKey, 'absent');
                 return;
@@ -618,7 +621,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         let absentDays = 0;
 
         monthDays.forEach((day) => {
-            if (day > todayEnd || day.getDay() === 5 || day.getDay() === 6) return;
+            if (day > todayStart || !isWorkingDay(day)) return;
             const status = dayStatus.get(format(day, 'yyyy-MM-dd'));
             if (status === 'absent') {
                 absentDays += 1;
@@ -636,9 +639,10 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             const date = addDays(currentWeekStart, index);
             const dateKey = format(date, 'yyyy-MM-dd');
             let status: WeekStatus['status'] = 'off';
-            if (isSameDay(date, now)) status = 'today';
-            else if (date.getDay() === 5 || date.getDay() === 6) status = 'off';
-            else if (date > todayEnd) status = 'off';
+            if (isCompanyFixedOffDay(date)) status = 'holiday';
+            else if (!isWorkingDay(date)) status = 'off';
+            else if (date > todayStart) status = 'off';
+            else if (isSameDay(date, now)) status = 'today';
             else status = dayStatus.get(dateKey) || 'present';
 
             return {
