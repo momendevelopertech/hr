@@ -23,6 +23,9 @@ describe('PermissionsService', () => {
             findUnique: jest.fn(),
             findMany: jest.fn(),
         },
+        workScheduleSettings: {
+            findFirst: jest.fn(),
+        },
     };
     const notificationsService = {
         emitRealtimeToUsers: jest.fn(),
@@ -58,6 +61,7 @@ describe('PermissionsService', () => {
         prisma.permissionRequest.delete.mockResolvedValue({});
         prisma.lateness.updateMany.mockResolvedValue({ count: 0 });
         prisma.user.findMany.mockResolvedValue([]);
+        prisma.workScheduleSettings.findFirst.mockResolvedValue(null);
         notificationsService.emitRealtimeToUsers.mockResolvedValue(undefined);
         notificationsService.sendRequestReceipt.mockResolvedValue({
             emailDelivery: null,
@@ -136,6 +140,69 @@ describe('PermissionsService', () => {
         expect(prisma.permissionRequest.create).not.toHaveBeenCalled();
     });
 
+
+    it('uses saturday schedule for early leave scope', async () => {
+        prisma.user.findUnique.mockResolvedValue({
+            id: 'user-1',
+            workflowMode: 'APPROVAL_WORKFLOW',
+        });
+        prisma.permissionCycle.findUnique.mockResolvedValue({
+            id: 'cycle-1',
+            userId: 'user-1',
+            cycleStart: new Date('2026-03-11T00:00:00.000Z'),
+            cycleEnd: new Date('2026-04-10T00:00:00.000Z'),
+            totalHours: 4,
+            usedHours: 0,
+            remainingHours: 4,
+        });
+        prisma.permissionRequest.aggregate
+            .mockResolvedValueOnce({ _sum: { hoursUsed: 0 } })
+            .mockResolvedValueOnce({ _sum: { hoursUsed: 0 } });
+        prisma.workScheduleSettings.findFirst.mockResolvedValue({
+            activeMode: 'NORMAL',
+            weekdayStart: '09:00',
+            weekdayEnd: '17:00',
+            saturdayStart: '09:00',
+            saturdayEnd: '13:30',
+            ramadanStart: '09:00',
+            ramadanEnd: '14:30',
+            ramadanStartDate: null,
+            ramadanEndDate: null,
+        });
+        prisma.permissionRequest.create.mockResolvedValue({
+            id: 'perm-2',
+            permissionType: 'EARLY_LEAVE',
+            requestDate: new Date('2026-04-04T00:00:00.000Z'),
+            arrivalTime: '09:00',
+            leaveTime: '12:30',
+            hoursUsed: 1,
+            reason: '',
+            status: 'PENDING',
+            userId: 'user-1',
+            user: {
+                id: 'user-1',
+                fullName: 'Test User',
+                governorate: null,
+                departmentId: null,
+            },
+        });
+
+        await service.createRequest('user-1', {
+            permissionType: 'EARLY_LEAVE',
+            requestDate: '2026-04-04',
+            permissionScope: 'DEPARTURE',
+            durationMinutes: 60,
+            reason: '',
+        } as any);
+
+        expect(prisma.permissionRequest.create).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({
+                arrivalTime: '09:00',
+                leaveTime: '12:30',
+                permissionType: 'EARLY_LEAVE',
+            }),
+        }));
+    });
     it('allows a sandbox employee to delete their own permission and re-syncs cycle state', async () => {
         prisma.permissionRequest.findUnique.mockResolvedValue({
             id: 'perm-1',

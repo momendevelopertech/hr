@@ -121,9 +121,73 @@ export class PermissionsService {
         return `${h}:${m}`;
     }
 
-    private buildTimesFromScope(scope: 'ARRIVAL' | 'DEPARTURE', durationHours: number) {
-        const startMinutes = 9 * 60;
-        const endMinutes = 17 * 60;
+    private parseMinutes(time: string, fallbackMinutes: number) {
+        const [hours, minutes] = time.split(':').map((part) => Number(part));
+        if ([hours, minutes].some((value) => Number.isNaN(value))) return fallbackMinutes;
+        return (hours * 60) + minutes;
+    }
+
+    private parseDateOnly(value?: string | null) {
+        if (!value) return null;
+        const [year, month, day] = value.split('-').map((part) => Number(part));
+        if (!year || !month || !day) return null;
+        return new Date(year, month - 1, day);
+    }
+
+    private async getWorkWindow(requestDate: Date) {
+        const settings = await this.prisma.workScheduleSettings.findFirst({
+            select: {
+                activeMode: true,
+                weekdayStart: true,
+                weekdayEnd: true,
+                saturdayStart: true,
+                saturdayEnd: true,
+                ramadanStart: true,
+                ramadanEnd: true,
+                ramadanStartDate: true,
+                ramadanEndDate: true,
+            },
+        });
+
+        const defaults = {
+            weekdayStart: '09:00',
+            weekdayEnd: '17:00',
+            saturdayStart: '09:00',
+            saturdayEnd: '13:30',
+            ramadanStart: '09:00',
+            ramadanEnd: '14:30',
+        };
+
+        const dateOnly = new Date(requestDate.getFullYear(), requestDate.getMonth(), requestDate.getDate());
+        const ramadanStart = this.parseDateOnly(settings?.ramadanStartDate ?? null);
+        const ramadanEnd = this.parseDateOnly(settings?.ramadanEndDate ?? null);
+        const isRamadan =
+            settings?.activeMode === 'RAMADAN'
+            && !!ramadanStart
+            && !!ramadanEnd
+            && dateOnly >= ramadanStart
+            && dateOnly <= ramadanEnd;
+        const isSaturday = requestDate.getDay() === 6;
+
+        const startTime = isRamadan
+            ? (settings?.ramadanStart || defaults.ramadanStart)
+            : isSaturday
+                ? (settings?.saturdayStart || defaults.saturdayStart)
+                : (settings?.weekdayStart || defaults.weekdayStart);
+        const endTime = isRamadan
+            ? (settings?.ramadanEnd || defaults.ramadanEnd)
+            : isSaturday
+                ? (settings?.saturdayEnd || defaults.saturdayEnd)
+                : (settings?.weekdayEnd || defaults.weekdayEnd);
+
+        return {
+            startMinutes: this.parseMinutes(startTime, 9 * 60),
+            endMinutes: this.parseMinutes(endTime, 17 * 60),
+        };
+    }
+
+    private async buildTimesFromScope(scope: 'ARRIVAL' | 'DEPARTURE', durationHours: number, requestDate: Date) {
+        const { startMinutes, endMinutes } = await this.getWorkWindow(requestDate);
         const durationMinutes = Math.round(durationHours * 60);
         if (durationMinutes <= 0) {
             throw new BadRequestException('Permission duration must be greater than zero');
@@ -138,6 +202,9 @@ export class PermissionsService {
         }
 
         const leave = endMinutes - durationMinutes;
+        if (leave <= startMinutes) {
+            throw new BadRequestException('Permission duration exceeds working window for selected day');
+        }
         return {
             arrivalTime: this.formatTime(Math.floor(startMinutes / 60), startMinutes % 60),
             leaveTime: this.formatTime(Math.floor(leave / 60), leave % 60),
@@ -266,7 +333,7 @@ export class PermissionsService {
                 throw new BadRequestException('Permission duration is required');
             }
             const durationHours = data.durationMinutes / 60;
-            const times = this.buildTimesFromScope(data.permissionScope, durationHours);
+            const times = await this.buildTimesFromScope(data.permissionScope, durationHours, requestDate);
             hoursUsed = durationHours;
             arrivalTime = times.arrivalTime;
             leaveTime = times.leaveTime;
@@ -629,7 +696,7 @@ export class PermissionsService {
                 throw new BadRequestException('Permission duration is required');
             }
             const durationHours = data.durationMinutes / 60;
-            const times = this.buildTimesFromScope(data.permissionScope, durationHours);
+            const times = await this.buildTimesFromScope(data.permissionScope, durationHours, nextRequestDate);
             hoursUsed = durationHours;
             arrivalTime = times.arrivalTime;
             leaveTime = times.leaveTime;

@@ -26,6 +26,7 @@ export default function DashboardSidePanel({
     approvalItems,
     deductionStats,
     deductionHint,
+    showPendingRequests = true,
 }: {
     attendanceData: SmartAttendanceData;
     quickGlance: StatItem[];
@@ -34,6 +35,7 @@ export default function DashboardSidePanel({
     approvalItems: SideItem[];
     deductionStats: StatItem[];
     deductionHint?: string;
+    showPendingRequests?: boolean;
 }) {
     const t = useTranslations('dashboard');
     return (
@@ -57,20 +59,22 @@ export default function DashboardSidePanel({
                 </div>
             </div>
 
-            <div>
-                <div className="rp-section-title">{t('pendingRequestsTitle')}</div>
-                <div className="summary-grid">
-                    {pendingStats.length === 0 && (
-                        <div className="panel-empty">{t('noPendingRequests')}</div>
-                    )}
-                    {pendingStats.map((item) => (
-                        <div key={item.id} className={`summary-row tone-${item.color}`}>
-                            <span className="summary-label">{item.label}</span>
-                            <span className="summary-value">{item.value}</span>
-                        </div>
-                    ))}
+            {showPendingRequests && (
+                <div>
+                    <div className="rp-section-title">{t('pendingRequestsTitle')}</div>
+                    <div className="summary-grid">
+                        {pendingStats.length === 0 && (
+                            <div className="panel-empty">{t('noPendingRequests')}</div>
+                        )}
+                        {pendingStats.map((item) => (
+                            <div key={item.id} className={`summary-row tone-${item.color}`}>
+                                <span className="summary-label">{item.label}</span>
+                                <span className="summary-value">{item.value}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div>
                 <div className="rp-section-title">{t('todayEventsTitle')}</div>

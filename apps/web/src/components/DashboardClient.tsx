@@ -15,7 +15,7 @@ import { enumLabels } from '@/lib/enum-labels';
 import PageLoader from './PageLoader';
 import { Megaphone, Wallet } from 'lucide-react';
 import { arSA, enUS } from 'date-fns/locale';
-import { addDays, format, getDaysInMonth, isSameDay, isWithinInterval, startOfWeek } from 'date-fns';
+import { addDays, endOfDay, format, getDaysInMonth, isSameDay, isWithinInterval, startOfWeek } from 'date-fns';
 import type { SmartAttendanceData, WeekStatus } from './calendar/SmartAttendanceCard';
 
 type Department = { id: string; name: string; nameAr?: string | null };
@@ -113,6 +113,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const isSecretary = role === 'BRANCH_SECRETARY';
     const isManager = role === 'MANAGER';
     const isHr = role === 'HR_ADMIN' || role === 'SUPER_ADMIN';
+    const isSandboxEmployee = role === 'EMPLOYEE' && user?.workflowMode === 'SANDBOX';
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [permissions, setPermissions] = useState<PermissionRequest[]>([]);
     const [forms, setForms] = useState<FormSubmission[]>([]);
@@ -281,26 +282,33 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         ];
     }, [leaves, permissions, t]);
 
-    const quickGlance = useMemo(() => ([
-        {
-            id: 'leaveBalance',
-            label: t('leaveBalance'),
-            value: `${dashboardStats.totalRemaining} ${t('days')}`,
-            color: 'teal' as const,
-        },
-        {
-            id: 'permissionRemaining',
-            label: t('permissionRemaining'),
-            value: formatPermissionDuration(dashboardStats.remainingPermissions, locale),
-            color: 'violet' as const,
-        },
-        {
-            id: 'pendingTotal',
-            label: t('pendingApprovals'),
-            value: `${dashboardStats.pendingTotal}`,
-            color: 'amber' as const,
-        },
-    ]), [dashboardStats.pendingTotal, dashboardStats.remainingPermissions, dashboardStats.totalRemaining, locale, t]);
+    const quickGlance = useMemo(() => {
+        const items: Array<{ id: string; label: string; value: string; color: 'teal' | 'violet' | 'amber' }> = [
+            {
+                id: 'leaveBalance',
+                label: t('leaveBalance'),
+                value: `${dashboardStats.totalRemaining} ${t('days')}`,
+                color: 'teal' as const,
+            },
+            {
+                id: 'permissionRemaining',
+                label: t('permissionRemaining'),
+                value: formatPermissionDuration(dashboardStats.remainingPermissions, locale),
+                color: 'violet' as const,
+            },
+        ];
+
+        if (!isSandboxEmployee) {
+            items.push({
+                id: 'pendingTotal',
+                label: t('pendingApprovals'),
+                value: `${dashboardStats.pendingTotal}`,
+                color: 'amber' as const,
+            });
+        }
+
+        return items;
+    }, [dashboardStats.pendingTotal, dashboardStats.remainingPermissions, dashboardStats.totalRemaining, isSandboxEmployee, locale, t]);
 
     const deductionStats = useMemo(() => ([
         {
@@ -578,41 +586,73 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         const monthEnd = new Date(now.getFullYear(), now.getMonth(), getDaysInMonth(now));
         const monthDays = Array.from({ length: getDaysInMonth(now) }, (_, index) => new Date(now.getFullYear(), now.getMonth(), index + 1));
         const workingDays = monthDays.filter((day) => day.getDay() !== 5 && day.getDay() !== 6).length;
+        const todayEnd = endOfDay(now);
+        const elapsedWorkingDays = monthDays.filter((day) => day <= todayEnd && day.getDay() !== 5 && day.getDay() !== 6).length;
         const localeRef = locale === 'ar' ? arSA : enUS;
 
-        const attendanceDays = events.filter((event) => {
-            const key = event.resource?.key;
-            if (!isWithinInterval(event.start, { start: monthStart, end: monthEnd })) return false;
-            return key !== 'absence' && key !== 'lateness';
-        }).length;
-        const lateDays = latenessItems.filter((item) => {
+        const dayStatus = new Map<string, WeekStatus['status']>();
+
+        latenessItems.forEach((item) => {
             const date = new Date(item.date);
-            return isWithinInterval(date, { start: monthStart, end: monthEnd });
-        }).length;
-        const absentDays = events.filter((event) => (
-            event.resource?.key === 'absence' && isWithinInterval(event.start, { start: monthStart, end: monthEnd })
-        )).length;
+            if (!isWithinInterval(date, { start: monthStart, end: todayEnd })) return;
+            if (date.getDay() === 5 || date.getDay() === 6) return;
+            dayStatus.set(format(date, 'yyyy-MM-dd'), 'late');
+        });
+
+        events.forEach((event) => {
+            if (!isWithinInterval(event.start, { start: monthStart, end: todayEnd })) return;
+            const key = event.resource?.key;
+            const dateKey = format(event.start, 'yyyy-MM-dd');
+            if (event.start.getDay() === 5 || event.start.getDay() === 6) return;
+            if (key === 'absence') {
+                dayStatus.set(dateKey, 'absent');
+                return;
+            }
+            if (key === 'lateness' && dayStatus.get(dateKey) !== 'absent') {
+                dayStatus.set(dateKey, 'late');
+            }
+        });
+
+        let attendanceDays = 0;
+        let lateDays = 0;
+        let absentDays = 0;
+
+        monthDays.forEach((day) => {
+            if (day > todayEnd || day.getDay() === 5 || day.getDay() === 6) return;
+            const status = dayStatus.get(format(day, 'yyyy-MM-dd'));
+            if (status === 'absent') {
+                absentDays += 1;
+                return;
+            }
+            if (status === 'late') {
+                lateDays += 1;
+                return;
+            }
+            attendanceDays += 1;
+        });
+
         const currentWeekStart = startOfWeek(now, { weekStartsOn: 0 });
         const currentWeekStatus: WeekStatus[] = Array.from({ length: 7 }, (_, index) => {
             const date = addDays(currentWeekStart, index);
-            const dayEvents = events.filter((event) => isSameDay(event.start, date));
+            const dateKey = format(date, 'yyyy-MM-dd');
             let status: WeekStatus['status'] = 'off';
             if (isSameDay(date, now)) status = 'today';
             else if (date.getDay() === 5 || date.getDay() === 6) status = 'off';
-            else if (dayEvents.some((event) => event.resource?.key === 'absence')) status = 'absent';
-            else if (dayEvents.some((event) => event.resource?.key === 'lateness')) status = 'late';
-            else if (dayEvents.length > 0) status = 'present';
+            else if (date > todayEnd) status = 'off';
+            else status = dayStatus.get(dateKey) || 'present';
+
             return {
                 dayKey: format(date, 'EEE', { locale: localeRef }),
                 status,
             };
         });
+
         return {
             attendanceDays,
             lateDays,
             absentDays,
-            remainingDays: Math.max(0, workingDays - attendanceDays),
-            monthProgress: workingDays === 0 ? 0 : (attendanceDays / workingDays) * 100,
+            remainingDays: Math.max(0, workingDays - elapsedWorkingDays),
+            monthProgress: workingDays === 0 ? 0 : ((attendanceDays + lateDays + absentDays) / workingDays) * 100,
             currentWeekStatus,
             currentMonthLabel: format(now, 'MMMM yyyy', { locale: localeRef }),
         };
@@ -681,6 +721,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
                         approvalItems={approvalItems}
                         deductionStats={deductionStats}
                         deductionHint={dashboardStats.cycleHint}
+                        showPendingRequests={!isSandboxEmployee}
                     />
                 </div>
             </div>
