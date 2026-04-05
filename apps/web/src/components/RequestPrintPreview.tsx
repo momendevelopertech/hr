@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import { enumLabels } from '@/lib/enum-labels';
@@ -183,13 +182,16 @@ export default function RequestPrintPreview({
                 </div>
                 <header className="flex items-center justify-between border-b border-ink/10 pb-4" dir="ltr">
                     <div className="flex items-center gap-3">
-                        <Image
-                            src="https://hr-web-ten.vercel.app/brand/sphinx-logo.png"
+                        <img
+                            src="/brand/sphinx-logo.png"
                             alt="Sphinx Logo"
                             width={160}
                             height={64}
                             className="h-12 w-auto"
-                            priority
+                            loading="eager"
+                            onError={(event) => {
+                                event.currentTarget.src = '/brand/sphinx-logo.svg';
+                            }}
                         />
                     </div>
                     <div className="text-right" dir="rtl">

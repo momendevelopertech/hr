@@ -3,7 +3,8 @@ import RequestPrintPreview from '@/components/RequestPrintPreview';
 
 type RequestType = 'leave' | 'permission';
 
-const OG_IMAGE_URL = 'https://hr-web-ten.vercel.app/brand/sphinx-logo.png';
+const OG_IMAGE_PNG_URL = 'https://hr-web-ten.vercel.app/brand/sphinx-logo.png';
+const OG_IMAGE_SVG_URL = 'https://hr-web-ten.vercel.app/brand/sphinx-logo.svg';
 
 function buildMetadata(locale: string, requestType: RequestType): Metadata {
     const isArabic = locale === 'ar';
@@ -43,7 +44,12 @@ function buildMetadata(locale: string, requestType: RequestType): Metadata {
             locale: isArabic ? 'ar_AR' : 'en_US',
             images: [
                 {
-                    url: OG_IMAGE_URL,
+                    url: OG_IMAGE_PNG_URL,
+                    width: 1200,
+                    height: 630,
+                },
+                {
+                    url: OG_IMAGE_SVG_URL,
                     width: 1200,
                     height: 630,
                 },
@@ -53,7 +59,7 @@ function buildMetadata(locale: string, requestType: RequestType): Metadata {
             card: 'summary_large_image',
             title,
             description: twitterDescription,
-            images: [OG_IMAGE_URL],
+            images: [OG_IMAGE_PNG_URL],
         },
     };
 }
