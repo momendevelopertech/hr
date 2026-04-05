@@ -5,6 +5,7 @@ export type UserProfile = {
     id: string;
     email: string;
     phone?: string | null;
+    notificationDeliveryPreference?: 'BOTH' | 'EMAIL_ONLY' | 'WHATSAPP_ONLY';
     username?: string;
     fullName: string;
     fullNameAr?: string;

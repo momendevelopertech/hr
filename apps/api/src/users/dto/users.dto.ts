@@ -12,7 +12,7 @@ import {
     Min,
     MinLength,
 } from 'class-validator';
-import { Governorate, Role, LeaveType } from '@prisma/client';
+import { Governorate, Role, LeaveType, NotificationDeliveryPreference } from '@prisma/client';
 import { DateRangeQueryDto } from '../../shared/dto/date-range.dto';
 
 export class CreateUserDto {
@@ -127,6 +127,28 @@ export class UpdateUserDto {
     @IsOptional()
     @IsString()
     profileImage?: string;
+}
+
+export class UpdateOwnProfileDto {
+    @IsOptional()
+    @IsString()
+    fullName?: string;
+
+    @IsOptional()
+    @IsString()
+    fullNameAr?: string;
+
+    @IsOptional()
+    @IsEmail()
+    email?: string;
+
+    @IsOptional()
+    @IsString()
+    phone?: string;
+
+    @IsOptional()
+    @IsEnum(NotificationDeliveryPreference)
+    notificationDeliveryPreference?: NotificationDeliveryPreference;
 }
 
 export class UpdateUserPasswordDto {

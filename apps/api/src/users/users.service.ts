@@ -6,6 +6,7 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { endOfDay, startOfDay } from 'date-fns';
+import { NotificationDeliveryPreference } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountCreatedDeliverySummary, NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
@@ -14,7 +15,7 @@ import { isEgyptianMobilePhone, normalizeEgyptMobilePhone } from '../shared/egyp
 import { matchesEmployeeSearch, normalizeDigits, normalizeSearchText } from '../shared/search-normalization';
 import * as bcrypt from 'bcrypt';
 import { getCycleRange } from '../shared/cycle';
-import { CreateUserDto, UpdateUserDto, UpdateUserPasswordDto } from './dto/users.dto';
+import { CreateUserDto, UpdateOwnProfileDto, UpdateUserDto, UpdateUserPasswordDto } from './dto/users.dto';
 
 type SelfRegisteredUserCreationResult = {
     user: any;
@@ -113,6 +114,28 @@ export class UsersService {
             throw new BadRequestException('Job title must be entered in English');
         }
         return normalized;
+    }
+
+    private buildUserProfile(user: any) {
+        return {
+            id: user.id,
+            email: user.email,
+            phone: user.phone,
+            username: user.username,
+            fullName: user.fullName,
+            fullNameAr: user.fullNameAr,
+            role: user.role,
+            governorate: user.governorate,
+            branchId: user.branchId,
+            mustChangePass: user.mustChangePass,
+            department: user.department,
+            profileImage: user.profileImage,
+            employeeNumber: user.employeeNumber,
+            jobTitle: user.jobTitle,
+            jobTitleAr: user.jobTitleAr,
+            workflowMode: user.workflowMode,
+            notificationDeliveryPreference: user.notificationDeliveryPreference,
+        };
     }
 
     private async generateUniqueUsername(fullName: string, email: string) {
@@ -757,6 +780,95 @@ export class UsersService {
         await this.clearUserCaches();
 
         return user;
+    }
+
+    async updateOwnProfile(userId: string, data: UpdateOwnProfileDto) {
+        const existing = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: { department: true },
+        });
+        if (!existing) throw new NotFoundException('User not found');
+
+        const fullName = data.fullName !== undefined
+            ? this.validateEnglishFullName(data.fullName)
+            : existing.fullName;
+        const fullNameAr = data.fullNameAr !== undefined
+            ? this.normalizeText(data.fullNameAr) || null
+            : existing.fullNameAr;
+        const email = data.email !== undefined
+            ? data.email.trim().toLowerCase()
+            : existing.email;
+        const phone = data.phone !== undefined
+            ? this.validatePhone(data.phone)
+            : existing.phone;
+        const notificationDeliveryPreference = data.notificationDeliveryPreference
+            || existing.notificationDeliveryPreference
+            || NotificationDeliveryPreference.BOTH;
+
+        if (!email) {
+            throw new BadRequestException('Email is required');
+        }
+
+        if (phone && phone !== existing.phone) {
+            const duplicatePhone = await this.prisma.user.findFirst({
+                where: {
+                    phone,
+                    id: { not: userId },
+                },
+                select: { id: true },
+            });
+            if (duplicatePhone) {
+                throw new ConflictException('Employee with this phone number already exists');
+            }
+        }
+
+        if (email !== existing.email) {
+            const duplicateEmail = await this.prisma.user.findFirst({
+                where: {
+                    email,
+                    id: { not: userId },
+                },
+                select: { id: true },
+            });
+            if (duplicateEmail) {
+                throw new ConflictException('Employee with this email already exists');
+            }
+        }
+
+        if (notificationDeliveryPreference === NotificationDeliveryPreference.WHATSAPP_ONLY && !phone) {
+            throw new BadRequestException('A phone number is required for WhatsApp-only notifications');
+        }
+
+        const user = await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                fullName,
+                fullNameAr,
+                email,
+                phone: phone || null,
+                notificationDeliveryPreference,
+            },
+            include: { department: true },
+        });
+
+        await this.auditService.log({
+            userId,
+            action: 'EMPLOYEE_UPDATED',
+            entity: 'User',
+            entityId: userId,
+            details: {
+                selfService: true,
+                fullName,
+                fullNameAr,
+                email,
+                phone: phone || null,
+                notificationDeliveryPreference,
+            },
+        });
+
+        await this.clearUserCaches();
+
+        return this.buildUserProfile(user);
     }
 
     async updatePassword(targetUserId: string, data: UpdateUserPasswordDto, adminId: string, adminRole: string) {

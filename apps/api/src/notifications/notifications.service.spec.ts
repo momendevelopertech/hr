@@ -187,6 +187,7 @@ describe('NotificationsService', () => {
     it('returns request receipt delivery status when waiting for external deliveries', async () => {
         const delivery = await service.sendRequestReceipt({
             user: {
+                id: 'user-1',
                 email: 'employee@example.com',
                 phone: '01012345678',
                 fullName: 'Mona Samir',
@@ -234,6 +235,79 @@ describe('NotificationsService', () => {
                 relatedEntityId: 'leave-receipt-1',
             }),
         }));
+    });
+
+    it('respects email-only notification preference for request receipts', async () => {
+        prisma.user.findUnique.mockResolvedValue({ notificationDeliveryPreference: 'EMAIL_ONLY' });
+
+        const delivery = await service.sendRequestReceipt({
+            user: {
+                id: 'user-1',
+                email: 'employee@example.com',
+                phone: '01012345678',
+                fullName: 'Mona Samir',
+            },
+            requestType: 'leave',
+            requestId: 'leave-receipt-email-only',
+            requestLabelAr: 'طلب إجازة اعتيادية',
+            requestLabelEn: 'Annual leave request',
+            status: 'PENDING',
+            requestDetails: {
+                leaveType: 'ANNUAL',
+                startDate: '2026-04-14',
+                endDate: '2026-04-14',
+                totalDays: 1,
+                reason: '',
+            },
+            waitForExternalDeliveries: true,
+        });
+
+        expect(delivery.emailDelivery).toEqual({
+            ok: true,
+            recipient: 'employee@example.com',
+            attempts: 1,
+            messageId: 'message-1',
+            response: '250 queued',
+        });
+        expect(delivery.whatsAppDelivery).toBeNull();
+        expect(whatsAppService.sendWhatsApp).not.toHaveBeenCalled();
+        expect(emailService.sendEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it('respects WhatsApp-only notification preference for request receipts', async () => {
+        prisma.user.findUnique.mockResolvedValue({ notificationDeliveryPreference: 'WHATSAPP_ONLY' });
+
+        const delivery = await service.sendRequestReceipt({
+            user: {
+                id: 'user-1',
+                email: 'employee@example.com',
+                phone: '01012345678',
+                fullName: 'Mona Samir',
+            },
+            requestType: 'permission',
+            requestId: 'permission-receipt-wa-only',
+            requestLabelAr: 'طلب إذن شخصي',
+            requestLabelEn: 'Personal permission request',
+            status: 'PENDING',
+            requestDetails: {
+                permissionType: 'PERSONAL',
+                requestDate: '2026-04-14',
+                arrivalTime: '09:00',
+                leaveTime: '11:00',
+                hoursUsed: 2,
+                reason: '',
+            },
+            waitForExternalDeliveries: true,
+        });
+
+        expect(delivery.whatsAppDelivery).toEqual({
+            ok: true,
+            phone: '201012345678',
+            attempts: 1,
+        });
+        expect(delivery.emailDelivery).toBeNull();
+        expect(emailService.sendEmail).not.toHaveBeenCalled();
+        expect(whatsAppService.sendWhatsApp).toHaveBeenCalledTimes(1);
     });
 
     it('emits a realtime refresh after marking notifications as read', async () => {
@@ -322,7 +396,10 @@ describe('NotificationsService', () => {
 
         await flushPromises();
 
-        expect(prisma.user.findUnique).not.toHaveBeenCalled();
+        expect(prisma.user.findUnique).toHaveBeenCalledWith({
+            where: { id: 'user-1' },
+            select: { notificationDeliveryPreference: true },
+        });
         expect(whatsAppService.sendWhatsApp).toHaveBeenCalledWith(
             '01012345678',
             expect.stringContaining('Under review'),

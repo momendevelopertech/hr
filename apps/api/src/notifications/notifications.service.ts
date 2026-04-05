@@ -36,6 +36,7 @@ type ExternalDeliveryChannel = 'EMAIL' | 'WHATSAPP';
 type ExternalDeliveryLogOptions = {
     channel: ExternalDeliveryChannel;
     recipient?: string | null;
+    recipientUserId?: string | null;
     workflowKey: string;
     templateKey?: string | null;
     subject?: string | null;
@@ -616,9 +617,28 @@ export class NotificationsService {
         return String(error);
     }
 
+    private async isChannelAllowedForUser(
+        recipientUserId: string | null | undefined,
+        channel: ExternalDeliveryChannel,
+    ) {
+        if (!recipientUserId) return true;
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: recipientUserId },
+            select: { notificationDeliveryPreference: true },
+        });
+        const preference = user?.notificationDeliveryPreference || 'BOTH';
+
+        if (preference === 'BOTH') return true;
+        if (preference === 'EMAIL_ONLY') return channel === 'EMAIL';
+        if (preference === 'WHATSAPP_ONLY') return channel === 'WHATSAPP';
+        return true;
+    }
+
     private async sendLoggedEmail(options: ExternalDeliveryLogOptions & { subject: string; html: string }) {
         const recipient = options.recipient?.trim();
         if (!recipient) return null;
+        if (!await this.isChannelAllowedForUser(options.recipientUserId, 'EMAIL')) return null;
 
         const log = await this.createDeliveryLog({
             ...options,
@@ -649,6 +669,7 @@ export class NotificationsService {
     private async sendLoggedWhatsApp(options: ExternalDeliveryLogOptions & { message: string }) {
         const recipient = options.recipient?.trim();
         if (!recipient) return null;
+        if (!await this.isChannelAllowedForUser(options.recipientUserId, 'WHATSAPP')) return null;
 
         const log = await this.createDeliveryLog({
             ...options,
@@ -980,6 +1001,7 @@ export class NotificationsService {
             ? this.sendLoggedEmail({
                 channel: 'EMAIL',
                 recipient: user.email,
+                recipientUserId: user.id,
                 workflowKey: 'accountCreated',
                 templateKey: 'accountCreated',
                 subject: emailSubject,
@@ -995,6 +1017,7 @@ export class NotificationsService {
                 ? this.sendLoggedWhatsApp({
                     channel: 'WHATSAPP',
                     recipient: user.phone,
+                    recipientUserId: user.id,
                     message,
                     workflowKey: 'accountCreated',
                     templateKey: 'accountCreated',
@@ -1020,6 +1043,7 @@ export class NotificationsService {
             jobs.push(this.sendLoggedWhatsApp({
                 channel: 'WHATSAPP',
                 recipient: user.phone,
+                recipientUserId: user.id,
                 message,
                 workflowKey: 'accountCreated',
                 templateKey: 'accountCreated',
@@ -1089,6 +1113,7 @@ export class NotificationsService {
 
     async sendRequestReceipt(options: {
         user: {
+            id?: string;
             email: string;
             phone?: string | null;
             fullName?: string | null;
@@ -1152,6 +1177,7 @@ export class NotificationsService {
             ? this.sendLoggedWhatsApp({
                 channel: 'WHATSAPP',
                 recipient: whatsAppRecipient,
+                recipientUserId: options.user.id,
                 message: externalContent.whatsAppMessage,
                 workflowKey,
                 templateKey,
@@ -1164,6 +1190,7 @@ export class NotificationsService {
             ? this.sendLoggedEmail({
                 channel: 'EMAIL',
                 recipient: emailRecipient,
+                recipientUserId: options.user.id,
                 workflowKey,
                 templateKey,
                 subject: emailSubject,
@@ -1318,6 +1345,7 @@ export class NotificationsService {
                 jobs.push(this.sendLoggedWhatsApp({
                     channel: 'WHATSAPP',
                     recipient: user.phone,
+                    recipientUserId: user.id,
                     message: externalContent.whatsAppMessage,
                     workflowKey,
                     templateKey: templateKeyMap[action],
@@ -1330,6 +1358,7 @@ export class NotificationsService {
                 jobs.push(this.sendLoggedEmail({
                     channel: 'EMAIL',
                     recipient: user.email,
+                    recipientUserId: user.id,
                     workflowKey,
                     templateKey: templateKeyMap[action],
                     subject: `SPHINX HR - ${rendered.title}`,
@@ -1455,6 +1484,7 @@ export class NotificationsService {
                 jobs.push(this.sendLoggedWhatsApp({
                     channel: 'WHATSAPP',
                     recipient: user.phone,
+                    recipientUserId: user.id,
                     message: externalContent.whatsAppMessage,
                     workflowKey,
                     templateKey: templateKeyMap[action],
@@ -1467,6 +1497,7 @@ export class NotificationsService {
                 jobs.push(this.sendLoggedEmail({
                     channel: 'EMAIL',
                     recipient: user.email,
+                    recipientUserId: user.id,
                     workflowKey,
                     templateKey: templateKeyMap[action],
                     subject: `SPHINX HR - ${rendered.title}`,
@@ -1579,6 +1610,7 @@ export class NotificationsService {
             jobs.push(this.sendLoggedWhatsApp({
                 channel: 'WHATSAPP',
                 recipient: user.phone,
+                recipientUserId: user.id,
                 message: externalContent.whatsAppMessage,
                 workflowKey,
                 relatedEntityType: 'FormSubmission',
@@ -1590,6 +1622,7 @@ export class NotificationsService {
             jobs.push(this.sendLoggedEmail({
                 channel: 'EMAIL',
                 recipient: user.email,
+                recipientUserId: user.id,
                 workflowKey,
                 subject: `SPHINX HR - ${titles[action][locale]}`,
                 html: externalContent.emailHtml,

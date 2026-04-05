@@ -8,6 +8,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { ApiTags } from '@nestjs/swagger';
 import {
     CreateUserDto,
+    UpdateOwnProfileDto,
     UpdateLeaveBalanceDto,
     UpdateUserDto,
     UpdateUserPasswordDto,
@@ -45,6 +46,11 @@ export class UsersController {
             search: query.search,
             governorate: query.governorate,
         });
+    }
+
+    @Patch('me/profile')
+    updateOwnProfile(@Body() body: UpdateOwnProfileDto, @Req() req: any) {
+        return this.usersService.updateOwnProfile(req.user.id, body);
     }
 
     @Get(':id')

@@ -86,7 +86,7 @@ export default function NavLinks({ locale, collapsed = false }: { locale: string
             ]
             : []),
         ...(canViewReports ? [{ href: `/${locale}/reports`, label: t('reports'), icon: BarChart3, tone: 'reports' }] : []),
-        ...(isAdmin ? [{ href: `/${locale}/settings`, label: t('settings'), icon: Settings, tone: 'settings' }] : []),
+        { href: `/${locale}/settings`, label: t('settings'), icon: Settings, tone: 'settings' },
         { href: `/${locale}/notifications`, label: t('notifications'), badge: unreadNotifications, icon: Bell, tone: 'notifications' },
     ], [
         canManageEmployees,

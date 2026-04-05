@@ -62,6 +62,7 @@ export class AuthService {
             jobTitle: user.jobTitle,
             jobTitleAr: user.jobTitleAr,
             workflowMode: user.workflowMode,
+            notificationDeliveryPreference: user.notificationDeliveryPreference,
         };
     }
 

@@ -238,6 +238,7 @@ export class AuthController {
             jobTitleAr: user.jobTitleAr,
             workflowMode: user.workflowMode,
             phone: user.phone,
+            notificationDeliveryPreference: user.notificationDeliveryPreference,
         };
     }
 
