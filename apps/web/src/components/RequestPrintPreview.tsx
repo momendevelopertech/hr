@@ -184,7 +184,7 @@ export default function RequestPrintPreview({
                 <header className="flex items-center justify-between border-b border-ink/10 pb-4" dir="ltr">
                     <div className="flex items-center gap-3">
                         <Image
-                            src="/brand/sphinx-logo.svg"
+                            src="https://hr-web-ten.vercel.app/brand/sphinx-logo.png"
                             alt="Sphinx Logo"
                             width={160}
                             height={64}

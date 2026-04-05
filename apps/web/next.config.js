@@ -59,7 +59,7 @@ const nextConfig = {
     reactStrictMode: true,
     allowedDevOrigins: ['127.0.0.1', 'localhost', '*.localhost'],
     images: {
-        domains: ['res.cloudinary.com', 'lh3.googleusercontent.com'],
+        domains: ['res.cloudinary.com', 'lh3.googleusercontent.com', 'hr-web-ten.vercel.app'],
     },
     async rewrites() {
         const target = resolveApiRewriteTarget();
