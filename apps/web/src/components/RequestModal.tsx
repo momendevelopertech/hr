@@ -280,7 +280,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
             }));
         }
 
-        if (emailDelivery === undefined && whatsAppDelivery === undefined) {
+        if (emailDelivery == null && whatsAppDelivery == null) {
             lines.push(tm('deliveryStatusUnavailable'));
         }
 
