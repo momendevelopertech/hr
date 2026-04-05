@@ -263,10 +263,8 @@ export class NotificationsService {
         linkLabel?: string;
         linkUrl?: string;
         footer?: string;
-        heroImageUrl?: string;
     }) {
         const lines: string[] = [
-            ...(options.heroImageUrl ? [options.heroImageUrl, ''] : []),
             '*SPHINX HR*',
             `👋 ${this.getGreeting(options.user, options.locale)}`,
             '',
@@ -423,11 +421,6 @@ export class NotificationsService {
         return `${this.getPublicAppUrl(locale)}/requests/print/${requestType}/${requestId}`;
     }
 
-    private getBrandLogoUrl() {
-        const frontend = this.normalizeFrontendBaseUrl();
-        return `${frontend}/brand/sphinx-logo.svg`;
-    }
-
     private buildRequestExternalContent(options: {
         locale: NotificationLocale;
         user?: { fullName?: string | null; fullNameAr?: string | null };
@@ -458,7 +451,6 @@ export class NotificationsService {
                 value: comment,
             });
         }
-        const logoUrl = this.getBrandLogoUrl();
         return {
             printUrl,
             whatsAppMessage: this.composeWhatsAppMessage({
@@ -469,7 +461,6 @@ export class NotificationsService {
                 details,
                 linkLabel: isArabic ? '🔗 رابط الطلب:' : '🔗 Request link:',
                 linkUrl: printUrl,
-                heroImageUrl: logoUrl,
             }),
             emailHtml: this.buildEmailHtml({
                 locale: options.locale,
