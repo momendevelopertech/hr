@@ -30,7 +30,7 @@ export default function EmployeeList({
     }, [search, t]);
 
     return (
-        <aside className="w-full border-b border-ink/10 md:w-80 md:border-b-0 md:border-r">
+        <aside className="flex min-h-0 w-full flex-col border-b border-ink/10 md:w-80 md:border-b-0 md:border-r">
             <div className="sticky top-0 z-10 border-b border-ink/10 bg-white/95 p-3 backdrop-blur">
                 <input
                     className="w-full rounded-xl border border-ink/20 bg-white px-3 py-2"
@@ -39,7 +39,7 @@ export default function EmployeeList({
                     onChange={(e) => setSearch(e.target.value)}
                 />
             </div>
-            <div className="max-h-[38vh] overflow-y-auto px-2 pb-2 md:max-h-[72vh]">
+            <div className="min-h-[180px] flex-1 overflow-y-auto px-2 pb-2">
                 {employees.length === 0 && <p className="p-3 text-sm text-slate-500">{emptyState}</p>}
                 {employees.map((employee) => (
                     <button

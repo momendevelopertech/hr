@@ -413,8 +413,8 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
     };
 
     return (
-        <div className="overlay-backdrop fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-3 py-4 sm:items-center sm:px-4 sm:py-8">
-            <div className="modal-shell w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
+        <div className="overlay-backdrop fixed inset-0 z-50 flex items-end justify-center overflow-y-auto px-2 py-2 sm:items-center sm:px-4 sm:py-8">
+            <div className="modal-shell w-full max-w-3xl max-h-[calc(100vh-1rem)] overflow-y-auto rounded-2xl p-4 sm:max-h-[92vh] sm:rounded-3xl sm:p-6">
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold">{t('new')}</h2>
                     <button className="btn-outline" onClick={onClose}>{tm('close')}</button>
@@ -458,7 +458,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                     </div>
                 )}
 
-                <div className="mt-4 grid gap-4 md:grid-cols-[240px_1fr]">
+                <div className="mt-4 grid gap-4 lg:grid-cols-[240px_1fr]">
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{tm('pickTypeTitle')}</p>
@@ -734,7 +734,7 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
                 </div>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-2">
+                <div className="sticky bottom-0 mt-6 flex justify-end gap-2 border-t border-ink/10 bg-[var(--surface-overlay)] pt-4">
                     <button className="btn-outline" onClick={onClose}>{tm('cancel')}</button>
                     <button
                         className="btn-primary"

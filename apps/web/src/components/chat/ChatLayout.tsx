@@ -144,7 +144,7 @@ export default function ChatLayout({ currentUser, locale, roleFilter, autoSelect
     };
 
     return (
-        <section className="mx-4 grid rounded-2xl border border-ink/10 bg-white sm:mx-6 md:grid-cols-[320px_1fr]">
+        <section className="mx-2 grid h-full min-h-0 overflow-hidden rounded-2xl border border-ink/10 bg-white sm:mx-4 md:grid-cols-[300px_minmax(0,1fr)] lg:mx-6 lg:grid-cols-[340px_minmax(0,1fr)]">
             <EmployeeList
                 employees={employees}
                 selectedId={selectedEmployee?.id}

@@ -96,7 +96,7 @@ export default function ChatWindow({
     };
 
     return (
-        <section className="flex min-h-[58vh] flex-1 flex-col md:min-h-[72vh]">
+        <section className="flex min-h-0 flex-1 flex-col">
             {selectedEmployee ? (
                 <>
                     <header className="chat-thread-header border-b border-[#e9edef] bg-[#f0f2f5] px-3 py-2">
@@ -115,7 +115,15 @@ export default function ChatWindow({
                             </button>
                         </div>
                     </header>
-                    <div className="chat-thread-body flex-1 space-y-1 overflow-y-auto bg-[#e5ddd5] p-3">
+                    <div
+                        className="chat-thread-body flex-1 space-y-1 overflow-y-auto p-3"
+                        style={{
+                            backgroundColor: '#e5ddd5',
+                            backgroundImage: "linear-gradient(rgba(229,221,213,0.92), rgba(229,221,213,0.92)), url('/brand/sphinx-head.svg')",
+                            backgroundSize: '220px',
+                            backgroundRepeat: 'repeat',
+                        }}
+                    >
                         <div className="rounded-lg border border-[#e9edef] bg-white/95 p-3 text-sm text-[#111b21] shadow-sm">
                             <h4 className="text-[15px] font-semibold">{t('welcome', { name: selectedEmployee.fullName })}</h4>
                             <p className="mt-1 text-[13px] text-[#667781]">{t('position')}: {selectedEmployee.jobTitle || t('noJobTitle')}</p>

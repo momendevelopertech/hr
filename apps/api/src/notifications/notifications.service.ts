@@ -421,6 +421,11 @@ export class NotificationsService {
         return `${this.getPublicAppUrl(locale)}/requests/print/${requestType}/${requestId}`;
     }
 
+    private getBrandLogoUrl() {
+        const frontend = this.normalizeFrontendBaseUrl();
+        return `${frontend}/icons/icon.svg`;
+    }
+
     private buildRequestExternalContent(options: {
         locale: NotificationLocale;
         user?: { fullName?: string | null; fullNameAr?: string | null };
@@ -451,6 +456,8 @@ export class NotificationsService {
                 value: comment,
             });
         }
+        const logoUrl = this.getBrandLogoUrl();
+        const logoHint = isArabic ? `🖼️ شعار الشركة: ${logoUrl}` : `🖼️ Company logo: ${logoUrl}`;
 
         return {
             printUrl,
@@ -462,7 +469,7 @@ export class NotificationsService {
                 details,
                 linkLabel: isArabic ? '🔗 رابط الطلب:' : '🔗 Request link:',
                 linkUrl: printUrl,
-                footer: options.footer,
+                footer: this.joinTextBlocks(options.footer, logoHint),
             }),
             emailHtml: this.buildEmailHtml({
                 locale: options.locale,

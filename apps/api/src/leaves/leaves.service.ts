@@ -328,7 +328,7 @@ export class LeavesService {
                 totalDays: request.totalDays,
                 reason: request.reason,
             },
-            waitForExternalDeliveries: true,
+            waitForExternalDeliveries: false,
         });
 
         if (isSandbox) {

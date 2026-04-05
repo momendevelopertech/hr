@@ -168,15 +168,33 @@ export default function NotificationsClient({ locale }: { locale: string }) {
     }, [ready, refreshAll]);
 
     const [markAllPending, setMarkAllPending] = useState(false);
+    const [markPendingById, setMarkPendingById] = useState<Record<string, boolean>>({});
 
     const markAll = async () => {
         if (markAllPending) return;
         setMarkAllPending(true);
         try {
             await api.patch('/notifications/read-all');
+            setItems((prev) => prev.map((item) => ({ ...item, isRead: true })));
             await refreshAll(true);
         } finally {
             setMarkAllPending(false);
+        }
+    };
+
+    const markOne = async (notificationId: string) => {
+        if (markPendingById[notificationId]) return;
+        setMarkPendingById((prev) => ({ ...prev, [notificationId]: true }));
+        try {
+            await api.patch(`/notifications/${notificationId}/read`);
+            setItems((prev) => prev.map((item) => (
+                item.id === notificationId
+                    ? { ...item, isRead: true }
+                    : item
+            )));
+            await refreshAll(true);
+        } finally {
+            setMarkPendingById((prev) => ({ ...prev, [notificationId]: false }));
         }
     };
 
@@ -247,6 +265,7 @@ export default function NotificationsClient({ locale }: { locale: string }) {
                                 <th className="py-2">{t('type')}</th>
                                 <th className="py-2">{t('date')}</th>
                                 <th className="py-2">{t('status')}</th>
+                                <th className="py-2">{t('actions')}</th>
                             </tr>
                         </thead>
                         <tbody className={tableAlignClass}>
@@ -256,6 +275,20 @@ export default function NotificationsClient({ locale }: { locale: string }) {
                                     <td className="py-2">{typeLabels[item.type] || item.type}</td>
                                     <td className="py-2">{new Date(item.createdAt).toLocaleString(dateLocale)}</td>
                                     <td className="py-2">{item.isRead ? t('read') : t('unread')}</td>
+                                    <td className="py-2">
+                                        {item.isRead ? (
+                                            <span className="text-xs text-ink/50">{t('alreadyRead')}</span>
+                                        ) : (
+                                            <AsyncActionButton
+                                                className="btn-outline px-3 py-1 text-xs"
+                                                onClick={() => markOne(item.id)}
+                                                externalPending={Boolean(markPendingById[item.id])}
+                                                pendingLabel={t('markingOneRead')}
+                                            >
+                                                {t('markOneRead')}
+                                            </AsyncActionButton>
+                                        )}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
