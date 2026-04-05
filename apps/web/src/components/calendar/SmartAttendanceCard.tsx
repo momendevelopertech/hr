@@ -1,18 +1,15 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useLocale } from 'next-intl';
 import styles from './SmartAttendanceCard.module.css';
 
 export type WeekStatus = {
     dayKey: string;
-    status: 'present' | 'late' | 'absent' | 'off' | 'today' | 'holiday';
+    status: 'present' | 'late' | 'absent' | 'leave' | 'off' | 'today' | 'holiday';
 };
 
 export type SmartAttendanceData = {
     attendanceDays: number;
-    lateDays: number;
-    absentDays: number;
     remainingDays: number;
     monthProgress: number;
     currentWeekStatus: WeekStatus[];
@@ -29,27 +26,16 @@ export default function SmartAttendanceCard({
     className?: string;
 }) {
     const t = useTranslations('dashboard');
-    const locale = useLocale();
-    const attendanceLabel = locale === 'ar' ? 'حضور' : 'Attendance';
-    const remainingLabel = locale === 'ar' ? 'متبقي' : 'Remaining';
 
     const stats = (
         <div className={[styles.stats, styles[variant]].join(' ')}>
             <div className={styles.statBox}>
                 <div className={[styles.statNum, styles.numGreen].join(' ')}>{data.attendanceDays}</div>
-                <div className={styles.statLbl}>{attendanceLabel}</div>
-            </div>
-            <div className={styles.statBox}>
-                <div className={[styles.statNum, styles.numAmber].join(' ')}>{data.lateDays}</div>
-                <div className={styles.statLbl}>{t('eventLateness')}</div>
-            </div>
-            <div className={styles.statBox}>
-                <div className={[styles.statNum, styles.numRed].join(' ')}>{data.absentDays}</div>
-                <div className={styles.statLbl}>{t('eventAbsence')}</div>
+                <div className={styles.statLbl}>{t('attendanceStat')}</div>
             </div>
             <div className={styles.statBox}>
                 <div className={styles.statNum}>{data.remainingDays}</div>
-                <div className={styles.statLbl}>{remainingLabel}</div>
+                <div className={styles.statLbl}>{t('remainingStat')}</div>
             </div>
         </div>
     );

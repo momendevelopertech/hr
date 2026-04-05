@@ -506,6 +506,7 @@ model WorkScheduleSettings {
   evolutionApiBaseUrl String        @default("") @map("whapiBaseUrl")
   evolutionApiKey     String?       @map("whapiToken")
   notificationTemplates Json?
+  calendarOffDays     Json?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 }

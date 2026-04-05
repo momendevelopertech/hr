@@ -17,7 +17,7 @@ import { Megaphone, Wallet } from 'lucide-react';
 import { arSA, enUS } from 'date-fns/locale';
 import { addDays, format, getDaysInMonth, isSameDay, isWithinInterval, startOfDay, startOfWeek } from 'date-fns';
 import type { SmartAttendanceData, WeekStatus } from './calendar/SmartAttendanceCard';
-import { isCompanyFixedOffDay, isCompanyOffDay } from './calendar/companyOffDays';
+import { isCompanyFixedOffDay, isCompanyOffDay, type CalendarOffDayRule } from './calendar/companyOffDays';
 
 type Department = { id: string; name: string; nameAr?: string | null };
 type EmployeeOption = { id: string; fullName: string; fullNameAr?: string | null };
@@ -88,6 +88,13 @@ type UsersResponse = {
     totalPages: number;
 };
 
+type WorkScheduleSettings = {
+    activeMode: 'NORMAL' | 'RAMADAN';
+    ramadanStartDate: string | null;
+    ramadanEndDate: string | null;
+    calendarOffDays?: CalendarOffDayRule[] | null;
+};
+
 const formatPermissionDuration = (hours: number, locale: 'en' | 'ar') => {
     const safeHours = Number.isFinite(hours) ? Math.max(0, hours) : 0;
     const totalMinutes = Math.round(safeHours * 60);
@@ -147,7 +154,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
-    const [schedule, setSchedule] = useState<any | null>(null);
+    const [schedule, setSchedule] = useState<WorkScheduleSettings | null>(null);
 
     const refreshInFlight = useRef(false);
     const refreshQueued = useRef(false);
@@ -592,9 +599,8 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
         const now = new Date();
         const todayStart = startOfDay(now);
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth(), getDaysInMonth(now));
         const monthDays = Array.from({ length: getDaysInMonth(now) }, (_, index) => new Date(now.getFullYear(), now.getMonth(), index + 1));
-        const isWorkingDay = (day: Date) => !isCompanyOffDay(day);
+        const isWorkingDay = (day: Date) => !isCompanyOffDay(day, schedule?.calendarOffDays);
         const todayRangeEnd = todayStart;
         const workingDays = monthDays.filter(isWorkingDay).length;
         const elapsedWorkingDays = monthDays.filter((day) => day <= todayStart && isWorkingDay(day)).length;
@@ -614,28 +620,26 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             const key = event.resource?.key;
             const dateKey = format(event.start, 'yyyy-MM-dd');
             if (!isWorkingDay(event.start)) return;
+            if (key === 'leave') {
+                dayStatus.set(dateKey, 'leave');
+                return;
+            }
             if (key === 'absence') {
                 dayStatus.set(dateKey, 'absent');
                 return;
             }
-            if (key === 'lateness' && dayStatus.get(dateKey) !== 'absent') {
+            if (key === 'lateness' && dayStatus.get(dateKey) !== 'absent' && dayStatus.get(dateKey) !== 'leave') {
                 dayStatus.set(dateKey, 'late');
             }
         });
 
         let attendanceDays = 0;
-        let lateDays = 0;
-        let absentDays = 0;
 
         monthDays.forEach((day) => {
             if (day > todayStart || !isWorkingDay(day)) return;
             const status = dayStatus.get(format(day, 'yyyy-MM-dd'));
-            if (status === 'absent') {
-                absentDays += 1;
+            if (status === 'absent' || status === 'leave') {
                 return;
-            }
-            if (status === 'late') {
-                lateDays += 1;
             }
             attendanceDays += 1;
         });
@@ -645,7 +649,7 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
             const date = addDays(currentWeekStart, index);
             const dateKey = format(date, 'yyyy-MM-dd');
             let status: WeekStatus['status'] = 'off';
-            if (isCompanyFixedOffDay(date)) status = 'holiday';
+            if (isCompanyFixedOffDay(date, schedule?.calendarOffDays)) status = 'holiday';
             else if (!isWorkingDay(date)) status = 'off';
             else if (date > todayStart) status = 'off';
             else if (isSameDay(date, now)) status = 'today';
@@ -659,14 +663,12 @@ export default function DashboardClient({ locale }: { locale: 'en' | 'ar' }) {
 
         return {
             attendanceDays,
-            lateDays,
-            absentDays,
             remainingDays: Math.max(0, workingDays - elapsedWorkingDays),
-            monthProgress: workingDays === 0 ? 0 : ((attendanceDays + lateDays + absentDays) / workingDays) * 100,
+            monthProgress: workingDays === 0 ? 0 : (elapsedWorkingDays / workingDays) * 100,
             currentWeekStatus,
             currentMonthLabel: format(now, 'MMMM yyyy', { locale: localeRef }),
         };
-    }, [events, latenessItems, locale]);
+    }, [events, latenessItems, locale, schedule?.calendarOffDays]);
 
 
     if (!ready || loading) {

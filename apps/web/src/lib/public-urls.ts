@@ -23,18 +23,9 @@ export const getPublicApiUrl = () =>
         const configuredUrl = normalizePublicUrl(process.env.NEXT_PUBLIC_API_URL || LOCAL_API_URL, { allowRelative: true });
         const isBrowser = typeof window !== 'undefined';
         const isAbsoluteUrl = /^https?:\/\//i.test(configuredUrl);
-        const isLocalAbsolute = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(configuredUrl);
-        const isCurrentHostLocal = isBrowser
-            ? /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(window.location.hostname)
-            : false;
 
-        // On deployed environments, fallback local URLs break login and other auth calls.
-        // Route browser traffic through Next.js rewrites instead.
-        if (isBrowser && isLocalAbsolute && !isCurrentHostLocal) {
-            return '/api';
-        }
-
-        if (isBrowser && isAbsoluteUrl && !isLocalAbsolute) {
+        // Always proxy browser API traffic through Next.js rewrites for first-party auth cookies.
+        if (isBrowser && isAbsoluteUrl) {
             return '/api';
         }
 

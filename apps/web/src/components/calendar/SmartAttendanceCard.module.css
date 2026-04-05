@@ -43,9 +43,9 @@
 .progressText { font-size: 11px; color: var(--ink2); min-width: 34px; text-align: end; }
 
 .stats { display: grid; gap: 6px; margin-bottom: 8px; }
-.stats.sidebar { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.stats.sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .stats.card { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.stats.bar { grid-template-columns: repeat(4, minmax(0, 1fr)); min-width: 220px; }
+.stats.bar { grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 160px; }
 
 .statBox {
   background: var(--surface2);
@@ -89,6 +89,10 @@
 .absent .dayName { color: #791F1F; }
 .absent .dayDot { background: #A32D2D; }
 
+.leave { background: #E8F4F6; }
+.leave .dayName { color: #165E67; }
+.leave .dayDot { background: #17808F; }
+
 .today   { background: #EEEDFE; border: 1px solid #AFA9EC; }
 .today .dayName   { color: #3C3489; }
 .today .dayDot    { background: #7F77DD; }
@@ -107,6 +111,10 @@
 :root[data-theme='dark'] .late    { background: #412402; }
 :root[data-theme='dark'] .late .dayName    { color: #FAC775; }
 :root[data-theme='dark'] .late .dayDot     { background: #EF9F27; }
+
+:root[data-theme='dark'] .leave { background: #0F3340; }
+:root[data-theme='dark'] .leave .dayName { color: #8DDAE4; }
+:root[data-theme='dark'] .leave .dayDot { background: #4BC4D6; }
 
 :root[data-theme='dark'] .today   { background: #26215C; border-color: #534AB7; }
 :root[data-theme='dark'] .today .dayName   { color: #CECBF6; }

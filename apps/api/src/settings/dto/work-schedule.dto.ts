@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsObject, IsOptional, IsString, Matches } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsObject, IsOptional, IsString, Matches } from 'class-validator';
 import { Prisma, WorkScheduleMode } from '@prisma/client';
 
 const timePattern = /^\d{2}:\d{2}$/;
@@ -61,4 +61,8 @@ export class UpdateWorkScheduleDto {
     @IsOptional()
     @IsObject()
     notificationTemplates?: Prisma.InputJsonValue;
+
+    @IsOptional()
+    @IsArray()
+    calendarOffDays?: Prisma.InputJsonValue;
 }

@@ -1,9 +1,4 @@
-'use client';
-
-const FRIDAY_DAY_INDEX = 5;
-
 export type CalendarOffDayType = 'est1' | 'est2' | 'holiday';
-export type CompanyOffDayKind = 'friday' | CalendarOffDayType | null;
 
 export type CalendarOffDayRule = {
     id: string;
@@ -15,20 +10,6 @@ export type CalendarOffDayRule = {
     isRecurringAnnual?: boolean;
     enabled?: boolean;
 };
-
-export type CompanyOffDayInfo = {
-    kind: Exclude<CompanyOffDayKind, null>;
-    label: string;
-    nameAr: string;
-    nameEn: string;
-    icon: string;
-    rule?: CalendarOffDayRule;
-};
-
-const FRIDAY_LABELS = {
-    en: { label: 'Day off', name: 'Friday weekly day off', icon: '💤' },
-    ar: { label: 'يوم إجازة', name: 'إجازة يوم الجمعة الأسبوعية', icon: '💤' },
-} as const;
 
 const DEFAULT_CALENDAR_OFF_DAYS: CalendarOffDayRule[] = [
     { id: 'est-jan-1', type: 'est1', nameAr: 'EST I', nameEn: 'EST I', startDate: '2026-01-23', endDate: '2026-01-23', isRecurringAnnual: true, enabled: true },
@@ -57,48 +38,6 @@ const DEFAULT_CALENDAR_OFF_DAYS: CalendarOffDayRule[] = [
     { id: 'holiday-2026-mawlid', type: 'holiday', nameAr: 'المولد النبوي الشريف', nameEn: 'Prophet Muhammad Birthday', startDate: '2026-08-26', endDate: '2026-08-26', enabled: true },
     { id: 'holiday-2026-october-war', type: 'holiday', nameAr: 'عيد القوات المسلحة', nameEn: 'Armed Forces Day', startDate: '2026-10-06', endDate: '2026-10-06', isRecurringAnnual: true, enabled: true },
 ];
-
-const OFF_DAY_TYPE_META: Record<Exclude<CompanyOffDayKind, 'friday' | null>, { icon: string; fallbackAr: string; fallbackEn: string }> = {
-    est1: { icon: '🏢', fallbackAr: 'EST I', fallbackEn: 'EST I' },
-    est2: { icon: '🏢', fallbackAr: 'EST II', fallbackEn: 'EST II' },
-    holiday: { icon: '🎉', fallbackAr: 'إجازة رسمية', fallbackEn: 'Official holiday' },
-};
-
-const parseDateOnly = (value?: string | null) => {
-    if (!value) return null;
-    const [year, month, day] = value.split('-').map(Number);
-    if (!year || !month || !day) return null;
-    return new Date(year, month - 1, day);
-};
-
-const compareDateOnly = (left: Date, right: Date) =>
-    left.getFullYear() === right.getFullYear() &&
-    left.getMonth() === right.getMonth() &&
-    left.getDate() === right.getDate();
-
-const normalizeDateOnly = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate());
-
-const isWithinInclusiveRange = (value: Date, start: Date, end: Date) => {
-    const safeValue = normalizeDateOnly(value).getTime();
-    const safeStart = normalizeDateOnly(start).getTime();
-    const safeEnd = normalizeDateOnly(end).getTime();
-    return safeValue >= safeStart && safeValue <= safeEnd;
-};
-
-const getRuleDateRangeForYear = (rule: CalendarOffDayRule, year: number) => {
-    const start = parseDateOnly(rule.startDate);
-    const end = parseDateOnly(rule.endDate || rule.startDate);
-    if (!start || !end) return null;
-
-    if (!rule.isRecurringAnnual) {
-        return { start, end };
-    }
-
-    return {
-        start: new Date(year, start.getMonth(), start.getDate()),
-        end: new Date(year, end.getMonth(), end.getDate()),
-    };
-};
 
 export const getDefaultCalendarOffDays = (): CalendarOffDayRule[] =>
     DEFAULT_CALENDAR_OFF_DAYS.map((rule) => ({ ...rule }));
@@ -134,81 +73,4 @@ export const normalizeCalendarOffDays = (input: unknown): CalendarOffDayRule[] =
         .filter((item): item is CalendarOffDayRule => item !== null);
 
     return sanitized.length > 0 ? sanitized : getDefaultCalendarOffDays();
-};
-
-export const sortCalendarOffDays = (rules: CalendarOffDayRule[]) =>
-    [...rules].sort((left, right) => {
-        if (left.startDate !== right.startDate) return left.startDate.localeCompare(right.startDate);
-        if (left.endDate !== right.endDate) return left.endDate.localeCompare(right.endDate);
-        return left.nameEn.localeCompare(right.nameEn);
-    });
-
-export const getCompanyOffDayInfo = (
-    date: Date,
-    locale: 'en' | 'ar' = 'en',
-    rules?: CalendarOffDayRule[] | null,
-): CompanyOffDayInfo | null => {
-    const normalizedRules = normalizeCalendarOffDays(rules);
-    const year = date.getFullYear();
-
-    const matchedRule = normalizedRules.find((rule) => {
-        if (rule.enabled === false) return false;
-        const range = getRuleDateRangeForYear(rule, year);
-        if (!range) return false;
-        return isWithinInclusiveRange(date, range.start, range.end);
-    });
-
-    if (matchedRule) {
-        const meta = OFF_DAY_TYPE_META[matchedRule.type];
-        return {
-            kind: matchedRule.type,
-            label: locale === 'ar' ? `${meta.icon} ${matchedRule.nameAr}` : `${meta.icon} ${matchedRule.nameEn}`,
-            nameAr: matchedRule.nameAr || meta.fallbackAr,
-            nameEn: matchedRule.nameEn || meta.fallbackEn,
-            icon: meta.icon,
-            rule: matchedRule,
-        };
-    }
-
-    if (date.getDay() === FRIDAY_DAY_INDEX) {
-        const labels = FRIDAY_LABELS[locale];
-        return {
-            kind: 'friday',
-            label: `${labels.icon} ${labels.label}`,
-            nameAr: FRIDAY_LABELS.ar.name,
-            nameEn: FRIDAY_LABELS.en.name,
-            icon: labels.icon,
-        };
-    }
-
-    return null;
-};
-
-export const getCompanyOffDayKind = (date: Date, rules?: CalendarOffDayRule[] | null): CompanyOffDayKind =>
-    getCompanyOffDayInfo(date, 'en', rules)?.kind || null;
-
-export const getCompanyOffDayLabel = (
-    date: Date,
-    locale: 'en' | 'ar' = 'en',
-    rules?: CalendarOffDayRule[] | null,
-) => getCompanyOffDayInfo(date, locale, rules)?.label || null;
-
-export const isCompanyFixedOffDay = (date: Date, rules?: CalendarOffDayRule[] | null) => {
-    const info = getCompanyOffDayInfo(date, 'en', rules);
-    return info?.kind === 'est1' || info?.kind === 'est2' || info?.kind === 'holiday';
-};
-
-export const isCompanyOffDay = (date: Date, rules?: CalendarOffDayRule[] | null) =>
-    getCompanyOffDayKind(date, rules) !== null;
-
-export const findCalendarOffDayRuleByDate = (date: Date, rules?: CalendarOffDayRule[] | null) => {
-    const info = getCompanyOffDayInfo(date, 'en', rules);
-    return info?.rule || null;
-};
-
-export const isSameDateOnly = (left: string, right: string) => {
-    const leftDate = parseDateOnly(left);
-    const rightDate = parseDateOnly(right);
-    if (!leftDate || !rightDate) return false;
-    return compareDateOnly(leftDate, rightDate);
 };

@@ -4,8 +4,9 @@
     "private": true,
     "description": "SPHINX HR System - Next.js Frontend",
     "scripts": {
-        "dev": "next dev -p 3000",
-        "build": "next build",
+        "clean:next": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\"",
+        "dev": "npm run clean:next && next dev -p 3000",
+        "build": "npm run clean:next && next build",
         "start": "next start",
         "lint": "next lint",
         "test": "next lint"

@@ -2031,6 +2031,49 @@ input[type='radio'] {
     font-variant-numeric: tabular-nums;
 }
 
+.calendar-date-header {
+    display: inline-flex;
+    max-width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.rbc-rtl .calendar-date-header {
+    align-items: flex-end;
+}
+
+.calendar-date-badge {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.15;
+    white-space: normal;
+    text-wrap: balance;
+    background: color-mix(in srgb, var(--surface2) 90%, transparent);
+    color: var(--ink2);
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.05);
+}
+
+.calendar-date-badge-friday {
+    background: color-mix(in srgb, var(--surface2) 94%, transparent);
+}
+
+.calendar-date-badge-est1,
+.calendar-date-badge-est2 {
+    background: color-mix(in srgb, var(--tone-violet-bg) 88%, white 12%);
+    color: var(--tone-violet-fg);
+}
+
+.calendar-date-badge-holiday {
+    background: color-mix(in srgb, var(--tone-amber-bg) 88%, white 12%);
+    color: var(--tone-amber-fg);
+}
+
 .rbc-event-disabled {
     pointer-events: none;
     opacity: 0.55;

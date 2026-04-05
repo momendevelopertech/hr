@@ -3,6 +3,7 @@ import { Prisma, WorkScheduleMode } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DEFAULT_EVOLUTION_API_BASE_URL } from './whatsapp-defaults';
 import { getDefaultNotificationTemplates, normalizeNotificationTemplates } from './notification-template-defaults';
+import { getDefaultCalendarOffDays, normalizeCalendarOffDays } from './calendar-off-day-defaults';
 
 const DEFAULT_SETTINGS: Prisma.WorkScheduleSettingsCreateInput = {
     activeMode: WorkScheduleMode.NORMAL,
@@ -18,6 +19,7 @@ const DEFAULT_SETTINGS: Prisma.WorkScheduleSettingsCreateInput = {
     evolutionApiBaseUrl: DEFAULT_EVOLUTION_API_BASE_URL,
     evolutionApiKey: null,
     notificationTemplates: getDefaultNotificationTemplates(),
+    calendarOffDays: getDefaultCalendarOffDays(),
 };
 
 const BASE_SELECT = {
@@ -41,6 +43,7 @@ const FULL_SELECT = {
     evolutionApiBaseUrl: true,
     evolutionApiKey: true,
     notificationTemplates: true,
+    calendarOffDays: true,
 };
 
 const isMissingColumnError = (error: unknown) => {
@@ -62,11 +65,13 @@ const serializeSettings = <T extends Record<string, any> | null>(data: T) => {
     const {
         evolutionApiKey: _evolutionApiKey,
         notificationTemplates,
+        calendarOffDays,
         ...rest
     } = data;
     return {
         ...rest,
         notificationTemplates: normalizeNotificationTemplates(notificationTemplates),
+        calendarOffDays: normalizeCalendarOffDays(calendarOffDays),
         evolutionApiKeyConfigured: !!_evolutionApiKey,
     };
 };
@@ -120,6 +125,10 @@ const toCreateInput = (
     if (notificationTemplates && typeof notificationTemplates === 'object' && !Array.isArray(notificationTemplates)) {
         result.notificationTemplates = normalizeNotificationTemplates(notificationTemplates);
     }
+    const calendarOffDays = (data as Record<string, unknown>).calendarOffDays;
+    if (Array.isArray(calendarOffDays)) {
+        result.calendarOffDays = normalizeCalendarOffDays(calendarOffDays);
+    }
     assignIfString('weekdayStart');
     assignIfString('weekdayEnd');
     assignIfString('saturdayStart');
@@ -155,6 +164,7 @@ export class WorkScheduleService {
             delete legacyData.evolutionApiBaseUrl;
             delete legacyData.evolutionApiKey;
             delete legacyData.notificationTemplates;
+            delete legacyData.calendarOffDays;
             const legacy = await this.prisma.workScheduleSettings.create({ data: legacyData, select: BASE_SELECT });
             return withPwaFallback(legacy, false);
         }
@@ -170,6 +180,7 @@ export class WorkScheduleService {
             delete legacyData.evolutionApiBaseUrl;
             delete legacyData.evolutionApiKey;
             delete legacyData.notificationTemplates;
+            delete legacyData.calendarOffDays;
             const legacy = await this.prisma.workScheduleSettings.update({ where: { id }, data: legacyData, select: BASE_SELECT });
             return withPwaFallback(legacy, false);
         }
@@ -191,6 +202,7 @@ export class WorkScheduleService {
         const rawEvolutionApiBaseUrl = (data as Record<string, unknown>).evolutionApiBaseUrl;
         const rawEvolutionApiKey = (data as Record<string, unknown>).evolutionApiKey;
         const rawNotificationTemplates = (data as Record<string, unknown>).notificationTemplates;
+        const rawCalendarOffDays = (data as Record<string, unknown>).calendarOffDays;
         const updateData: Prisma.WorkScheduleSettingsUpdateInput = {
             ...normalized,
             ...(typeof rawEvolutionApiBaseUrl === 'string'
@@ -201,6 +213,9 @@ export class WorkScheduleService {
                 : {}),
             ...(rawNotificationTemplates && typeof rawNotificationTemplates === 'object' && !Array.isArray(rawNotificationTemplates)
                 ? { notificationTemplates: normalizeNotificationTemplates(rawNotificationTemplates) }
+                : {}),
+            ...(Array.isArray(rawCalendarOffDays)
+                ? { calendarOffDays: normalizeCalendarOffDays(rawCalendarOffDays) }
                 : {}),
         };
         const existing = await this.safeFindFirst();

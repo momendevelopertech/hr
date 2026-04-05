@@ -57,6 +57,7 @@ const resolveApiRewriteTarget = () => {
 
 const nextConfig = {
     reactStrictMode: true,
+    allowedDevOrigins: ['127.0.0.1', 'localhost', '*.localhost'],
     images: {
         domains: ['res.cloudinary.com', 'lh3.googleusercontent.com'],
     },
