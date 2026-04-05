@@ -503,7 +503,23 @@ body {
 .summary-label { font-size: 11px; font-weight: 600; }
 .summary-value { font-size: 12px; font-weight: 700; }
 .panel-empty { font-size: 11px; color: var(--ink3); }
-.panel-hint { font-size: 10px; color: var(--ink3); margin-top: 6px; }
+.panel-hint {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--border));
+    background: color-mix(in srgb, var(--accent-bg) 54%, var(--surface));
+    color: var(--ink2);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+}
 .summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .summary-grid .summary-row { padding: 6px 8px; }
 .summary-grid .panel-empty { grid-column: 1 / -1; }
@@ -1653,7 +1669,6 @@ input[type='radio'] {
 .ti-type,
 .pend-type,
 .panel-empty,
-.panel-hint,
 .sidebar-brand-sub,
 .urole {
     color: var(--ink3);
@@ -2099,6 +2114,17 @@ input[type='radio'] {
     border: 1px solid var(--border);
     border-radius: 20px;
     background: var(--surface);
+}
+
+.calendar-current-range {
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(14px, 1.2vw, 20px);
+    font-weight: 700;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+    text-wrap: balance;
 }
 
 .calendar-pill-btn {

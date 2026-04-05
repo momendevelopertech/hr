@@ -13,6 +13,8 @@ import { CreatePermissionDto, UpdatePermissionDto } from './dto/permissions.dto'
 
 @Injectable()
 export class PermissionsService {
+    private static readonly MAX_REQUESTS_PER_CYCLE = 2;
+
     constructor(
         private prisma: PrismaService,
         private notificationsService: NotificationsService,
@@ -237,6 +239,16 @@ export class PermissionsService {
         return result._sum.hoursUsed ?? 0;
     }
 
+    private async getRequestCountInCycle(cycleId: string, excludeRequestId?: string) {
+        return this.prisma.permissionRequest.count({
+            where: {
+                cycleId,
+                status: { not: 'CANCELLED' },
+                ...(excludeRequestId ? { id: { not: excludeRequestId } } : {}),
+            },
+        });
+    }
+
     private async buildCycleSnapshot(cycle: {
         id: string;
         userId: string;
@@ -344,6 +356,11 @@ export class PermissionsService {
                 throw new BadRequestException('Personal permission requires start and end time');
             }
             hoursUsed = 2;
+        }
+
+        const requestCount = await this.getRequestCountInCycle(cycle.id);
+        if (requestCount >= PermissionsService.MAX_REQUESTS_PER_CYCLE) {
+            throw new BadRequestException('You have already used your 2 permission requests for this cycle');
         }
 
         const reservedHours = await this.getReservedHoursInCycle(cycle.id);
@@ -707,6 +724,11 @@ export class PermissionsService {
                 throw new BadRequestException('Personal permission requires start and end time');
             }
             hoursUsed = 2;
+        }
+
+        const requestCount = await this.getRequestCountInCycle(cycle.id, id);
+        if (requestCount >= PermissionsService.MAX_REQUESTS_PER_CYCLE) {
+            throw new BadRequestException('You have already used your 2 permission requests for this cycle');
         }
 
         const reservedHours = await this.getReservedHoursInCycle(cycle.id, id);

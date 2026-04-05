@@ -11,6 +11,7 @@ describe('PermissionsService', () => {
         },
         permissionRequest: {
             aggregate: jest.fn(),
+            count: jest.fn(),
             findUnique: jest.fn(),
             create: jest.fn(),
             update: jest.fn(),
@@ -59,6 +60,7 @@ describe('PermissionsService', () => {
         prisma.permissionRequest.create.mockResolvedValue({});
         prisma.permissionRequest.update.mockResolvedValue({});
         prisma.permissionRequest.delete.mockResolvedValue({});
+        prisma.permissionRequest.count.mockResolvedValue(0);
         prisma.lateness.updateMany.mockResolvedValue({ count: 0 });
         prisma.user.findMany.mockResolvedValue([]);
         prisma.workScheduleSettings.findFirst.mockResolvedValue(null);
@@ -140,6 +142,34 @@ describe('PermissionsService', () => {
         expect(prisma.permissionRequest.create).not.toHaveBeenCalled();
     });
 
+    it('blocks creating a third permission request in the same cycle even when hours are still available', async () => {
+        prisma.user.findUnique.mockResolvedValue({
+            id: 'user-1',
+            workflowMode: 'APPROVAL_WORKFLOW',
+        });
+        prisma.permissionCycle.findUnique.mockResolvedValue({
+            id: 'cycle-1',
+            userId: 'user-1',
+            cycleStart: new Date('2026-03-11T00:00:00.000Z'),
+            cycleEnd: new Date('2026-04-10T00:00:00.000Z'),
+            totalHours: 4,
+            usedHours: 1,
+            remainingHours: 3,
+        });
+        prisma.permissionRequest.count.mockResolvedValue(2);
+        prisma.permissionRequest.aggregate.mockResolvedValue({ _sum: { hoursUsed: 1 } });
+
+        await expect(service.createRequest('user-1', {
+            permissionType: 'LATE_ARRIVAL',
+            requestDate: '2026-04-08',
+            permissionScope: 'ARRIVAL',
+            durationMinutes: 60,
+            reason: '',
+        } as any)).rejects.toThrow('You have already used your 2 permission requests for this cycle');
+
+        expect(prisma.permissionRequest.create).not.toHaveBeenCalled();
+    });
+
 
     it('uses saturday schedule for early leave scope', async () => {
         prisma.user.findUnique.mockResolvedValue({
@@ -203,6 +233,40 @@ describe('PermissionsService', () => {
             }),
         }));
     });
+
+    it('blocks updating a request into a cycle that already has two other permission requests', async () => {
+        prisma.permissionRequest.findUnique.mockResolvedValue({
+            id: 'perm-1',
+            userId: 'user-1',
+            cycleId: 'cycle-old',
+            status: 'PENDING',
+            requestDate: new Date('2026-04-04T00:00:00.000Z'),
+            permissionType: 'LATE_ARRIVAL',
+            arrivalTime: '10:00',
+            leaveTime: '17:00',
+            reason: '',
+        });
+        prisma.permissionCycle.findUnique.mockResolvedValue({
+            id: 'cycle-1',
+            userId: 'user-1',
+            cycleStart: new Date('2026-04-11T00:00:00.000Z'),
+            cycleEnd: new Date('2026-05-10T00:00:00.000Z'),
+            totalHours: 4,
+            usedHours: 2,
+            remainingHours: 2,
+        });
+        prisma.permissionRequest.count.mockResolvedValue(2);
+        prisma.permissionRequest.aggregate.mockResolvedValue({ _sum: { hoursUsed: 1 } });
+
+        await expect(service.updateRequest('perm-1', 'user-1', 'EMPLOYEE', {
+            requestDate: '2026-04-14',
+            permissionScope: 'ARRIVAL',
+            durationMinutes: 60,
+        } as any)).rejects.toThrow('You have already used your 2 permission requests for this cycle');
+
+        expect(prisma.permissionRequest.update).not.toHaveBeenCalled();
+    });
+
     it('allows a sandbox employee to delete their own permission and re-syncs cycle state', async () => {
         prisma.permissionRequest.findUnique.mockResolvedValue({
             id: 'perm-1',

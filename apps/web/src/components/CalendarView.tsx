@@ -369,7 +369,7 @@ export default function CalendarView({
                             جولة تعريفية
                         </button>
                     </div>
-                    <p className="text-[clamp(11px,0.9vw,14px)] text-ink/70">{title}</p>
+                    <p className="calendar-current-range">{title}</p>
                     {ramadanRange && (
                         <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-900">
                             <span>{t('ramadanBadge')}</span>
