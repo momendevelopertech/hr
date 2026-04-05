@@ -143,6 +143,18 @@ const TEMPLATE_FIELDS: Array<keyof NotificationTemplateContent> = [
     'footerEn',
 ];
 
+const hasArabicCharacters = (value: string) => /[\u0600-\u06FF]/.test(value);
+
+const isBrokenArabicTemplateText = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return true;
+    if (trimmed.includes('�')) return true;
+    if (!hasArabicCharacters(trimmed) && /(\?{2,}|Ø|Ù|â|ðŸ)/.test(trimmed)) {
+        return true;
+    }
+    return false;
+};
+
 export const getDefaultNotificationTemplates = (): NotificationTemplateMap => {
     return NOTIFICATION_TEMPLATE_KEYS.reduce((acc, key) => {
         acc[key] = { ...DEFAULT_NOTIFICATION_TEMPLATES[key] };
@@ -166,6 +178,9 @@ export const normalizeNotificationTemplates = (input: unknown): NotificationTemp
         TEMPLATE_FIELDS.forEach((field) => {
             const value = (candidate as Record<string, unknown>)[field];
             if (typeof value === 'string') {
+                if (field.endsWith('Ar') && isBrokenArabicTemplateText(value)) {
+                    return;
+                }
                 defaults[key][field] = value;
             }
         });

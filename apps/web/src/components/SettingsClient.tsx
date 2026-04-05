@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import PageLoader from './PageLoader';
 import ConfirmDialog from './ConfirmDialog';
 import NotificationTemplatesManager from './NotificationTemplatesManager';
-import { getDefaultNotificationTemplates, NotificationTemplateMap } from '@/lib/notification-template-catalog';
+import { getDefaultNotificationTemplates, normalizeNotificationTemplates, NotificationTemplateMap } from '@/lib/notification-template-catalog';
 import { getDefaultCalendarOffDays, sortCalendarOffDays, type CalendarOffDayRule, type CalendarOffDayType } from './calendar/companyOffDays';
 
 type NotificationDeliveryPreference = 'BOTH' | 'EMAIL_ONLY' | 'WHATSAPP_ONLY';
@@ -117,7 +117,7 @@ export default function SettingsClient({ locale }: { locale: string }) {
                 setSettings((prev) => ({
                     ...prev,
                     ...res.data,
-                    notificationTemplates: res.data.notificationTemplates || prev.notificationTemplates,
+                    notificationTemplates: normalizeNotificationTemplates(res.data.notificationTemplates || prev.notificationTemplates),
                     calendarOffDays: sortCalendarOffDays(res.data.calendarOffDays || prev.calendarOffDays),
                 }));
                 setEvolutionApiKey('');

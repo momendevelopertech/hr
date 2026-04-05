@@ -164,6 +164,18 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: NotificationTemplateMap = {
     },
 };
 
+const hasArabicCharacters = (value: string) => /[\u0600-\u06FF]/.test(value);
+
+const isBrokenArabicTemplateText = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return true;
+    if (trimmed.includes('�')) return true;
+    if (!hasArabicCharacters(trimmed) && /(\?{2,}|Ø|Ù|â|ðŸ)/.test(trimmed)) {
+        return true;
+    }
+    return false;
+};
+
 const accountPlaceholders: TemplatePlaceholder[] = [
     { token: '{employeeName}', labelAr: 'اسم الموظف', labelEn: 'Employee name' },
     { token: '{employeeNumber}', labelAr: 'رقم الموظف', labelEn: 'Employee number' },
@@ -508,4 +520,30 @@ export const getDefaultNotificationTemplates = (): NotificationTemplateMap => {
         acc[key] = { ...DEFAULT_NOTIFICATION_TEMPLATES[key] };
         return acc;
     }, {} as NotificationTemplateMap);
+};
+
+export const normalizeNotificationTemplates = (input: unknown): NotificationTemplateMap => {
+    const defaults = getDefaultNotificationTemplates();
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+        return defaults;
+    }
+
+    const record = input as Record<string, unknown>;
+    NOTIFICATION_TEMPLATE_KEYS.forEach((key) => {
+        const candidate = record[key];
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+            return;
+        }
+
+        (Object.keys(defaults[key]) as Array<keyof NotificationTemplateContent>).forEach((field) => {
+            const value = (candidate as Record<string, unknown>)[field];
+            if (typeof value !== 'string') return;
+            if (field.endsWith('Ar') && isBrokenArabicTemplateText(value)) {
+                return;
+            }
+            defaults[key][field] = value;
+        });
+    });
+
+    return defaults;
 };
