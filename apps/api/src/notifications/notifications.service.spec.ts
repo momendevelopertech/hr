@@ -310,6 +310,15 @@ describe('NotificationsService', () => {
         expect(whatsAppService.sendWhatsApp).toHaveBeenCalledTimes(1);
     });
 
+    it('formats permission duration as hours and minutes without decimal values', () => {
+        expect((service as any).formatHours(1.5, 'ar')).toBe('١ ساعة و٣٠ دقائق');
+        expect((service as any).formatHours(2, 'ar')).toBe('٢ ساعات');
+        expect((service as any).formatHours(0.5, 'ar')).toBe('٣٠ دقائق');
+        expect((service as any).formatHours(1.5, 'en')).toBe('1 hour and 30 minutes');
+        expect((service as any).formatHours(2, 'en')).toBe('2 hours');
+        expect((service as any).formatHours(0.5, 'en')).toBe('30 minutes');
+    });
+
     it('emits a realtime refresh after marking notifications as read', async () => {
         await service.markAllRead('user-1');
         await flushPromises();
