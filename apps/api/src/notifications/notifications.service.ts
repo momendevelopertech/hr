@@ -136,8 +136,37 @@ export class NotificationsService {
             return locale === 'ar' ? 'غير محدد' : 'Not specified';
         }
 
-        const formatted = this.formatNumber(value, locale, Number.isInteger(value) ? 0 : 1);
-        return locale === 'ar' ? `${formatted} ساعة` : `${formatted} hour${value === 1 ? '' : 's'}`;
+        const totalMinutes = Math.round(Math.max(value, 0) * 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        if (hours === 0) {
+            return this.formatMinuteUnit(minutes, locale);
+        }
+
+        if (minutes === 0) {
+            return this.formatHourUnit(hours, locale);
+        }
+
+        return locale === 'ar'
+            ? `${this.formatHourUnit(hours, locale)} و${this.formatMinuteUnit(minutes, locale)}`
+            : `${this.formatHourUnit(hours, locale)} and ${this.formatMinuteUnit(minutes, locale)}`;
+    }
+
+    private formatHourUnit(hours: number, locale: NotificationLocale = 'ar') {
+        const formatted = this.formatNumber(hours, locale, 0);
+        if (locale === 'ar') {
+            return `${formatted} ${hours === 1 ? 'ساعة' : 'ساعات'}`;
+        }
+        return `${formatted} hour${hours === 1 ? '' : 's'}`;
+    }
+
+    private formatMinuteUnit(minutes: number, locale: NotificationLocale = 'ar') {
+        const formatted = this.formatNumber(minutes, locale, 0);
+        if (locale === 'ar') {
+            return `${formatted} ${minutes === 1 ? 'دقيقة' : 'دقائق'}`;
+        }
+        return `${formatted} minute${minutes === 1 ? '' : 's'}`;
     }
 
     private getWorkflowModeLabel(workflowMode?: string | null, locale: NotificationLocale = 'ar') {
