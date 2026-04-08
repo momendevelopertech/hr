@@ -61,6 +61,7 @@
     "email": "Email",
     "password": "Password",
     "rememberMe": "Remember me",
+    "rememberMeHint": "After a successful sign in, your email/username is saved on this device only. Password is never saved.",
     "login": "Sign in",
     "register": "Create account",
     "changePassword": "Change your password",

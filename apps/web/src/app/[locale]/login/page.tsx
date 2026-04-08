@@ -119,17 +119,6 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
         }
     }, [rememberMe]);
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        if (!rememberMe) return;
-        const trimmed = identifier.trim();
-        if (!trimmed) {
-            window.localStorage.removeItem(IDENTIFIER_KEY);
-            return;
-        }
-        window.localStorage.setItem(IDENTIFIER_KEY, trimmed);
-    }, [identifier, rememberMe]);
-
     const availableDepartments = useMemo(() => {
         if (!registerForm.branchId) return [];
         return departments.filter((department) => department.branches?.some((branch) => String(branch.id) === registerForm.branchId));
@@ -477,6 +466,7 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                                 <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
                                 {t('rememberMe')}
                             </label>
+                            <p className="text-xs text-ink/60">{t('rememberMeHint')}</p>
                             <button className="btn-primary w-full" type="submit" disabled={loginBusy} aria-busy={loginBusy}>
                                 {loading ? (params.locale === 'ar' ? 'جارٍ تسجيل الدخول...' : 'Signing in...') : checkingSession ? (params.locale === 'ar' ? 'جارٍ التحقق...' : 'Checking session...') : t('login')}
                             </button>
