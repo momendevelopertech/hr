@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import api, { clearApiCache } from '@/lib/api';
 import { enumLabels } from '@/lib/enum-labels';
+import { formatPermissionDuration } from '@/lib/permission-duration';
 import type { CalendarEvent } from './CalendarView';
 
 type Props = {
@@ -190,7 +191,7 @@ export default function EventDetailsModal({ open, event, locale, currentUserId, 
                     {kind === 'permission' && (
                         <div>
                             <p className="text-xs uppercase tracking-[0.2em] text-ink/50">{t('duration')}</p>
-                            <p className="font-semibold">{item.hoursUsed ?? 0}h</p>
+                            <p className="font-semibold">{formatPermissionDuration(Number(item.hoursUsed ?? 0), locale)}</p>
                         </div>
                     )}
                     {kind === 'note' && !editNote && (

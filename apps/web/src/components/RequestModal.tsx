@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import api, { clearApiCache } from '@/lib/api';
 import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/auth-store';
+import { formatPermissionDuration } from '@/lib/permission-duration';
 import DateRangeFilter from './DateRangeFilter';
 
 type RequestType = 'leave' | 'absence' | 'permission' | 'mission' | 'note' | 'lateness';
@@ -233,9 +234,24 @@ export default function RequestModal({ open, date, onClose, onSubmitted, locale 
     const resolveErrorMessage = (error: any) => {
         const raw = error?.message || (locale === 'ar' ? 'تعذر تنفيذ الطلب.' : 'Unable to complete your request.');
         if (typeof raw === 'string' && locale === 'ar') {
-            const match = raw.match(/Insufficient permission hours\. Available: ([0-9.]+)h, Requested: ([0-9.]+)h/);
+            const match = raw.match(/Insufficient permission hours\. Available: (.+), Requested: (.+)/);
             if (match) {
-                return `لا توجد ساعات إذن متاحة. المتاح: ${match[1]} ساعة، المطلوب: ${match[2]} ساعة.`;
+                const parseDurationToHours = (value: string) => {
+                    const normalized = value.trim();
+                    const hoursOnly = normalized.match(/^(\d+(?:\.\d+)?)h$/i);
+                    if (hoursOnly) return Number(hoursOnly[1]);
+                    const minutesOnly = normalized.match(/^(\d+)m$/i);
+                    if (minutesOnly) return Number(minutesOnly[1]) / 60;
+                    const hoursAndMinutes = normalized.match(/^(\d+)h\s+(\d+)m$/i);
+                    if (hoursAndMinutes) return Number(hoursAndMinutes[1]) + (Number(hoursAndMinutes[2]) / 60);
+                    return Number.NaN;
+                };
+
+                const availableHours = parseDurationToHours(match[1]);
+                const requestedHours = parseDurationToHours(match[2]);
+                const availableText = Number.isNaN(availableHours) ? match[1] : formatPermissionDuration(availableHours, 'ar');
+                const requestedText = Number.isNaN(requestedHours) ? match[2] : formatPermissionDuration(requestedHours, 'ar');
+                return `لا توجد ساعات إذن متاحة. المتاح: ${availableText}، المطلوب: ${requestedText}.`;
             }
             if (/already have a leave, absence, or mission request/i.test(raw)) {
                 return 'لديك بالفعل طلب إجازة أو غياب بإذن أو مأمورية يتقاطع مع هذه التواريخ.';

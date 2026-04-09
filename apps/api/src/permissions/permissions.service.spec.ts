@@ -148,6 +148,53 @@ describe('PermissionsService', () => {
         expect(prisma.permissionRequest.create).not.toHaveBeenCalled();
     });
 
+    it('accepts a request when available and requested values are equal after minute rounding', async () => {
+        prisma.user.findUnique.mockResolvedValue({
+            id: 'user-1',
+            workflowMode: 'APPROVAL_WORKFLOW',
+        });
+        prisma.permissionCycle.findUnique.mockResolvedValue({
+            id: 'cycle-1',
+            userId: 'user-1',
+            cycleStart: new Date('2026-04-11T00:00:00.000Z'),
+            cycleEnd: new Date('2026-05-10T00:00:00.000Z'),
+            totalHours: 4,
+            usedHours: 0,
+            remainingHours: 0.33333333333333304,
+        });
+        prisma.permissionRequest.aggregate
+            .mockResolvedValueOnce({ _sum: { hoursUsed: 3.666666666666667 } })
+            .mockResolvedValueOnce({ _sum: { hoursUsed: 0 } });
+        prisma.permissionRequest.create.mockResolvedValue({
+            id: 'perm-precision',
+            permissionType: 'LATE_ARRIVAL',
+            requestDate: new Date('2026-04-14T00:00:00.000Z'),
+            arrivalTime: '09:20',
+            leaveTime: '17:00',
+            hoursUsed: 0.3333333333333333,
+            reason: '',
+            status: 'PENDING',
+            userId: 'user-1',
+            user: {
+                id: 'user-1',
+                fullName: 'Test User',
+                department: null,
+                governorate: null,
+                employeeNumber: 'EMP-1',
+            },
+        });
+
+        await expect(service.createRequest('user-1', {
+            permissionType: 'LATE_ARRIVAL',
+            requestDate: '2026-04-14',
+            permissionScope: 'ARRIVAL',
+            durationMinutes: 20,
+            reason: '',
+        } as any)).resolves.toBeTruthy();
+
+        expect(prisma.permissionRequest.create).toHaveBeenCalled();
+    });
+
     it('blocks creating a third permission request in the same cycle even when hours are still available', async () => {
         prisma.user.findUnique.mockResolvedValue({
             id: 'user-1',

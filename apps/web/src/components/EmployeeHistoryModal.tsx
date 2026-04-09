@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import api from '@/lib/api';
+import { formatPermissionDuration } from '@/lib/permission-duration';
 
 type HistoryUser = {
     id: string;
@@ -172,7 +173,7 @@ export default function EmployeeHistoryModal({ open, user, locale, onClose }: Pr
                                                     <div className="mt-2 space-y-2">
                                                         {permissionDetails.map((item: any) => (
                                                             <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm">
-                                                                <span>{formatDateOnlyFromIso(item.requestDate)} - {item.hoursUsed}h</span>
+                                                                <span>{formatDateOnlyFromIso(item.requestDate)} - {formatPermissionDuration(Number(item.hoursUsed ?? 0), locale as 'en' | 'ar')}</span>
                                                                 <span className="text-xs text-ink/60">#{item.id}</span>
                                                             </div>
                                                         ))}

@@ -9,6 +9,7 @@ import { useRequireAuth } from '@/lib/use-auth';
 import { enumLabels } from '@/lib/enum-labels';
 import { usePusherChannel } from '@/lib/use-pusher-channel';
 import { normalizeSearchText } from '@/lib/search-normalization';
+import { formatPermissionDuration } from '@/lib/permission-duration';
 import PageLoader from './PageLoader';
 import EmployeeHistoryModal from './EmployeeHistoryModal';
 import ConfirmDialog from './ConfirmDialog';
@@ -429,7 +430,7 @@ export default function RequestsClient({ locale }: { locale: string }) {
                     createdAt: perm.createdAt,
                     createdAtTs,
                     status: perm.status,
-                    details: `${perm.hoursUsed}h`,
+                    details: formatPermissionDuration(perm.hoursUsed, locale as 'en' | 'ar'),
                     printUrl: `/${locale}/requests/print/permission/${perm.id}`,
                     approvedByMgrId: perm.approvedByMgrId,
                     approvedByHrId: perm.approvedByHrId,
