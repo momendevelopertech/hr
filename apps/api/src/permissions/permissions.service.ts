@@ -118,6 +118,25 @@ export class PermissionsService {
         return diff;
     }
 
+    private hoursToMinutes(hours: number) {
+        const safeHours = Number.isFinite(hours) ? Math.max(0, hours) : 0;
+        return Math.round(safeHours * 60);
+    }
+
+    private hasEnoughHours(availableHours: number, requestedHours: number) {
+        return this.hoursToMinutes(availableHours) >= this.hoursToMinutes(requestedHours);
+    }
+
+    private formatDurationFromHours(hours: number) {
+        const totalMinutes = this.hoursToMinutes(hours);
+        const hourPart = Math.floor(totalMinutes / 60);
+        const minutePart = totalMinutes % 60;
+
+        if (hourPart > 0 && minutePart > 0) return `${hourPart}h ${minutePart}m`;
+        if (hourPart > 0) return `${hourPart}h`;
+        return `${minutePart}m`;
+    }
+
     private formatTime(hours: number, minutes: number) {
         const h = String(Math.max(0, Math.min(23, hours))).padStart(2, '0');
         const m = String(Math.max(0, Math.min(59, minutes))).padStart(2, '0');
@@ -393,9 +412,9 @@ export class PermissionsService {
 
         const reservedHours = await this.getReservedHoursInCycle(cycle.id);
         const availableHours = Math.max(0, cycle.totalHours - reservedHours);
-        if (availableHours < hoursUsed) {
+        if (!this.hasEnoughHours(availableHours, hoursUsed)) {
             throw new BadRequestException(
-                `Insufficient permission hours. Available: ${availableHours}h, Requested: ${hoursUsed}h`,
+                `Insufficient permission hours. Available: ${this.formatDurationFromHours(availableHours)}, Requested: ${this.formatDurationFromHours(hoursUsed)}`,
             );
         }
 
@@ -496,7 +515,7 @@ export class PermissionsService {
                     type: 'PERMISSION_REQUEST',
                     title: 'New Permission Request',
                     titleAr: 'طلب إذن جديد',
-                    body: `${request.user.fullName} requested ${hoursUsed}h permission on ${new Date(data.requestDate).toLocaleDateString()}.`,
+                    body: `${request.user.fullName} requested ${this.formatDurationFromHours(hoursUsed)} permission on ${new Date(data.requestDate).toLocaleDateString()}.`,
                     bodyAr: 'تم تقديم طلب إذن جديد.',
                     metadata: { permissionRequestId: request.id },
                 });
@@ -641,7 +660,7 @@ export class PermissionsService {
                 }
                 const approvedHours = await this.getApprovedHoursInCycle(cycle.id);
                 const remainingApprovedHours = Math.max(0, cycle.totalHours - approvedHours);
-                if (remainingApprovedHours < request.hoursUsed) {
+                if (!this.hasEnoughHours(remainingApprovedHours, request.hoursUsed)) {
                     throw new BadRequestException('Insufficient remaining hours in permission cycle');
                 }
 
@@ -761,9 +780,9 @@ export class PermissionsService {
 
         const reservedHours = await this.getReservedHoursInCycle(cycle.id, id);
         const availableHours = Math.max(0, cycle.totalHours - reservedHours);
-        if (availableHours < hoursUsed) {
+        if (!this.hasEnoughHours(availableHours, hoursUsed)) {
             throw new BadRequestException(
-                `Insufficient permission hours. Available: ${availableHours}h, Requested: ${hoursUsed}h`,
+                `Insufficient permission hours. Available: ${this.formatDurationFromHours(availableHours)}, Requested: ${this.formatDurationFromHours(hoursUsed)}`,
             );
         }
 

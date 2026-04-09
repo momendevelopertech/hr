@@ -12,6 +12,7 @@ import ChangePasswordModal from './ChangePasswordModal';
 import { useRequireAuth } from '@/lib/use-auth';
 import { useTranslations } from 'next-intl';
 import { enumLabels } from '@/lib/enum-labels';
+import { formatPermissionDuration } from '@/lib/permission-duration';
 import PageLoader from './PageLoader';
 import { Megaphone, Wallet } from 'lucide-react';
 import { arSA, enUS } from 'date-fns/locale';
@@ -94,23 +95,6 @@ type WorkScheduleSettings = {
     ramadanStartDate: string | null;
     ramadanEndDate: string | null;
     calendarOffDays?: CalendarOffDayRule[] | null;
-};
-
-const formatPermissionDuration = (hours: number, locale: 'en' | 'ar') => {
-    const safeHours = Number.isFinite(hours) ? Math.max(0, hours) : 0;
-    const totalMinutes = Math.round(safeHours * 60);
-    const hourPart = Math.floor(totalMinutes / 60);
-    const minutePart = totalMinutes % 60;
-
-    if (locale === 'ar') {
-        if (hourPart > 0 && minutePart > 0) return `${hourPart} ساعة و${minutePart} دقيقة`;
-        if (hourPart > 0) return `${hourPart} ساعة`;
-        return `${minutePart} دقيقة`;
-    }
-
-    if (hourPart > 0 && minutePart > 0) return `${hourPart}h ${minutePart}m`;
-    if (hourPart > 0) return `${hourPart}h`;
-    return `${minutePart}m`;
 };
 
 const parseLocalDate = (value: string) => {

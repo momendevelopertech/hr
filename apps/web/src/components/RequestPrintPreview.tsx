@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import { enumLabels } from '@/lib/enum-labels';
 import { useRequireAuth } from '@/lib/use-auth';
+import { formatPermissionDuration } from '@/lib/permission-duration';
 import PageLoader from './PageLoader';
 
 type RequestType = 'leave' | 'permission';
@@ -131,8 +132,8 @@ export default function RequestPrintPreview({
             requestName: enumLabels.permissionType(permission.permissionType, 'ar'),
             dateLabel: 'تاريخ الإذن',
             dateValue: new Date(permission.requestDate).toLocaleDateString(dateLocale),
-            durationLabel: 'عدد الساعات',
-            durationValue: `${permission.hoursUsed}`,
+            durationLabel: 'المدة',
+            durationValue: formatPermissionDuration(permission.hoursUsed, 'ar'),
             reason: permission.reason || '-',
             employeeName,
             employeeNumber: permission.user.employeeNumber,
