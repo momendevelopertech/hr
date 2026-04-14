@@ -295,7 +295,6 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
         const unknownReason = t('registerDeliveryUnknownFailure');
 
         if (!emailDelivery && !whatsAppDelivery) {
-            toast(t('registerDeliveryStatusUnavailable'), { duration: 7000 });
             return;
         }
 
