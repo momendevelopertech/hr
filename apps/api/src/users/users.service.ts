@@ -328,6 +328,9 @@ export class UsersService {
             employeeNumber: user.employeeNumber,
             username: user.username,
             workflowMode: user.workflowMode,
+        }, {
+            syncWhatsApp: Boolean(user.phone),
+            waitForExternalDeliveries: true,
         });
 
         await this.clearUserCaches();
