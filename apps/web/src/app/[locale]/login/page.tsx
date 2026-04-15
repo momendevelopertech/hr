@@ -371,6 +371,8 @@ export default function LoginPage({ params }: { params: { locale: 'en' | 'ar' } 
                 departmentId: registerForm.departmentId,
                 jobTitle: registerForm.jobTitle.trim().replace(/\s+/g, ' '),
                 jobTitleAr: registerForm.jobTitleAr.trim() || undefined,
+            }, {
+                timeout: 70000,
             });
             if (res.data?.accessToken) {
                 setAccessToken(res.data.accessToken);

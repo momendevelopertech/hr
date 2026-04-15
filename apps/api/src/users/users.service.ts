@@ -328,6 +328,8 @@ export class UsersService {
             employeeNumber: user.employeeNumber,
             username: user.username,
             workflowMode: user.workflowMode,
+        }, {
+            waitForExternalDeliveries: true,
         });
 
         await this.clearUserCaches();
